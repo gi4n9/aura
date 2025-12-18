@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 export default async function UserPage({ params }: { params: Promise<{ userId: string }> }) {
     const { userId } = await params;
     const user = await getUserById(userId);
+    console.log(user);
 
-    if (!user) {
+    if (user.message) {
         notFound();
     }
+
     return (
         <div>
             name: {user.firstName}

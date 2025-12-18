@@ -18,11 +18,19 @@ export async function getAllUsers() {
 }
 
 export async function getUserById(id: string) {
-    const res = await fetch(`https://dummyjson.com/users/${id}`);
+    try {
+        const res = await fetch(`https://dummyjson.com/users/${id}`);
 
-    if (!res) {
-        throw new Error(`failed to fetch user by id ${id}`)
+        if (!res) {
+            return undefined;
+        }
+
+        return await res.json();
+    } catch (error) {
+        console.log(error);
+        return undefined;
     }
 
-    return res.json();
+
+
 }
