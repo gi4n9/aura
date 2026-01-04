@@ -1,0 +1,26 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String  @id @default(uuid()) // Dùng UUID bảo mật hơn số thứ tự (1,2,3)
+  email     String  @unique
+  name      String? // Có thể null (người dùng chưa cập nhật tên)
+  avatarUrl String? // Link ảnh đại diện
+  role      String  @default("USER") // Phân quyền: USER hoặc ADMIN
+
+  createdAt DateTime @default(now()) // Thời gian tạo
+  updatedAt DateTime @updatedAt // Tự động cập nhật khi sửa đổi
+}
