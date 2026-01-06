@@ -1,16 +1,12 @@
+"use client";
+
+import InteractiveBackground from "./InteractiveBackground";
+
 export default function HeroSection() {
     return (
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+        <section className="relative min-h-screen flex items-center justify-center  overflow-hidden p-16">
             {/* Background Elements */}
-            <div className="absolute inset-0 overflow-hidden">
-                {/* Gradient Orbs */}
-                <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--primary-400)] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" />
-                <div className="absolute top-40 right-20 w-96 h-96 bg-[var(--accent-purple)] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style={{ animationDelay: "1s" }} />
-                <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-[var(--accent-pink)] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float" style={{ animationDelay: "2s" }} />
-
-                {/* Grid Pattern */}
-                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgxMjgsIDEyOCwgMTI4LCAwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40" />
-            </div>
+            <InteractiveBackground />
 
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 {/* Badge */}
@@ -22,9 +18,9 @@ export default function HeroSection() {
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 animate-slide-up">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold animate-slide-up ">
                     <span className="block text-[var(--foreground)]">Học tập không giới hạn</span>
-                    <span className="block gradient-text mt-2">Phát triển tương lai</span>
+                    <span className="block gradient-text py-3">Phát triển tương lai</span>
                 </h1>
 
                 {/* Subtitle */}

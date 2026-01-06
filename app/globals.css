@@ -61,15 +61,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Dark mode overrides removed to enforce white background */
-/* @media (prefers-color-scheme: dark) { ... } */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html {
   scroll-behavior: smooth;
 }
@@ -213,4 +204,110 @@ h6 {
   ::-webkit-scrollbar-track {
     background: var(--neutral-800);
   }
+}
+
+
+/* Animation Keyframes - Tạo các lát cắt ngẫu nhiên */
+@keyframes lando-glitch-anim-1 {
+  0% {
+    clip-path: inset(40% 0 61% 0);
+  }
+
+  20% {
+    clip-path: inset(92% 0 1% 0);
+  }
+
+  40% {
+    clip-path: inset(43% 0 1% 0);
+  }
+
+  60% {
+    clip-path: inset(25% 0 58% 0);
+  }
+
+  80% {
+    clip-path: inset(54% 0 7% 0);
+  }
+
+  100% {
+    clip-path: inset(58% 0 43% 0);
+  }
+}
+
+@keyframes lando-glitch-anim-2 {
+  0% {
+    clip-path: inset(20% 0 80% 0);
+  }
+
+  20% {
+    clip-path: inset(50% 0 20% 0);
+  }
+
+  40% {
+    clip-path: inset(10% 0 50% 0);
+  }
+
+  60% {
+    clip-path: inset(80% 0 10% 0);
+  }
+
+  80% {
+    clip-path: inset(30% 0 40% 0);
+  }
+
+  100% {
+    clip-path: inset(40% 0 30% 0);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+/* 2. Tạo class tiện ích để dùng trong JSX */
+.animate-blob {
+  animation: blob 7s infinite;
+  /* Chạy vô hạn trong 7s */
+}
+
+/* 3. Tạo các class delay để các bóng không chạy cùng lúc */
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* Đảm bảo text không bị xuống dòng */
+.whitespace-nowrap {
+  white-space: nowrap;
 }

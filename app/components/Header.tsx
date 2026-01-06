@@ -7,9 +7,9 @@ export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 glass">
-            <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/20">
+            <nav className=" mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-around h-16">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center animate-pulse-glow">
@@ -34,7 +34,7 @@ export default function Header() {
                             </svg>
                         </div>
                         <span className="text-xl font-bold gradient-text group-hover:opacity-80 transition-opacity">
-                            Aura Learning
+                            Aura
                         </span>
                     </Link>
 
