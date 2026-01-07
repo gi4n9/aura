@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
     "framer-motion": "^12.23.26",
     "next": "16.0.10",
     "react": "19.2.1",
@@ -25,5 +27,8 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

@@ -24,3 +24,37 @@ model User {
   createdAt DateTime @default(now()) // Thời gian tạo
   updatedAt DateTime @updatedAt // Tự động cập nhật khi sửa đổi
 }
+
+model Playlist {
+  id          String   @id @default(uuid())
+  title       String
+  channel     String
+  totalVideos Int
+  crawlTime   DateTime
+  createdAt   DateTime @default(now())
+
+  // Quan hệ 1-nhiều với Video
+  videos Video[]
+
+  @@map("playlists") // Tên bảng trong DB
+}
+
+model Video {
+  id        String @id @default(uuid())
+  stt       Int // Số thứ tự trong playlist
+  title     String
+  url       String
+  youtubeId String @unique // ID của youtube (vd: 0SJE9dYdpps)
+
+  // Các trường phục vụ cho AI (để null ban đầu, sau này update sau)
+  transcript String? @db.Text // Nội dung text của video
+  summary    String? @db.Text // Tóm tắt do AI tạo
+
+  // Khóa ngoại liên kết với Playlist
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("videos")
+}
