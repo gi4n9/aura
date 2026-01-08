@@ -1,215 +1,193 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { signOut } from "@/app/login/action"; // 1. Import hàm signOut từ server action
+import { useState, useEffect } from "react";
+import { signOut } from "@/app/login/action";
 import { useAuth } from "./AuthProvider";
+import { Menu, X, Search, LogOut } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { user } = useAuth();
 
-  const { user, isLoading } = useAuth();
-  console.log("Header Client received user:", user);
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const toggleMenu = () => {
+    setIsMenuOpen((prev) => !prev);
+  };
+
+  const paddingClass = isScrolled ? "py-2" : "py-4";
+  
+  const bgClass = (isScrolled || isMenuOpen) 
+    ? "bg-[#F9F8F4] shadow-sm border-b border-stone-200" 
+    : "bg-transparent border-b border-transparent";
+
+  const menuTopPosition = isScrolled ? "top-[50px]" : "top-[64px]"; 
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/20">
-      <nav className=" mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-around h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center animate-pulse-glow">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${bgClass} ${paddingClass}`}
+      >
+        <div className="container mx-auto px-6 flex justify-between items-center relative z-50">
+          
+          {/* --- LOGO --- */}
+          <Link href="/" className="flex items-center gap-2 group" onClick={() => setIsMenuOpen(false)}>
+            <div className="w-8 h-8 bg-nobel-gold rounded-full flex items-center justify-center text-white font-serif font-bold text-base shadow-sm group-hover:bg-nobel-dark transition-colors">
+              α
             </div>
-            <span className="text-xl font-bold gradient-text group-hover:opacity-80 transition-opacity">
-              Aura
+            <span className="font-serif font-bold text-xl tracking-wide text-nobel-dark">
+              Aura<span className="font-normal text-stone-500 italic text-lg">Learning</span>
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/courses"
-              className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-            >
-              Khóa học
-            </Link>
-            <Link
-              href="/categories"
-              className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-            >
-              Danh mục
-            </Link>
-            <Link
-              href="/about"
-              className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-            >
-              Về chúng tôi
-            </Link>
-            <Link
-              href="/contact"
-              className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-            >
-              Liên hệ
-            </Link>
-          </div>
+          {/* --- DESKTOP NAV --- */}
+          <nav className="hidden md:flex items-center gap-2">
+            {[
+              { label: "Khóa học", href: "/courses" },
+              { label: "Danh mục", href: "/categories" },
+              { label: "Về chúng tôi", href: "/about" },
+              { label: "Liên hệ", href: "/contact" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-4 py-2 rounded-full text-[11px] lg:text-xs font-bold tracking-[0.15em] uppercase text-stone-500 transition-all duration-300 hover:bg-stone-700 hover:text-white hover:shadow-md"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-          {/* Auth Buttons (Desktop) */}
+          {/* --- AUTH & SEARCH --- */}
           <div className="hidden md:flex items-center gap-4">
+            <button className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200">
+              <Search size={18} />
+            </button>
+
             {user ? (
-              // --- GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP ---
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 pl-4 border-l border-stone-200 h-8">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                    {/* Lấy chữ cái đầu của email làm avatar */}
+                  <div className="text-right hidden xl:block">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Account</p>
+                  </div>
+                  {/* --- NEW AVATAR STYLE --- */}
+                  <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-serif font-bold text-sm border border-[#C5A059] shadow-sm">
                     {user.email?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-medium text-[var(--neutral-700)]">
-                    {user.email}
-                  </span>
                 </div>
-                
-                {/* Nút Đăng xuất gọi Server Action */}
                 <form action={signOut}>
-                  <button 
-                    className="px-4 py-2 text-sm text-red-500 hover:text-red-600 font-medium transition-colors border border-red-100 hover:bg-red-50 rounded-full"
-                  >
-                    Đăng xuất
+                  <button className="p-1.5 text-stone-400 hover:text-red-600 transition-colors" title="Đăng xuất">
+                    <LogOut size={16} />
                   </button>
                 </form>
               </div>
             ) : (
-              // --- GIAO DIỆN KHI CHƯA ĐĂNG NHẬP ---
-              <>
-                <Link
-                  href="/login"
-                  className="px-4 py-2 text-[var(--primary-500)] hover:text-[var(--primary-600)] font-medium transition-colors"
-                >
+              <div className="flex items-center gap-3">
+                <Link href="/login" className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-200 transition-all">
                   Đăng nhập
                 </Link>
-                <Link
-                  href="/register"
-                  className="px-6 py-2 rounded-full gradient-bg text-white font-medium hover:opacity-90 transition-opacity shadow-lg hover:shadow-xl"
-                >
-                  Đăng ký miễn phí
+                <Link href="/register" className="px-5 py-2 bg-stone-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-stone-600 hover:shadow-md transition-all">
+                  Đăng ký
                 </Link>
-              </>
+              </div>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* --- MOBILE TOGGLE --- */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-[var(--neutral-100)] transition-colors"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden text-nobel-dark p-2 rounded-md hover:bg-stone-100 transition-colors relative z-50"
+            onClick={toggleMenu}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              {isMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
+      </header>
 
-        {/* Mobile Menu */}
+      {/* --- MOBILE MENU --- */}
+      <AnimatePresence>
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-[var(--neutral-200)] animate-slide-up">
-            <div className="flex flex-col gap-4">
-              <Link
-                href="/courses"
-                className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-              >
-                Khóa học
-              </Link>
-              <Link
-                href="/categories"
-                className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-              >
-                Danh mục
-              </Link>
-              <Link
-                href="/about"
-                className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-              >
-                Về chúng tôi
-              </Link>
-              <Link
-                href="/contact"
-                className="text-[var(--neutral-600)] hover:text-[var(--primary-500)] transition-colors font-medium"
-              >
-                Liên hệ
-              </Link>
-              
-              <hr className="border-[var(--neutral-200)]" />
-              
-              {/* Mobile Auth Logic */}
-              {user ? (
-                 <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3 px-2">
-                        <div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center text-white text-sm font-bold">
-                             {user.email?.charAt(0).toUpperCase()}
+          <div className={`fixed inset-0 z-40 md:hidden ${menuTopPosition}`}>
+            
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setIsMenuOpen(false)}
+            />
+
+            <motion.div 
+                initial={{ y: -20, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                exit={{ y: -20, opacity: 0 }} 
+                transition={{ duration: 0.3, ease: "easeOut" }} 
+                className="relative bg-[#F9F8F4] border-t border-stone-200 shadow-xl p-6 flex flex-col gap-2 h-auto max-h-[80vh] overflow-y-auto rounded-b-2xl"
+            >
+                {[
+                    { label: "Khóa học", href: "/courses" },
+                    { label: "Danh mục", href: "/categories" },
+                    { label: "Về chúng tôi", href: "/about" },
+                    { label: "Liên hệ", href: "/contact" },
+                ].map((link) => (
+                    <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-stone-800 font-serif text-xl font-medium hover:text-nobel-gold border-b border-stone-100 py-3 block"
+                    onClick={() => setIsMenuOpen(false)}
+                    >
+                    {link.label}
+                    </Link>
+                ))}
+                
+                <div className="mt-6 pt-6 border-t border-stone-200">
+                    {user ? (
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-stone-100">
+                                {/* --- NEW MOBILE AVATAR STYLE --- */}
+                                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-serif font-bold text-base border border-[#C5A059]">
+                                    {user.email?.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-medium text-nobel-dark text-sm truncate">{user.email}</span>
+                            </div>
+                            <form action={signOut} className="w-full">
+                                <button className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
+                                    <LogOut size={16}/> Đăng xuất
+                                </button>
+                            </form>
                         </div>
-                        <span className="font-medium text-[var(--neutral-700)]">{user.email}</span>
-                    </div>
-                    <form action={signOut} className="w-full">
-                        <button className="w-full text-left px-2 text-red-500 font-medium">
-                            Đăng xuất
-                        </button>
-                    </form>
-                 </div>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="text-[var(--primary-500)] font-medium"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="px-6 py-2 rounded-full gradient-bg text-white font-medium text-center"
-                  >
-                    Đăng ký miễn phí
-                  </Link>
-                </>
-              )}
-            </div>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                            <Link
+                                href="/login"
+                                className="w-full py-3 text-center text-stone-600 font-bold uppercase text-[10px] tracking-wider border border-stone-300 rounded-lg hover:bg-stone-50"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Đăng nhập
+                            </Link>
+                            <Link
+                                href="/register"
+                                className="w-full py-3 text-center bg-nobel-dark text-white font-bold uppercase text-[10px] tracking-wider rounded-lg shadow-md hover:bg-stone-800"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Đăng ký miễn phí
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
           </div>
         )}
-      </nav>
-    </header>
+      </AnimatePresence>
+    </>
   );
 }

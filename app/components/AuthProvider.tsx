@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client"; // Lưu ý: Import từ client
 import { User } from "@supabase/supabase-js";
-
 // Tạo Context
 const AuthContext = createContext<{ user: User | null; isLoading: boolean }>({
   user: null,
@@ -30,7 +29,7 @@ export const AuthProvider = ({
       setIsLoading(false);
       
       // Tùy chọn: Refresh lại router server nếu cần
-      // if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') router.refresh()
+      //if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') router.refresh();
     });
 
     return () => {

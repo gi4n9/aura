@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -14,17 +10,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Bảng User giữ nguyên
 model User {
-  id        String  @id @default(uuid()) // Dùng UUID bảo mật hơn số thứ tự (1,2,3)
+  id        String  @id @default(uuid())
   email     String  @unique
-  name      String? // Có thể null (người dùng chưa cập nhật tên)
-  avatarUrl String? // Link ảnh đại diện
-  role      String  @default("USER") // Phân quyền: USER hoặc ADMIN
+  name      String?
+  avatarUrl String?
+  role      String  @default("USER")
 
-  createdAt DateTime @default(now()) // Thời gian tạo
-  updatedAt DateTime @updatedAt // Tự động cập nhật khi sửa đổi
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+// Bảng Playlist giữ nguyên
 model Playlist {
   id          String   @id @default(uuid())
   title       String
@@ -33,24 +31,36 @@ model Playlist {
   crawlTime   DateTime
   createdAt   DateTime @default(now())
 
-  // Quan hệ 1-nhiều với Video
   videos Video[]
 
-  @@map("playlists") // Tên bảng trong DB
+  @@map("playlists")
 }
 
+// Bảng Video (Cập nhật đầy đủ cho AI)
 model Video {
   id        String @id @default(uuid())
-  stt       Int // Số thứ tự trong playlist
+  stt       Int
   title     String
   url       String
-  youtubeId String @unique // ID của youtube (vd: 0SJE9dYdpps)
+  youtubeId String @unique
 
-  // Các trường phục vụ cho AI (để null ban đầu, sau này update sau)
-  transcript String? @db.Text // Nội dung text của video
-  summary    String? @db.Text // Tóm tắt do AI tạo
+  // --- CÁC TRƯỜNG AI (NEW) ---
+  // 1. Transcript: Nội dung văn bản của video (lấy từ Youtube hoặc Whisper)
+  transcript String? @db.Text
 
-  // Khóa ngoại liên kết với Playlist
+  // 2. Summary: Tóm tắt nội dung do AI sinh ra
+  summary String? @db.Text
+
+  // 3. MindMap: Mã nguồn biểu đồ tư duy (MermaidJS)
+  mindMap String? @db.Text
+
+  // 4. Questions: Danh sách câu hỏi ôn tập (Lưu dạng JSON)
+  questions Json?
+
+  // 5. Trạng thái: Đánh dấu video này đã được AI phân tích chưa
+  isAnalyzed Boolean @default(false)
+
+  // Khóa ngoại
   playlistId String
   playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 

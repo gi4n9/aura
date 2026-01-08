@@ -1,3 +1,4 @@
+import { Link } from "lucide-react";
 import Image from "next/image";
 
 const courses = [
@@ -14,7 +15,7 @@ const courses = [
         image: "/courses/react.jpg",
         category: "Frontend",
         badge: "Bestseller",
-        badgeColor: "bg-[var(--accent-orange)]"
+        badgeColor: "bg-nobel-gold"
     },
     {
         id: 2,
@@ -29,7 +30,7 @@ const courses = [
         image: "/courses/nodejs.jpg",
         category: "Backend",
         badge: "Hot",
-        badgeColor: "bg-[var(--accent-pink)]"
+        badgeColor: "bg-red-500"
     },
     {
         id: 3,
@@ -44,7 +45,7 @@ const courses = [
         image: "/courses/figma.jpg",
         category: "Design",
         badge: "New",
-        badgeColor: "bg-[var(--accent-teal)]"
+        badgeColor: "bg-blue-500"
     },
     {
         id: 4,
@@ -59,7 +60,7 @@ const courses = [
         image: "/courses/python.jpg",
         category: "Data Science",
         badge: "Popular",
-        badgeColor: "bg-[var(--accent-purple)]"
+        badgeColor: "bg-purple-500"
     }
 ];
 
@@ -69,96 +70,88 @@ function StarRating({ rating }: { rating: number }) {
             {[1, 2, 3, 4, 5].map((star) => (
                 <svg
                     key={star}
-                    className={`w-4 h-4 ${star <= rating ? "text-yellow-400" : "text-[var(--neutral-300)]"}`}
+                    className={`w-3 h-3 ${star <= rating ? "text-nobel-gold" : "text-stone-300"}`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                 >
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
             ))}
-            <span className="text-sm text-[var(--neutral-500)] ml-1">({rating})</span>
+            <span className="text-xs font-bold text-stone-500 ml-1">{rating}</span>
         </div>
     );
 }
 
 export default function FeaturedCourses() {
     return (
-        <section className="py-20 bg-[var(--neutral-50)]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Section Header */}
-                <div className="text-center mb-12">
-                    <span className="inline-block px-4 py-1 rounded-full text-sm font-medium bg-[var(--primary-100)] text-[var(--primary-600)] mb-4">
-                        Khóa học nổi bật
+        <section className="py-24 bg-white border-t border-stone-200">
+            <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                {/* Header */}
+                <div className="text-center mb-16">
+                    <span className="inline-block mb-3 text-[10px] font-bold tracking-[0.2em] text-stone-500 uppercase">
+                        Curriculum
                     </span>
-                    <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                        Các khóa học <span className="gradient-text">được yêu thích nhất</span>
+                    <h2 className="font-serif text-4xl md:text-5xl mb-4 text-nobel-dark">
+                        Featured Courses
                     </h2>
-                    <p className="text-[var(--neutral-500)] max-w-2xl mx-auto">
-                        Khám phá những khóa học chất lượng cao nhất, được hàng nghìn học viên tin tưởng và đánh giá cao
-                    </p>
+                    <div className="w-16 h-0.5 bg-nobel-gold mx-auto opacity-60"></div>
                 </div>
 
                 {/* Course Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {courses.map((course, index) => (
                         <div
                             key={course.id}
-                            className="group bg-[var(--card-bg)] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-[var(--card-border)]"
-                            style={{ animationDelay: `${index * 0.1}s` }}
+                            className="group flex flex-col bg-white rounded-xl overflow-hidden border border-stone-200 hover:border-nobel-gold/50 hover:shadow-xl transition-all duration-300"
                         >
                             {/* Course Image */}
-                            <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[var(--primary-400)] to-[var(--accent-purple)]">
-                                {/* Placeholder for course image */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
-                                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M8 5v14l11-7z" />
-                                        </svg>
-                                    </div>
+                            <div className="relative h-48 overflow-hidden bg-stone-100">
+                                {/* Placeholder Gradient thay cho ảnh */}
+                                <div className="absolute inset-0 bg-gradient-to-tr from-stone-200 to-stone-100 flex items-center justify-center">
+                                     <span className="text-stone-400 text-xs uppercase tracking-widest font-bold">Preview</span>
                                 </div>
 
                                 {/* Badge */}
-                                <div className={`absolute top-3 left-3 px-3 py-1 rounded-full ${course.badgeColor} text-white text-xs font-semibold`}>
+                                <div className={`absolute top-3 left-3 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider ${course.badgeColor}`}>
                                     {course.badge}
                                 </div>
 
                                 {/* Category */}
-                                <div className="absolute top-3 right-3 px-3 py-1 rounded-full glass text-white text-xs font-medium">
+                                <div className="absolute top-3 right-3 px-2 py-1 rounded bg-white/90 backdrop-blur text-[10px] font-bold text-stone-600 uppercase tracking-wider shadow-sm">
                                     {course.category}
                                 </div>
                             </div>
 
                             {/* Course Info */}
-                            <div className="p-5">
-                                <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-[var(--primary-500)] transition-colors">
+                            <div className="p-6 flex flex-col flex-1">
+                                <h3 className="font-serif text-lg text-nobel-dark mb-2 line-clamp-2 group-hover:text-nobel-gold transition-colors leading-snug">
                                     {course.title}
                                 </h3>
 
-                                <p className="text-sm text-[var(--neutral-500)] mb-3">
-                                    {course.instructor}
+                                <p className="text-xs text-stone-500 mb-4 font-medium uppercase tracking-wide">
+                                    By {course.instructor}
                                 </p>
 
-                                <div className="flex items-center gap-4 text-xs text-[var(--neutral-400)] mb-3">
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        {course.duration}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
-                                        {course.students.toLocaleString()}
-                                    </span>
+                                <div className="flex items-center justify-between mb-4 pb-4 border-b border-stone-100">
+                                    <div className="flex items-center gap-3 text-[11px] text-stone-400 font-bold uppercase tracking-wider">
+                                        <span>{course.duration}</span>
+                                        <span>•</span>
+                                        <span>{course.students} HV</span>
+                                    </div>
+                                    <StarRating rating={course.rating} />
                                 </div>
 
-                                <StarRating rating={course.rating} />
-
                                 {/* Price */}
-                                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[var(--neutral-200)]">
-                                    <span className="text-xl font-bold text-[var(--primary-500)]">{course.price}</span>
-                                    <span className="text-sm text-[var(--neutral-400)] line-through">{course.originalPrice}</span>
+                                <div className="mt-auto flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-stone-400 line-through decoration-stone-300">{course.originalPrice}</span>
+                                        <span className="text-lg font-serif font-bold text-nobel-dark">{course.price}</span>
+                                    </div>
+                                    <button className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-nobel-dark hover:text-white hover:border-nobel-dark transition-all">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        </svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -166,16 +159,13 @@ export default function FeaturedCourses() {
                 </div>
 
                 {/* View All Button */}
-                <div className="text-center mt-12">
-                    <a
+                <div className="text-center mt-16">
+                    <Link
                         href="/courses"
-                        className="inline-flex items-center gap-2 px-8 py-3 rounded-full border-2 border-[var(--primary-500)] text-[var(--primary-500)] font-semibold hover:bg-[var(--primary-500)] hover:text-white transition-all duration-300"
+                        className="inline-block px-8 py-3 border border-stone-300 text-stone-600 font-bold uppercase text-xs tracking-[0.15em] hover:bg-nobel-dark hover:text-white hover:border-nobel-dark transition-all duration-300 rounded-sm"
                     >
                         Xem tất cả khóa học
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
-                    </a>
+                    </Link>
                 </div>
             </div>
         </section>

@@ -21,7 +21,10 @@ type JsonData = {
 
 async function main() {
   // 1. Đọc file JSON
-  const filePath = path.join(__dirname, "/data_F8_Official.json");
+  const filePath = path.join(
+    __dirname,
+    "/data_Javascript_Nâng_Cao_F8_Official.json"
+  );
   const rawData = fs.readFileSync(filePath, "utf-8");
   const data: JsonData = JSON.parse(rawData);
 

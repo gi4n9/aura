@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/utils/supabase/server"; // 1. Import hàm tạo client server
 import Header from "@/app/components/Header"; // 2. Import Header
@@ -10,6 +10,7 @@ const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin", "vietnamese"],
 });
+const playfair = Playfair_Display({ subsets: ['latin','vietnamese'], variable: '--font-playfair' })
 
 export const metadata: Metadata = {
   title: "Aura Learning - Nền tảng học trực tuyến hàng đầu Việt Nam",
@@ -39,19 +40,21 @@ export default async function RootLayout({
 
   return (
     <html lang="vi">
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} ${playfair.variable} font-sans antialiased bg-nobel-cream text-nobel-dark`}>
         {/* Bọc toàn bộ app trong AuthProvider */}
-        <AuthProvider initialUser={user}>
+        <AuthProvider initialUser={user} key={user?.id}>
           
           {/* Header giờ sẽ tự lấy user từ Context, không cần truyền prop nữa (hoặc giữ prop cũng được) */}
-          <Header /> 
+          <Header />
           
           <main className="min-h-screen pt-16">
             {children}
           </main>
+
           
         </AuthProvider>
       </body>
+      
     </html>
   );
 }
