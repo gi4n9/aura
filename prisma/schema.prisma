@@ -10,61 +10,37 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Bảng User giữ nguyên
 model User {
-  id        String  @id @default(uuid())
-  email     String  @unique
+  id        String   @id
+  email     String   @unique
   name      String?
+  role      String   @default("user")
   avatarUrl String?
-  role      String  @default("USER")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// Bảng Playlist giữ nguyên
 model Playlist {
-  id          String   @id @default(uuid())
+  id          String    @id @default(cuid())
   title       String
-  channel     String
-  totalVideos Int
-  crawlTime   DateTime
-  createdAt   DateTime @default(now())
-
-  videos Video[]
-
-  @@map("playlists")
+  description String?   @db.Text // Mô tả dài cho khóa học (để AI tóm tắt)
+  channel     String? // Tên kênh Youtube/Tác giả
+  thumbnail   String? // (Tùy chọn) Link ảnh bìa nếu muốn lưu cứng
+  totalVideos Int       @default(0)
+  crawlTime   DateTime? // Nếu muốn lưu thời gian crawl từ file JSON
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  videos      Video[]
 }
 
-// Bảng Video (Cập nhật đầy đủ cho AI)
 model Video {
-  id        String @id @default(uuid())
-  stt       Int
-  title     String
-  url       String
-  youtubeId String @unique
-
-  // --- CÁC TRƯỜNG AI (NEW) ---
-  // 1. Transcript: Nội dung văn bản của video (lấy từ Youtube hoặc Whisper)
-  transcript String? @db.Text
-
-  // 2. Summary: Tóm tắt nội dung do AI sinh ra
-  summary String? @db.Text
-
-  // 3. MindMap: Mã nguồn biểu đồ tư duy (MermaidJS)
-  mindMap String? @db.Text
-
-  // 4. Questions: Danh sách câu hỏi ôn tập (Lưu dạng JSON)
-  questions Json?
-
-  // 5. Trạng thái: Đánh dấu video này đã được AI phân tích chưa
-  isAnalyzed Boolean @default(false)
-
-  // Khóa ngoại
+  id         String   @id @default(cuid())
+  title      String
+  youtubeId  String // ID video Youtube (VD: jNQXAC9IVRw) dùng để lấy ảnh & link
+  stt        Int // Số thứ tự bài học
   playlistId String
   playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
-
-  @@map("videos")
+  updatedAt DateTime @updatedAt
 }

@@ -1,0 +1,803 @@
+{
+  "metadata": {
+    "playlist_title": "HTML, CSS từ Zero Tới Hero",
+    "channel": "F8 Official",
+    "description": "Khóa học phù hợp cho cả người chưa từng học lập trình. Trong khóa này chúng ta sẽ cùng nhau xây dựng giao diện 2 trang web là The Band & Shopee.",
+    "total_videos": 113,
+    "source_url": "https://www.youtube.com/watch?v=R6plN3FvzFY&list=PL_-VfJajZj0U9nEXa4qyfB4U5ZIYCMPlz",
+    "crawl_time": "2026-01-08T08:16:04.745Z"
+  },
+  "videos": [
+    {
+      "stt": 1,
+      "title": "Tổng quan về khóa học HTML CSS tại F8 | Học lập trình web cơ bản | Học được gì trong khóa học?",
+      "url": "https://www.youtube.com/watch?v=R6plN3FvzFY",
+      "youtubeId": "R6plN3FvzFY",
+      "id": "R6plN3FvzFY"
+    },
+    {
+      "stt": 2,
+      "title": "HTML CSS là gì? | Ví dụ trực quan về HTML & CSS",
+      "url": "https://www.youtube.com/watch?v=zwsPND378OQ",
+      "youtubeId": "zwsPND378OQ",
+      "id": "zwsPND378OQ"
+    },
+    {
+      "stt": 3,
+      "title": "Làm quen với Dev tools | Giới thiệu bộ công cụ Dev tools trên trình duyệt",
+      "url": "https://www.youtube.com/watch?v=7BJiPyN4zZ0",
+      "youtubeId": "7BJiPyN4zZ0",
+      "id": "7BJiPyN4zZ0"
+    },
+    {
+      "stt": 4,
+      "title": "Cài đặt môi trường, công cụ cần thiết để bắt đầu học HTML CSS",
+      "url": "https://www.youtube.com/watch?v=ZotVkQDC6mU",
+      "youtubeId": "ZotVkQDC6mU",
+      "id": "ZotVkQDC6mU"
+    },
+    {
+      "stt": 5,
+      "title": "Cấu trúc file HTML | Khởi tạo folder dự án trong HTML",
+      "url": "https://www.youtube.com/watch?v=LYnrFSGLCl8",
+      "youtubeId": "LYnrFSGLCl8",
+      "id": "LYnrFSGLCl8"
+    },
+    {
+      "stt": 6,
+      "title": "Comments trong HTML | Cú pháp mở và đóng Comments",
+      "url": "https://www.youtube.com/watch?v=JG0pdfdKjgQ",
+      "youtubeId": "JG0pdfdKjgQ",
+      "id": "JG0pdfdKjgQ"
+    },
+    {
+      "stt": 7,
+      "title": "Những thẻ HTML thông dụng",
+      "url": "https://www.youtube.com/watch?v=AzmdwZ6e_aM",
+      "youtubeId": "AzmdwZ6e_aM",
+      "id": "AzmdwZ6e_aM"
+    },
+    {
+      "stt": 8,
+      "title": "Attributes trong HTML | Thêm thuộc tính (Attributes) vào thẻ",
+      "url": "https://www.youtube.com/watch?v=UYpIh5pIkSA",
+      "youtubeId": "UYpIh5pIkSA",
+      "id": "UYpIh5pIkSA"
+    },
+    {
+      "stt": 9,
+      "title": "Cách sử dụng CSS trong HTML | Hướng dẫn chi tiết của từng cách",
+      "url": "https://www.youtube.com/watch?v=NsSsJTg29oE",
+      "youtubeId": "NsSsJTg29oE",
+      "id": "NsSsJTg29oE"
+    },
+    {
+      "stt": 10,
+      "title": "ID và Class trong CSS selectors",
+      "url": "https://www.youtube.com/watch?v=4J6d8cr0X48",
+      "youtubeId": "4J6d8cr0X48",
+      "id": "4J6d8cr0X48"
+    },
+    {
+      "stt": 11,
+      "title": "Mức độ ưu tiên trong CSS",
+      "url": "https://www.youtube.com/watch?v=AgZ0PX28bnA",
+      "youtubeId": "AgZ0PX28bnA",
+      "id": "AgZ0PX28bnA"
+    },
+    {
+      "stt": 12,
+      "title": "CSS Variable là gì? | Cách đặt biến trong CSS",
+      "url": "https://www.youtube.com/watch?v=x9fnxVTkpP4",
+      "youtubeId": "x9fnxVTkpP4",
+      "id": "x9fnxVTkpP4"
+    },
+    {
+      "stt": 13,
+      "title": "CSS Units là gì? | Các đơn vị trong CSS",
+      "url": "https://www.youtube.com/watch?v=pcUiTt6eBk0",
+      "youtubeId": "pcUiTt6eBk0",
+      "id": "pcUiTt6eBk0"
+    },
+    {
+      "stt": 14,
+      "title": "Thuộc tính Padding trong CSS | CSS Padding",
+      "url": "https://www.youtube.com/watch?v=aj-lD4XXr8A",
+      "youtubeId": "aj-lD4XXr8A",
+      "id": "aj-lD4XXr8A"
+    },
+    {
+      "stt": 15,
+      "title": "Thuộc tính Border trong CSS | CSS Border",
+      "url": "https://www.youtube.com/watch?v=VbzOimNAOxE",
+      "youtubeId": "VbzOimNAOxE",
+      "id": "VbzOimNAOxE"
+    },
+    {
+      "stt": 16,
+      "title": "Thuộc tính Margin trong CSS | Tư duy sử dụng CSS Margin",
+      "url": "https://www.youtube.com/watch?v=8X48l0CK5_4",
+      "youtubeId": "8X48l0CK5_4",
+      "id": "8X48l0CK5_4"
+    },
+    {
+      "stt": 17,
+      "title": "CSS Box-sizing | Tính ứng dụng của Box-sizing",
+      "url": "https://www.youtube.com/watch?v=bv16wjxgV4U",
+      "youtubeId": "bv16wjxgV4U",
+      "id": "bv16wjxgV4U"
+    },
+    {
+      "stt": 18,
+      "title": "CSS Background-clip | Thuộc tính Background-clip",
+      "url": "https://www.youtube.com/watch?v=hMWhvbCJIq8",
+      "youtubeId": "hMWhvbCJIq8",
+      "id": "hMWhvbCJIq8"
+    },
+    {
+      "stt": 19,
+      "title": "CSS Background-image |  Thuộc tính Background-image",
+      "url": "https://www.youtube.com/watch?v=OPz7Uz20XNQ",
+      "youtubeId": "OPz7Uz20XNQ",
+      "id": "OPz7Uz20XNQ"
+    },
+    {
+      "stt": 20,
+      "title": "Thuộc tính Background-size | CSS Background-size",
+      "url": "https://www.youtube.com/watch?v=8zsmGFNpqb4",
+      "youtubeId": "8zsmGFNpqb4",
+      "id": "8zsmGFNpqb4"
+    },
+    {
+      "stt": 21,
+      "title": "Thuộc tính Background-origin | CSS Background-origin",
+      "url": "https://www.youtube.com/watch?v=32a_fYd5zIo",
+      "youtubeId": "32a_fYd5zIo",
+      "id": "32a_fYd5zIo"
+    },
+    {
+      "stt": 22,
+      "title": "Thuộc tính Background-position | CSS Background-position",
+      "url": "https://www.youtube.com/watch?v=R4q66obGDjs",
+      "youtubeId": "R4q66obGDjs",
+      "id": "R4q66obGDjs"
+    },
+    {
+      "stt": 23,
+      "title": "Cú pháp shorthand | CSS Background shorthand",
+      "url": "https://www.youtube.com/watch?v=4hf8kMSRUJI",
+      "youtubeId": "4hf8kMSRUJI",
+      "id": "4hf8kMSRUJI"
+    },
+    {
+      "stt": 24,
+      "title": "CSS Functions | Hàm trong CSS",
+      "url": "https://www.youtube.com/watch?v=LZfoRgIYw2s",
+      "youtubeId": "LZfoRgIYw2s",
+      "id": "LZfoRgIYw2s"
+    },
+    {
+      "stt": 25,
+      "title": "CSS Pseudo classes | Khái niệm lớp giả trong CSS",
+      "url": "https://www.youtube.com/watch?v=zEJiYc-SvWs",
+      "youtubeId": "zEJiYc-SvWs",
+      "id": "zEJiYc-SvWs"
+    },
+    {
+      "stt": 26,
+      "title": "Phần tử giả trong CSS | CSS Pseudo-elements",
+      "url": "https://www.youtube.com/watch?v=QuBLHCT7fuM",
+      "youtubeId": "QuBLHCT7fuM",
+      "id": "QuBLHCT7fuM"
+    },
+    {
+      "stt": 27,
+      "title": "Thuộc tính Position | CSS Positon: Relative",
+      "url": "https://www.youtube.com/watch?v=h1No10BHI5Y",
+      "youtubeId": "h1No10BHI5Y",
+      "id": "h1No10BHI5Y"
+    },
+    {
+      "stt": 28,
+      "title": "Thuộc tính vị trí tuyệt đối | CSS Position: Absolute",
+      "url": "https://www.youtube.com/watch?v=Y8tX8CzWsyA",
+      "youtubeId": "Y8tX8CzWsyA",
+      "id": "Y8tX8CzWsyA"
+    },
+    {
+      "stt": 29,
+      "title": "Thuộc tính Position: Fixed | CSS Position: Fixed",
+      "url": "https://www.youtube.com/watch?v=jAm8wm77aTM",
+      "youtubeId": "jAm8wm77aTM",
+      "id": "jAm8wm77aTM"
+    },
+    {
+      "stt": 30,
+      "title": "Thuộc tính Position: Sticky | CSS Position: Sticky",
+      "url": "https://www.youtube.com/watch?v=y0WuNaMgwpc",
+      "youtubeId": "y0WuNaMgwpc",
+      "id": "y0WuNaMgwpc"
+    },
+    {
+      "stt": 31,
+      "title": "Giới thiệu Flexbox | Thuộc tính Flexbox trong CSS",
+      "url": "https://www.youtube.com/watch?v=bVUN6nS82k8",
+      "youtubeId": "bVUN6nS82k8",
+      "id": "bVUN6nS82k8"
+    },
+    {
+      "stt": 32,
+      "title": "Những thuộc tính CSS sử dụng trong Flexbox",
+      "url": "https://www.youtube.com/watch?v=jX9KFgugpl4",
+      "youtubeId": "jX9KFgugpl4",
+      "id": "jX9KFgugpl4"
+    },
+    {
+      "stt": 33,
+      "title": "Học Flexbox CSS qua ví dụ | Flexbox CSS | Flexbox layout | Flexbox example | Flexbox trong CSS",
+      "url": "https://www.youtube.com/watch?v=G19jZzK5FWI",
+      "youtubeId": "G19jZzK5FWI",
+      "id": "G19jZzK5FWI"
+    },
+    {
+      "stt": 34,
+      "title": "[Flexbox nâng cao] Liên hệ Flex model với các thuộc tính Flexbox trong CSS",
+      "url": "https://www.youtube.com/watch?v=Ma8q2RYH5qY",
+      "youtubeId": "Ma8q2RYH5qY",
+      "id": "Ma8q2RYH5qY"
+    },
+    {
+      "stt": 35,
+      "title": "CSS BEM Là Gì? Đặt Tên CSS Class Theo Tiêu Chuẩn BEM",
+      "url": "https://www.youtube.com/watch?v=v1hSncGZg24",
+      "youtubeId": "v1hSncGZg24",
+      "id": "v1hSncGZg24"
+    },
+    {
+      "stt": 36,
+      "title": "Using BEM to create buttons | Applications of BEM in CSS",
+      "url": "https://www.youtube.com/watch?v=k1ZH5Mlj3tw",
+      "youtubeId": "k1ZH5Mlj3tw",
+      "id": "k1ZH5Mlj3tw"
+    },
+    {
+      "stt": 37,
+      "title": "Sử dụng BEM tạo Toast Message UI",
+      "url": "https://www.youtube.com/watch?v=7c7ABhaQJGM",
+      "youtubeId": "7c7ABhaQJGM",
+      "id": "7c7ABhaQJGM"
+    },
+    {
+      "stt": 38,
+      "title": "BEM Answers | How to name nested blocks",
+      "url": "https://www.youtube.com/watch?v=IddL557icoc",
+      "youtubeId": "IddL557icoc",
+      "id": "IddL557icoc"
+    },
+    {
+      "stt": 39,
+      "title": "Tối ưu performace khi sử dụng ảnh với srcset | Thuộc tính srcset của thẻ IMG",
+      "url": "https://www.youtube.com/watch?v=Cgn82mchbgM",
+      "youtubeId": "Cgn82mchbgM",
+      "id": "Cgn82mchbgM"
+    },
+    {
+      "stt": 40,
+      "title": "Dựng source base | Website bán hàng với HTML CSS",
+      "url": "https://www.youtube.com/watch?v=1xNzl5SYjPo",
+      "youtubeId": "1xNzl5SYjPo",
+      "id": "1xNzl5SYjPo"
+    },
+    {
+      "stt": 41,
+      "title": "Reset CSS và sử dụng Reset CSS",
+      "url": "https://www.youtube.com/watch?v=1mSomwO9NcI",
+      "youtubeId": "1mSomwO9NcI",
+      "id": "1mSomwO9NcI"
+    },
+    {
+      "stt": 42,
+      "title": "Dựng CSS base | Thực hành xây dựng Base CSS cho website",
+      "url": "https://www.youtube.com/watch?v=9DTlSDIS5rI",
+      "youtubeId": "9DTlSDIS5rI",
+      "id": "9DTlSDIS5rI"
+    },
+    {
+      "stt": 43,
+      "title": "Dựng khung web | Tạo layout cho web",
+      "url": "https://www.youtube.com/watch?v=-umvdHAfR6E",
+      "youtubeId": "-umvdHAfR6E",
+      "id": "-umvdHAfR6E"
+    },
+    {
+      "stt": 44,
+      "title": "Navbar CSS | Thực hành làm phần Menu Bar | Clone web shopee",
+      "url": "https://www.youtube.com/watch?v=x7l0JX68XyA",
+      "youtubeId": "x7l0JX68XyA",
+      "id": "x7l0JX68XyA"
+    },
+    {
+      "stt": 45,
+      "title": "Nhúng Font-Icons | Hướng dẫn sử dụng thư viện Font Awesome",
+      "url": "https://www.youtube.com/watch?v=28zvYME7TuU",
+      "youtubeId": "28zvYME7TuU",
+      "id": "28zvYME7TuU"
+    },
+    {
+      "stt": 46,
+      "title": "CSS cho Icons | Căn chỉnh vị trí icons phần Navbar",
+      "url": "https://www.youtube.com/watch?v=2v24FwGdn8w",
+      "youtubeId": "2v24FwGdn8w",
+      "id": "2v24FwGdn8w"
+    },
+    {
+      "stt": 47,
+      "title": "Hướng dẫn CSS cho mã QR | Header QR code CSS",
+      "url": "https://www.youtube.com/watch?v=_67MGXg3f2E",
+      "youtubeId": "_67MGXg3f2E",
+      "id": "_67MGXg3f2E"
+    },
+    {
+      "stt": 48,
+      "title": "CSS cho phần thông báo | Header notification CSS - Phần 1",
+      "url": "https://www.youtube.com/watch?v=EoZbufb1DpA",
+      "youtubeId": "EoZbufb1DpA",
+      "id": "EoZbufb1DpA"
+    },
+    {
+      "stt": 49,
+      "title": "CSS cho phần thông báo | Header notification CSS - Phần 2",
+      "url": "https://www.youtube.com/watch?v=q-L7slRcrp0",
+      "youtubeId": "q-L7slRcrp0",
+      "id": "q-L7slRcrp0"
+    },
+    {
+      "stt": 50,
+      "title": "CSS cho phần thông báo | Header notification CSS - Phần 3",
+      "url": "https://www.youtube.com/watch?v=WcDXuQK9Miw",
+      "youtubeId": "WcDXuQK9Miw",
+      "id": "WcDXuQK9Miw"
+    },
+    {
+      "stt": 51,
+      "title": "CSS cho phần thông báo | Header notification CSS - Phần 4",
+      "url": "https://www.youtube.com/watch?v=0F1nznhqFLM",
+      "youtubeId": "0F1nznhqFLM",
+      "id": "0F1nznhqFLM"
+    },
+    {
+      "stt": 52,
+      "title": "Làm giao diện đăng ký đăng nhập cho website | Base modal",
+      "url": "https://www.youtube.com/watch?v=SzsOXXYNVaY",
+      "youtubeId": "SzsOXXYNVaY",
+      "id": "SzsOXXYNVaY"
+    },
+    {
+      "stt": 53,
+      "title": "Dựng khung cho Form đăng ký | Modal đăng ký",
+      "url": "https://www.youtube.com/watch?v=8AN4u5P08AA",
+      "youtubeId": "8AN4u5P08AA",
+      "id": "8AN4u5P08AA"
+    },
+    {
+      "stt": 54,
+      "title": "CSS cho form đăng ký | CSS form login - Phần 1",
+      "url": "https://www.youtube.com/watch?v=F2cFG5Gwy4g",
+      "youtubeId": "F2cFG5Gwy4g",
+      "id": "F2cFG5Gwy4g"
+    },
+    {
+      "stt": 55,
+      "title": "Hoàn thiện CSS cho form đăng ký | CSS form login - Phần 2",
+      "url": "https://www.youtube.com/watch?v=OrkqigXQQ7M",
+      "youtubeId": "OrkqigXQQ7M",
+      "id": "OrkqigXQQ7M"
+    },
+    {
+      "stt": 56,
+      "title": "CSS cho form đăng nhập | Làm form login | HTML CSS",
+      "url": "https://www.youtube.com/watch?v=MiJeRDeqoaM",
+      "youtubeId": "MiJeRDeqoaM",
+      "id": "MiJeRDeqoaM"
+    },
+    {
+      "stt": 57,
+      "title": "Animation CSS cho form đăng ký đăng nhập | Modal animation",
+      "url": "https://www.youtube.com/watch?v=SSve_WMpQsE",
+      "youtubeId": "SSve_WMpQsE",
+      "id": "SSve_WMpQsE"
+    },
+    {
+      "stt": 58,
+      "title": "Dựng khung phần tìm kiếm | Search Section | Header Search",
+      "url": "https://www.youtube.com/watch?v=DgNLJ9DqMdY",
+      "youtubeId": "DgNLJ9DqMdY",
+      "id": "DgNLJ9DqMdY"
+    },
+    {
+      "stt": 59,
+      "title": "CSS cho phần tìm kiếm trên Header | Search section css",
+      "url": "https://www.youtube.com/watch?v=7yQLu_ZAJU4",
+      "youtubeId": "7yQLu_ZAJU4",
+      "id": "7yQLu_ZAJU4"
+    },
+    {
+      "stt": 60,
+      "title": "CSS cho phần lịch sử trên thanh tìm kiếm | Search History Bar",
+      "url": "https://www.youtube.com/watch?v=wbCwt7IjxJw",
+      "youtubeId": "wbCwt7IjxJw",
+      "id": "wbCwt7IjxJw"
+    },
+    {
+      "stt": 61,
+      "title": "CSS phần giỏ hàng trống trên Header | Cart CSS",
+      "url": "https://www.youtube.com/watch?v=9qwSqLYKj38",
+      "youtubeId": "9qwSqLYKj38",
+      "id": "9qwSqLYKj38"
+    },
+    {
+      "stt": 62,
+      "title": "Hoàn thiện phần giỏ hàng trên header | Cart CSS",
+      "url": "https://www.youtube.com/watch?v=z_RTV3Xxq-I",
+      "youtubeId": "z_RTV3Xxq-I",
+      "id": "z_RTV3Xxq-I"
+    },
+    {
+      "stt": 63,
+      "title": "Hoàn thiện phần giỏ hàng có sản phẩm | Header cart - List products",
+      "url": "https://www.youtube.com/watch?v=uGXwLlGeJ6E",
+      "youtubeId": "uGXwLlGeJ6E",
+      "id": "uGXwLlGeJ6E"
+    },
+    {
+      "stt": 64,
+      "title": "CSS phần thông tin người dùng trên Header | Header user info",
+      "url": "https://www.youtube.com/watch?v=-KrqckTuUGU",
+      "youtubeId": "-KrqckTuUGU",
+      "id": "-KrqckTuUGU"
+    },
+    {
+      "stt": 65,
+      "title": "Sửa lỗi trên giao diện header | Header fix ui bugs",
+      "url": "https://www.youtube.com/watch?v=TulFgYqnIFc",
+      "youtubeId": "TulFgYqnIFc",
+      "id": "TulFgYqnIFc"
+    },
+    {
+      "stt": 66,
+      "title": "Dựng khung danh mục sản phẩm | CSS grid layout",
+      "url": "https://www.youtube.com/watch?v=9_9X9GzVOj0",
+      "youtubeId": "9_9X9GzVOj0",
+      "id": "9_9X9GzVOj0"
+    },
+    {
+      "stt": 67,
+      "title": "Danh mục - base responsive | CSS phần Navbar",
+      "url": "https://www.youtube.com/watch?v=f4LOGq3v0C0",
+      "youtubeId": "f4LOGq3v0C0",
+      "id": "f4LOGq3v0C0"
+    },
+    {
+      "stt": 68,
+      "title": "CSS cho phần danh mục | Navbar CSS",
+      "url": "https://www.youtube.com/watch?v=0U_NF5lSkdY",
+      "youtubeId": "0U_NF5lSkdY",
+      "id": "0U_NF5lSkdY"
+    },
+    {
+      "stt": 69,
+      "title": "Dựng khung phần: Sắp xếp, lọc sản phẩm | Navbar CSS",
+      "url": "https://www.youtube.com/watch?v=N7T_9a1nZmk",
+      "youtubeId": "N7T_9a1nZmk",
+      "id": "N7T_9a1nZmk"
+    },
+    {
+      "stt": 70,
+      "title": "CSS cho phần: Sắp xếp, lọc sản phẩm | Navbar CSS",
+      "url": "https://www.youtube.com/watch?v=y4XVfSDE_HA",
+      "youtubeId": "y4XVfSDE_HA",
+      "id": "y4XVfSDE_HA"
+    },
+    {
+      "stt": 71,
+      "title": "Dựng khung, làm List sản phẩm | Container CSS",
+      "url": "https://www.youtube.com/watch?v=3oxSz7ctzrg",
+      "youtubeId": "3oxSz7ctzrg",
+      "id": "3oxSz7ctzrg"
+    },
+    {
+      "stt": 72,
+      "title": "CSS cho phần sản phẩm | Product CSS - Phần 1",
+      "url": "https://www.youtube.com/watch?v=3E_8Pnjnrms",
+      "youtubeId": "3E_8Pnjnrms",
+      "id": "3E_8Pnjnrms"
+    },
+    {
+      "stt": 73,
+      "title": "CSS cho phần sản phẩm | Product CSS - Phần 2",
+      "url": "https://www.youtube.com/watch?v=G9Lx0ejUgzE",
+      "youtubeId": "G9Lx0ejUgzE",
+      "id": "G9Lx0ejUgzE"
+    },
+    {
+      "stt": 74,
+      "title": "CSS cho phần sản phẩm | Product CSS - Phần 3",
+      "url": "https://www.youtube.com/watch?v=bDOli8qw9U0",
+      "youtubeId": "bDOli8qw9U0",
+      "id": "bDOli8qw9U0"
+    },
+    {
+      "stt": 75,
+      "title": "CSS cho nhãn yêu thích trên sản phẩm | Sticker CSS",
+      "url": "https://www.youtube.com/watch?v=yAeFXVxKrGA",
+      "youtubeId": "yAeFXVxKrGA",
+      "id": "yAeFXVxKrGA"
+    },
+    {
+      "stt": 76,
+      "title": "CSS phần sản phẩm: nhãn giảm giá | Sticker CSS",
+      "url": "https://www.youtube.com/watch?v=XL0RM7ZMKC8",
+      "youtubeId": "XL0RM7ZMKC8",
+      "id": "XL0RM7ZMKC8"
+    },
+    {
+      "stt": 77,
+      "title": "Hoàn thiện CSS cho phần sản phẩm | Product CSS",
+      "url": "https://www.youtube.com/watch?v=z72B8zpAsu4",
+      "youtubeId": "z72B8zpAsu4",
+      "id": "z72B8zpAsu4"
+    },
+    {
+      "stt": 78,
+      "title": "Sửa lỗi phần giao diện | Fix UI bugs - Phần 2",
+      "url": "https://www.youtube.com/watch?v=SJRQ99CYhvw",
+      "youtubeId": "SJRQ99CYhvw",
+      "id": "SJRQ99CYhvw"
+    },
+    {
+      "stt": 79,
+      "title": "Làm phần phân trang và nút phân trang | Pagination UI",
+      "url": "https://www.youtube.com/watch?v=cGe6IzIPBDI",
+      "youtubeId": "cGe6IzIPBDI",
+      "id": "cGe6IzIPBDI"
+    },
+    {
+      "stt": 80,
+      "title": "Dựng khung cho phần Footer | Footer frame | HTML CSS",
+      "url": "https://www.youtube.com/watch?v=9y4Zi53Ja3Q",
+      "youtubeId": "9y4Zi53Ja3Q",
+      "id": "9y4Zi53Ja3Q"
+    },
+    {
+      "stt": 81,
+      "title": "CSS cho phần Footer - chân trang | Footer CSS",
+      "url": "https://www.youtube.com/watch?v=qK3TvL4bp1o",
+      "youtubeId": "qK3TvL4bp1o",
+      "id": "qK3TvL4bp1o"
+    },
+    {
+      "stt": 82,
+      "title": "Chương cuối HTML, CSS | Công Tác Chuẩn Bị Làm Dự Án Cuối Khoá",
+      "url": "https://www.youtube.com/watch?v=Q3YJHNT3dVo",
+      "youtubeId": "Q3YJHNT3dVo",
+      "id": "Q3YJHNT3dVo"
+    },
+    {
+      "stt": 83,
+      "title": "01. Giới thiệu dự án The Band | Thực hành cắt HTML CSS cơ bản | Phân tích giao diện web",
+      "url": "https://www.youtube.com/watch?v=RPHBgBsw6Xg",
+      "youtubeId": "RPHBgBsw6Xg",
+      "id": "RPHBgBsw6Xg"
+    },
+    {
+      "stt": 84,
+      "title": "04. Tạo khung dự án The Band | Dựng project base",
+      "url": "https://www.youtube.com/watch?v=IXyLoRZCAco",
+      "youtubeId": "IXyLoRZCAco",
+      "id": "IXyLoRZCAco"
+    },
+    {
+      "stt": 85,
+      "title": "03. Phân tích dự án thực hành | Web The Band",
+      "url": "https://www.youtube.com/watch?v=vBWCymyUySw",
+      "youtubeId": "vBWCymyUySw",
+      "id": "vBWCymyUySw"
+    },
+    {
+      "stt": 86,
+      "title": "02. Phân tích dự án thực hành | Phân biệt & gọi tên các thành phần website",
+      "url": "https://www.youtube.com/watch?v=b8Z5Cyod9oI",
+      "youtubeId": "b8Z5Cyod9oI",
+      "id": "b8Z5Cyod9oI"
+    },
+    {
+      "stt": 87,
+      "title": "07. Xây dựng ô tìm kiếm trên header | Header search CSS",
+      "url": "https://www.youtube.com/watch?v=bavLlrNZsTw",
+      "youtubeId": "bavLlrNZsTw",
+      "id": "bavLlrNZsTw"
+    },
+    {
+      "stt": 88,
+      "title": "06. CSS cho phần Navigation | Navigation CSS",
+      "url": "https://www.youtube.com/watch?v=7nSW0GnwcYI",
+      "youtubeId": "7nSW0GnwcYI",
+      "id": "7nSW0GnwcYI"
+    },
+    {
+      "stt": 89,
+      "title": "05. CSS cho phần Header web The Band | Header CSS",
+      "url": "https://www.youtube.com/watch?v=Dj31dakHAwk",
+      "youtubeId": "Dj31dakHAwk",
+      "id": "Dj31dakHAwk"
+    },
+    {
+      "stt": 90,
+      "title": "08. Complete and fix header | Header fixed CSS",
+      "url": "https://www.youtube.com/watch?v=iTAxoV0qZ_g",
+      "youtubeId": "iTAxoV0qZ_g",
+      "id": "iTAxoV0qZ_g"
+    },
+    {
+      "stt": 91,
+      "title": "09. Xây dựng thành phần Slider | Slider CSS",
+      "url": "https://www.youtube.com/watch?v=BmkVXoKoqVA",
+      "youtubeId": "BmkVXoKoqVA",
+      "id": "BmkVXoKoqVA"
+    },
+    {
+      "stt": 92,
+      "title": "10. Xây dựng phần Content - About | About section CSS",
+      "url": "https://www.youtube.com/watch?v=lBt7LTM4ISs",
+      "youtubeId": "lBt7LTM4ISs",
+      "id": "lBt7LTM4ISs"
+    },
+    {
+      "stt": 93,
+      "title": "11. Hoàn thiện phần Content - About | Team section CSS",
+      "url": "https://www.youtube.com/watch?v=_sF4fWuE0iM",
+      "youtubeId": "_sF4fWuE0iM",
+      "id": "_sF4fWuE0iM"
+    },
+    {
+      "stt": 94,
+      "title": "12. Dựng phần bán vé | Tour tickets CSS",
+      "url": "https://www.youtube.com/watch?v=ZU_rWZF8a7U",
+      "youtubeId": "ZU_rWZF8a7U",
+      "id": "ZU_rWZF8a7U"
+    },
+    {
+      "stt": 95,
+      "title": "13. Complete ticketing section | Tour places CSS",
+      "url": "https://www.youtube.com/watch?v=6ab0QDpld50",
+      "youtubeId": "6ab0QDpld50",
+      "id": "6ab0QDpld50"
+    },
+    {
+      "stt": 96,
+      "title": "13.1. Dựng form mua vé | Buy Tickets Modal (video bổ sung)",
+      "url": "https://www.youtube.com/watch?v=7yKMQGE0x5M",
+      "youtubeId": "7yKMQGE0x5M",
+      "id": "7yKMQGE0x5M"
+    },
+    {
+      "stt": 97,
+      "title": "14. Làm phần Contact | Row - columns layout",
+      "url": "https://www.youtube.com/watch?v=1iZNZnCcN1Y",
+      "youtubeId": "1iZNZnCcN1Y",
+      "id": "1iZNZnCcN1Y"
+    },
+    {
+      "stt": 98,
+      "title": "15. Dựng form cho phần Contact | Contact form CSS",
+      "url": "https://www.youtube.com/watch?v=aKIVRblmz0Y",
+      "youtubeId": "aKIVRblmz0Y",
+      "id": "aKIVRblmz0Y"
+    },
+    {
+      "stt": 99,
+      "title": "16. Làm phần footer | Map & footer CSS",
+      "url": "https://www.youtube.com/watch?v=7dOdXFD7t6k",
+      "youtubeId": "7dOdXFD7t6k",
+      "id": "7dOdXFD7t6k"
+    },
+    {
+      "stt": 100,
+      "title": "17. Overview and error checking | Project review",
+      "url": "https://www.youtube.com/watch?v=u4t8JdDrqYg",
+      "youtubeId": "u4t8JdDrqYg",
+      "id": "u4t8JdDrqYg"
+    },
+    {
+      "stt": 101,
+      "title": "18. What is Responsive? | Steps to make a website responsive",
+      "url": "https://www.youtube.com/watch?v=71uJhUFR8jM",
+      "youtubeId": "71uJhUFR8jM",
+      "id": "71uJhUFR8jM"
+    },
+    {
+      "stt": 102,
+      "title": "19. What are media queries? | Media queries concept",
+      "url": "https://www.youtube.com/watch?v=joTJwyP1ZsA",
+      "youtubeId": "joTJwyP1ZsA",
+      "id": "joTJwyP1ZsA"
+    },
+    {
+      "stt": 103,
+      "title": "20. Làm responsive cho tablet | Tablet responsive",
+      "url": "https://www.youtube.com/watch?v=ioOP6hknXxs",
+      "youtubeId": "ioOP6hknXxs",
+      "id": "ioOP6hknXxs"
+    },
+    {
+      "stt": 104,
+      "title": "21. Làm responsive cho mobile | Mobile menu responsive",
+      "url": "https://www.youtube.com/watch?v=6nw9AWvYrak",
+      "youtubeId": "6nw9AWvYrak",
+      "id": "6nw9AWvYrak"
+    },
+    {
+      "stt": 105,
+      "title": "22. Hoàn thiện mobile responsive | Mobile menu fix bug",
+      "url": "https://www.youtube.com/watch?v=2nXupDp91Z4",
+      "youtubeId": "2nXupDp91Z4",
+      "id": "2nXupDp91Z4"
+    },
+    {
+      "stt": 106,
+      "title": "23. Fix responsive interface bug | Mobile fix bug submenu",
+      "url": "https://www.youtube.com/watch?v=tl6M4YBNvaI",
+      "youtubeId": "tl6M4YBNvaI",
+      "id": "tl6M4YBNvaI"
+    },
+    {
+      "stt": 107,
+      "title": "24. Sửa lỗi content responsive | Mobile responsive content",
+      "url": "https://www.youtube.com/watch?v=wEeGBwiTR0w",
+      "youtubeId": "wEeGBwiTR0w",
+      "id": "wEeGBwiTR0w"
+    },
+    {
+      "stt": 108,
+      "title": "25. Làm responsive phần contact | Contact form responsive",
+      "url": "https://www.youtube.com/watch?v=d6270etxQgY",
+      "youtubeId": "d6270etxQgY",
+      "id": "d6270etxQgY"
+    },
+    {
+      "stt": 109,
+      "title": "26. Tổng quan lại dự án thực hành | The Band web review",
+      "url": "https://www.youtube.com/watch?v=2aG4eRKe7Io",
+      "youtubeId": "2aG4eRKe7Io",
+      "id": "2aG4eRKe7Io"
+    },
+    {
+      "stt": 110,
+      "title": "27. Instructions for using Ngrok to demo web projects on the Internet | Run and fix bug",
+      "url": "https://www.youtube.com/watch?v=Cxi3cHpV238",
+      "youtubeId": "Cxi3cHpV238",
+      "id": "Cxi3cHpV238"
+    },
+    {
+      "stt": 111,
+      "title": "28. Sửa lỗi web dự án The Band | Fix bugs",
+      "url": "https://www.youtube.com/watch?v=2kquykrrpOs",
+      "youtubeId": "2kquykrrpOs",
+      "id": "2kquykrrpOs"
+    },
+    {
+      "stt": 112,
+      "title": "13.2. Buy Tickets Modal Javascript Logic (video bổ sung)",
+      "url": "https://www.youtube.com/watch?v=dQpW4-NzUJc",
+      "youtubeId": "dQpW4-NzUJc",
+      "id": "dQpW4-NzUJc"
+    },
+    {
+      "stt": 113,
+      "title": "CSS selectors cơ bản | Học HTML CSS miễn phí",
+      "url": "https://www.youtube.com/watch?v=hzn_VKpGdTg",
+      "youtubeId": "hzn_VKpGdTg",
+      "id": "hzn_VKpGdTg"
+    }
+  ]
+}

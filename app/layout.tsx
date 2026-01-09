@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+
 import { Inter, Playfair_Display } from "next/font/google";
+
 import "./globals.css";
-import { createClient } from "@/utils/supabase/server"; // 1. Import hàm tạo client server
-import Header from "@/app/components/Header"; // 2. Import Header
-import Footer from "./components/Footer";
+
+import { createClient } from "@/utils/supabase/server";
+
+import Header from "@/app/components/Header";
+
 import { AuthProvider } from "./components/AuthProvider";
+
+import ChatBot from "./components/ChatBot";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -49,6 +55,7 @@ export default async function RootLayout({
           
           <main className="min-h-screen pt-16">
             {children}
+            <ChatBot />
           </main>
 
           
