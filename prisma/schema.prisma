@@ -10,11 +10,17 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum Roles {
+  USER
+  INSTRUCTOR
+  ADMIN
+}
+
 model User {
   id        String   @id
   email     String   @unique
   name      String?
-  role      String   @default("user")
+  role      Roles    @default(USER)
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -34,12 +40,20 @@ model Playlist {
 }
 
 model Video {
-  id         String   @id @default(cuid())
-  title      String
-  youtubeId  String // ID video Youtube (VD: jNQXAC9IVRw) dùng để lấy ảnh & link
-  stt        Int // Số thứ tự bài học
+  id        String  @id @default(cuid())
+  title     String
+  videoUrl  String? // Link video gốc (Youtube)
+  youtubeId String // ID Youtube
+  stt       Int // Số thứ tự bài học
+
+  // --- CÁC TRƯỜNG LƯU KẾT QUẢ AI ---
+  transcript  String? @db.Text // @db.Text để lưu văn bản rất dài (vài chục trang cũng được)
+  quizData    Json? // Lưu mảng câu hỏi: [{ question: "...", answer: "A" }]
+  mindMapData Json? // Lưu mảng ý chính: ["Ý 1", "Ý 2"]
+  status      String  @default("PROCESSING") // PROCESSING -> COMPLETED
+
   playlistId String
-  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

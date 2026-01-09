@@ -26,10 +26,10 @@ async function main() {
     "data_HTML,_CSS_từ_Zero_Tới_Hero_F8_Official.json",
     "data_Javascript_Cơ_Bản_F8_Official.json",
     "data_Javascript_Nâng_Cao_F8_Official.json",
-    "data_NodeJS_&_ExpressJS_F8_Official.json", // Tên file này khác code cũ
-    "data_React_Hooks_2022_F8_Official.json", // File mới thấy trong ảnh
-    "data_ReactJS_2022_F8_Official.json", // File mới thấy trong ảnh
-    "data_Session,_cookie,_CORS,_JWT,_SSO_F8_Official.json", // File mới thấy trong ảnh
+    "data_NodeJS_&_ExpressJS_F8_Official.json",
+    "data_React_Hooks_2022_F8_Official.json",
+    "data_ReactJS_2022_F8_Official.json",
+    "data_Session,_cookie,_CORS,_JWT,_SSO_F8_Official.json",
   ];
 
   console.log(`🚀 Bắt đầu import ${fileNames.length} playlists...`);
