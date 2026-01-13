@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Video, 
-  Settings, 
-  LogOut, 
-  UploadCloud 
+import {
+  LayoutDashboard,
+  Users,
+  Video,
+  Settings,
+  LogOut,
+  UploadCloud
 } from "lucide-react";
-import { signOut } from "@/app/login/action"; // Import hàm signOut của bạn
+import { signOut } from "@/app/actions/auth";
 
 type Role = "ADMIN" | "INSTRUCTOR" | "USER";
 
@@ -49,11 +49,10 @@ export default function DashboardSidebar({ role }: { role: Role }) {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                isActive
-                  ? "bg-[#C5A059] text-[#1a1a1a] font-bold"
-                  : "hover:bg-stone-800 text-stone-400 hover:text-white"
-              }`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+                ? "bg-[#C5A059] text-[#1a1a1a] font-bold"
+                : "hover:bg-stone-800 text-stone-400 hover:text-white"
+                }`}
             >
               <Icon size={20} />
               {link.name}
@@ -63,7 +62,7 @@ export default function DashboardSidebar({ role }: { role: Role }) {
       </nav>
 
       <div className="p-4 border-t border-stone-800">
-        <button 
+        <button
           onClick={() => signOut()}
           className="flex items-center gap-3 px-4 py-3 w-full rounded-xl hover:bg-red-900/20 text-stone-400 hover:text-red-500 transition-colors"
         >

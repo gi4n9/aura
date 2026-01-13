@@ -1,8 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client"; // Lưu ý: Import từ client
+import { createContext, useContext, useEffect, useState, useTransition } from "react";
+
+import { createClient } from "@/utils/supabase/client";
+
 import { User } from "@supabase/supabase-js";
+
+import { useRouter } from "next/navigation";
+
 // Tạo Context
 const AuthContext = createContext<{ user: User | null; isLoading: boolean }>({
   user: null,
@@ -17,8 +22,12 @@ export const AuthProvider = ({
   initialUser: User | null;
 }) => {
   const [user, setUser] = useState<User | null>(initialUser);
+
   const [isLoading, setIsLoading] = useState(!initialUser);
+
   const supabase = createClient();
+
+  const router = useRouter();
 
   useEffect(() => {
     // 1. Lắng nghe sự thay đổi Auth từ Supabase (Realtime)
@@ -27,15 +36,15 @@ export const AuthProvider = ({
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setIsLoading(false);
-      
-      // Tùy chọn: Refresh lại router server nếu cần
-      //if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') router.refresh();
+
+
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') router.refresh();
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading }}>

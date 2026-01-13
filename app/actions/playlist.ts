@@ -1,43 +1,53 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
-// 1. Hàm tạo khóa học mới
+import {
+  createCourseService,
+  getCourseForSelect,
+} from "@/services/courses/courses";
+
 export async function createPlaylist(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
-  const channel = formData.get("channel") as string; // Tên giảng viên
+  const channel = formData.get("channel") as string;
 
-  if (!title) return { error: "Vui lòng nhập tên khóa học" };
+  if (!title) {
+    return {
+      error: "Tiêu đề khóa học không được để trống.",
+    };
+  } else if (!description) {
+    return {
+      error: "Mô tả khóa học không được để trống.",
+    };
+  } else if (!channel) {
+    return {
+      error: "Kênh giảng dạy không được để trống.",
+    };
+  }
 
   try {
-    await prisma.playlist.create({
-      data: {
-        title,
-        description,
-        channel,
-        thumbnail: "", // Có thể nâng cấp upload ảnh thumbnail sau
-      },
-    });
+    await createCourseService({ title, description, channel });
 
-    revalidatePath("/instructor/upload"); // Refresh lại trang upload để thấy khóa mới
-    return { success: true };
+    revalidatePath("/admin/courses");
+
+    return {
+      success: true,
+      message: "Tạo khóa học thành công!",
+    };
   } catch (error) {
-    console.error(error);
-    return { error: "Lỗi tạo khóa học" };
+    return {
+      error: "Đã có lỗi xảy ra khi tạo khóa học. Vui lòng thử lại.",
+    };
   }
 }
 
-// 2. Hàm lấy danh sách khóa học (chỉ lấy id và title cho nhẹ)
 export async function getPlaylistsForSelect() {
-  const playlists = await prisma.playlist.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-    },
-  });
-  return playlists;
+  try {
+    const playlists = await getCourseForSelect();
+    return playlists;
+  } catch (error) {
+    console.log("Đã có lỗi xảy ra khi lấy danh sách khóa học:", error);
+    return [];
+  }
 }

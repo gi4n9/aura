@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/utils/supabase/server";
 
+import { prisma } from "@/lib/prisma";
+
+import { redirect } from "next/navigation";
+
 // --- SIGNUP ---
 export async function signup(formData: FormData) {
   const supabase = await createClient();
@@ -34,15 +38,15 @@ export async function signup(formData: FormData) {
   };
 }
 
-// --- LOGIN (Giữ nguyên) ---
+// --- LOGIN ---
 export async function login(formData: FormData) {
   const supabase = await createClient();
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
   // Supabase sẽ tự check password hash trong bảng auth.users nội bộ của nó
-  // Bạn không cần quan tâm password lưu ở đâu.
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -51,11 +55,29 @@ export async function login(formData: FormData) {
     return { error: "Email hoặc mật khẩu không chính xác" };
   }
 
+  let redirectUrl = "/";
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: { role: true },
+    });
+
+    if (dbUser?.role === "ADMIN") {
+      redirectUrl = "/admin";
+    } else if (dbUser?.role === "INSTRUCTOR") {
+      redirectUrl = "/instructor";
+    }
+  } catch (e) {
+    console.error("Error fetching user role:", e);
+    return { error: "Đã xảy ra lỗi khi lấy thông tin người dùng." };
+  }
+
   revalidatePath("/", "layout");
-  return { success: true };
+  redirect(redirectUrl);
 }
 
-// --- SIGNOUT (Giữ nguyên) ---
+// --- SIGNOUT ---
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
