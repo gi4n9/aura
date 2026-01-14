@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,51 +8,216 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum Roles {
-  USER
+// ================= ENUMS =================
+enum UserRole {
+  STUDENT
   INSTRUCTOR
   ADMIN
 }
 
-model User {
-  id        String   @id
+enum QuestionType {
+  MULTIPLE_CHOICE // Trắc nghiệm
+  ESSAY // Tự luận/Bài tập nộp file
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ================= 1. IDENTITY & ACCESS =================
+
+// Profile map 1-1 với Supabase Auth User
+model Profile {
+  id        String   @id @default(uuid()) // Link với auth.users.id của Supabase
   email     String   @unique
-  name      String?
-  role      Roles    @default(USER)
+  fullName  String?
   avatarUrl String?
+  role      UserRole @default(STUDENT)
+
+  // Quan hệ Organization (Trường học/Trung tâm)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  // Quan hệ ngược
+  coursesCreated Course[]        @relation("InstructorCourses")
+  enrollments    Enrollment[]
+  studyPlans     StudyPlanItem[]
+  submissions    Submission[]
+  chatSessions   ChatSession[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model Playlist {
-  id          String    @id @default(cuid())
-  title       String
-  description String?   @db.Text // Mô tả dài cho khóa học (để AI tóm tắt)
-  channel     String? // Tên kênh Youtube/Tác giả
-  thumbnail   String? // (Tùy chọn) Link ảnh bìa nếu muốn lưu cứng
-  totalVideos Int       @default(0)
-  crawlTime   DateTime? // Nếu muốn lưu thời gian crawl từ file JSON
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  videos      Video[]
+// Tổ chức (Trường học, Trung tâm)
+model Organization {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  logoUrl     String?
+
+  members Profile[]
+  courses Course[]
+
+  createdAt DateTime @default(now())
 }
 
-model Video {
-  id        String  @id @default(cuid())
+// ================= 2. COURSE MANAGEMENT =================
+
+model Course {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  thumbnailUrl String?
+  price        Decimal      @default(0)
+  status       CourseStatus @default(DRAFT)
+
+  // Ai sở hữu khóa học này?
+  instructorId String
+  instructor   Profile @relation("InstructorCourses", fields: [instructorId], references: [id])
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  // Nội dung
+  chapters    Chapter[]
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Chapter {
+  id       String   @id @default(uuid())
+  title    String
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+  position Int // Để sắp xếp thứ tự chương
+}
+
+model Lesson {
+  id        String  @id @default(uuid())
   title     String
-  videoUrl  String? // Link video gốc (Youtube)
-  youtubeId String // ID Youtube
-  stt       Int // Số thứ tự bài học
+  chapterId String
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  position  Int
 
-  // --- CÁC TRƯỜNG LƯU KẾT QUẢ AI ---
-  transcript  String? @db.Text // @db.Text để lưu văn bản rất dài (vài chục trang cũng được)
-  quizData    Json? // Lưu mảng câu hỏi: [{ question: "...", answer: "A" }]
-  mindMapData Json? // Lưu mảng ý chính: ["Ý 1", "Ý 2"]
-  status      String  @default("PROCESSING") // PROCESSING -> COMPLETED
+  // Thông tin Video & AI Metadata
+  youtubeVideoId String? // ID video private trên Youtube
+  duration       Int? // Thời lượng (giây)
+  transcript     String? @db.Text // Transcript do AI tạo hoặc upload, dùng cho RAG
+  mindMapUrl     String? // Link ảnh/json mindmap lưu trên Supabase Storage
 
-  playlistId String
-  playlist   Playlist @relation(fields: [playlistId], references: [id])
+  // Câu hỏi tương tác trong video
+  questions Question[]
+
+  // Study Plan liên kết tới bài học này
+  studyPlanItems StudyPlanItem[]
+
+  createdAt DateTime @default(now())
+}
+
+model Question {
+  id       String @id @default(uuid())
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  content   String       @db.Text // Nội dung câu hỏi
+  timestamp Int? // Thời điểm xuất hiện trong video (giây). Null nếu là bài tập cuối bài.
+  type      QuestionType
+
+  // Cho trắc nghiệm
+  options       Json? // Mảng các lựa chọn ["A...", "B..."]
+  correctAnswer String? // Đáp án đúng
+
+  // Cho AI
+  aiExplanation String? // Giải thích của AI cho đáp án đúng/gợi ý chấm điểm
+
+  submissions Submission[]
+}
+
+// ================= 3. LEARNING & INTERACTION =================
+
+// Ghi nhận việc mua/đăng ký khóa học
+model Enrollment {
+  id       String  @id @default(uuid())
+  userId   String
+  user     Profile @relation(fields: [userId], references: [id])
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id])
+
+  progress Int      @default(0) // % hoàn thành
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+// Lịch học (Study Plan)
+model StudyPlanItem {
+  id     String  @id @default(uuid())
+  userId String
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+
+  scheduledAt DateTime // Thời gian user dự kiến học
+  isCompleted Boolean  @default(false)
+
+  // Dùng để hiển thị trên UI Calendar
+  note String?
+}
+
+// Bài làm của học sinh
+model Submission {
+  id     String  @id @default(uuid())
+  userId String
+  user   Profile @relation(fields: [userId], references: [id])
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+
+  answerText String? @db.Text // Câu trả lời text
+  fileUrl    String? // Link bài tập upload lên Supabase Storage
+
+  // AI Grading
+  score    Float? // Điểm số do AI chấm
+  feedback String?   @db.Text // Nhận xét chi tiết của AI
+  gradedAt DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+// ================= 4. AI CHAT & MEMORY =================
+
+model ChatSession {
+  id     String  @id @default(uuid())
+  userId String
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Context: Chat này về khóa học nào? (Optional)
+  courseId String? // Nếu null thì là chat general, nếu có thì AI load context khóa học đó
+
+  title    String? // Tên đoạn hội thoại (Auto generate bởi AI)
+  messages Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role    String // 'user' hoặc 'assistant'
+  content String @db.Text
+
+  // Token usage tracking (Optional nhưng tốt cho quản lý chi phí)
+  tokensUsed Int?
+
+  createdAt DateTime @default(now())
 }

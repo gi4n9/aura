@@ -1,0 +1,580 @@
+{
+  "title": "Tự Học Node.JS Cơ Bản Từ A Đến Z Cho Người Mới Bắt Đầu - Hỏi Dân IT",
+  "description": "Nghe nói Node.JS có vẻ hay,giúp chúng ta viết app từ client cho tới server, lại còn viết bằng javascript, chạy đa tiến trình nhanh lắm...\n\nĐÂy là một trong những điều mình nghe người ta nói khi kể đến Node.JS, một platform dành cho ngôn ngữ Javascript\n\nNếu bạn là người mới bắt đầu, đang muốn tìm hiểu về Node.JS, thì series này chính là thứ bạn cần. \n\nKhóa Học Node.JS hoàn toàn miễn phí sẽ cập nhật những kiến thức cơ bản nhất, thiết yếu nhất để những bạn mới bắt đầu có đủ khả năng, sự tự tin để bắt đầu với platform này.",
+  "thumbnailUrl": "https://i.ytimg.com/vi/jR-n-cQnpNI/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLA0By-Z9VXMcGOKeF2CvMKo8oTRSw",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "#0 Demo of Course Results | Backend RESTFul Server with Node.JS (SQL/MongoDB)",
+          "position": 1,
+          "youtubeVideoId": "jR-n-cQnpNI",
+          "duration": 224,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "THE TRUTH about Building a Website from Scratch | Roadmap to Learn Programming from Scratch for B...",
+          "position": 2,
+          "youtubeVideoId": "JoXcxgs99bg",
+          "duration": 2493,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#1. Feeling | Backend RESTFul Server Course with Node.JS (SQL/MongoDB) For Beginners",
+          "position": 3,
+          "youtubeVideoId": "gjP_82lofBY",
+          "duration": 615,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#2. Building a Functional Website | Backend RESTFul Server Node.JS (SQL/MongoDB) For Beginners",
+          "position": 4,
+          "youtubeVideoId": "WdqMSB2nttk",
+          "duration": 458,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#3. Mô Hình Hoạt Động Client Server | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 5,
+          "youtubeVideoId": "GXjt7PcYd6M",
+          "duration": 707,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#4. Vận Hành Một Website | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 6,
+          "youtubeVideoId": "qr9yP3_whrQ",
+          "duration": 731,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#5. Dữ Liệu Để Hiển Thị Website | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 7,
+          "youtubeVideoId": "wvTDYEWcbM8",
+          "duration": 418,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#6. Website With Data Storage | Backend RESTFul Server Node.JS (SQL/MongoDB) For Beginners",
+          "position": 8,
+          "youtubeVideoId": "1Q-DJQ8Q89o",
+          "duration": 337,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#7. Database | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 9,
+          "youtubeVideoId": "i-kRqMZx5fw",
+          "duration": 521,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#8. What is Node.JS | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 10,
+          "youtubeVideoId": "bHWndGpBjIs",
+          "duration": 461,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#9. NPM - Node Package Manager | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 11,
+          "youtubeVideoId": "gDx56fF1mJw",
+          "duration": 189,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#10. Hello world với Node.js (Basic) | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 12,
+          "youtubeVideoId": "5CWsmhEKzHE",
+          "duration": 795,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#11. Các Thành Phần của URL (Bổ Trợ) | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 13,
+          "youtubeVideoId": "yyLI4q5ir9Y",
+          "duration": 676,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#12. Hello world với Node.js (Advance) | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 14,
+          "youtubeVideoId": "GV_tdIbbGeY",
+          "duration": 780,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#13 Cài Đặt Thư Viện Node.JS với NPM | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 15,
+          "youtubeVideoId": "olR12xeb9is",
+          "duration": 917,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#14. Hello world với Express | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 16,
+          "youtubeVideoId": "bR4TTne4Bok",
+          "duration": 427,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#15. Do we need Babel ?| Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 17,
+          "youtubeVideoId": "DVtkDC6bxU0",
+          "duration": 579,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#16. How Express Works | Backend RESTFul Server Node.JS (SQL/MongoDB) For Beginners",
+          "position": 18,
+          "youtubeVideoId": "9VpFFivcFhs",
+          "duration": 340,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#17. More routes | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 19,
+          "youtubeVideoId": "fajb0YOInaw",
+          "duration": 348,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#18. Template (View) Engine | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 20,
+          "youtubeVideoId": "O8GLK0AJo90",
+          "duration": 928,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#19. ENV (Environment Variables) | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 21,
+          "youtubeVideoId": "74U9rKT8f8w",
+          "duration": 905,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#20. DevTool - Nodemon| Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 22,
+          "youtubeVideoId": "AIwooJp44GI",
+          "duration": 517,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#21. Static files | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 23,
+          "youtubeVideoId": "KshLUl1DAjU",
+          "duration": 657,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#22. MVC Pattern with Node.JS | Backend RESTFul Server Node.JS (SQL/MongoDB) For Beginners",
+          "position": 24,
+          "youtubeVideoId": "VCyPME-weuE",
+          "duration": 535,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#23. Tổ Chức Các Thư Mục Project | Backend RESTFul Server Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 25,
+          "youtubeVideoId": "DuNDTo2hd4w",
+          "duration": 324,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#24. Áp dụng mô hình MVC với Node.js (Part 1) |  Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 26,
+          "youtubeVideoId": "j9pl0xBLNUk",
+          "duration": 1177,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#25. Áp dụng mô hình MVC với Node.js (Part 2) |  Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 27,
+          "youtubeVideoId": "h6aoE0O9s4c",
+          "duration": 696,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#26. Why Docker - Tại Sao Dùng Docker |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 28,
+          "youtubeVideoId": "zKxZFdaRCPs",
+          "duration": 298,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#27. Using Docker | Node.JS (SQL/MongoDB) Course For Beginners",
+          "position": 29,
+          "youtubeVideoId": "hZ7OrR2_1lI",
+          "duration": 278,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#29. Relational Database - Chạy MySQL với Docker |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 30,
+          "youtubeVideoId": "FG5KqZzrvEw",
+          "duration": 998,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#30. Sử Dụng MySQL với Node.JS |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 31,
+          "youtubeVideoId": "FWM4a3ecVNs",
+          "duration": 1631,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#31. Reusing Connections | Node.JS (SQL/MongoDB) Course for Beginners",
+          "position": 32,
+          "youtubeVideoId": "DytIXSc8RxA",
+          "duration": 612,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#32. Connection Cost - Create New Connection? | Node.JS (SQL/MongoDB) Course For Beginners",
+          "position": 33,
+          "youtubeVideoId": "tIBp-UMyDnU",
+          "duration": 837,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#33. Connection Pool Pattern |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 34,
+          "youtubeVideoId": "EgV9AmCaWZM",
+          "duration": 723,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#34. Test Performance Query Database |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 35,
+          "youtubeVideoId": "OzsRM4lsXfw",
+          "duration": 569,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#35. Design NavBar |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 36,
+          "youtubeVideoId": "WhGFG1hJszw",
+          "duration": 541,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#36. Design Form Add New User |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 37,
+          "youtubeVideoId": "CvJFh93mEq8",
+          "duration": 589,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#37. Express và Req.body |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 38,
+          "youtubeVideoId": "Q4Z_K-D-GTk",
+          "duration": 1381,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#38. Chức Năng Create User |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 39,
+          "youtubeVideoId": "sum05vjccRQ",
+          "duration": 970,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#39. Design List Users |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 40,
+          "youtubeVideoId": "HS2to2fyb9s",
+          "duration": 1802,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#40. Query List Users |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 41,
+          "youtubeVideoId": "7Qeq0qKxgRA",
+          "duration": 1179,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#41. Display List Users |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 42,
+          "youtubeVideoId": "bpNDRiFWqDc",
+          "duration": 857,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#42. Design View Edit User | Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 43,
+          "youtubeVideoId": "RfptDmc3iwg",
+          "duration": 607,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#43. Route params |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 44,
+          "youtubeVideoId": "uAV6u8axVUI",
+          "duration": 693,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#44. Get User By Ids |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 45,
+          "youtubeVideoId": "pyaK44pGjwQ",
+          "duration": 1032,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#45. Update A User |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 46,
+          "youtubeVideoId": "eo2c4vsVkI4",
+          "duration": 1147,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#46. Design Form Delete User |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 47,
+          "youtubeVideoId": "qaFljdM26S0",
+          "duration": 910,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#47. Delete User By Id |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 48,
+          "youtubeVideoId": "cZBrM2oGKD0",
+          "duration": 411,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#48. Cải Thiện Trải Nghiệm Giao Diện với Javascript |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 49,
+          "youtubeVideoId": "XufiqAId3VY",
+          "duration": 1186,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#49. Ưu Nhược Điểm Của Cách Làm Hiện Tại |  Khóa Học Node.JS (SQL/MongoDB) Cho Beginners",
+          "position": 50,
+          "youtubeVideoId": "FMYrQIFSIJY",
+          "duration": 920,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#50. What to Learn Next with SQL? | Node.JS (SQL/MongoDB) Course for Beginners",
+          "position": 51,
+          "youtubeVideoId": "AWgavl3LXj0",
+          "duration": 302,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#0 GIỚI THIỆU KHÓA HỌC FREE NODE.JS SIÊU CƠ BẢN - DEMO SẢN PHẨM ĐẠT ĐƯỢC KHI KẾT THÚC KHÓA HỌC",
+          "position": 52,
+          "youtubeVideoId": "e3QprwtTOvA",
+          "duration": 1072,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#1 WHY NODE ? NODE.JS LÀ CÁI QUÁI GÌ  | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 53,
+          "youtubeVideoId": "v4pgci2s980",
+          "duration": 492,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#2 SETUP ENVIRONMENT - CÀI ĐẶT NODE.JS VÀ CÔNG CỤ CẦN THIẾT | Node Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 54,
+          "youtubeVideoId": "DuAogovl8BE",
+          "duration": 549,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#3 MÔ HÌNH CLIENTS/SERVERS | REQUEST/RESPONSE  | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 55,
+          "youtubeVideoId": "WgqelAn2pE8",
+          "duration": 1291,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#4 NPM - NODE PACKAGE MANAGER | Node Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 56,
+          "youtubeVideoId": "WjW65qVKByI",
+          "duration": 1526,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#5 HELLO WORLD VỚI NODE.JS VÀ EXPRESS FRAMEWORK | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 57,
+          "youtubeVideoId": "yASTlcs7wJA",
+          "duration": 1065,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#6 VIEW ENGINE LÀ CÁI QUÁI GÌ  | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 58,
+          "youtubeVideoId": "4lejnAGZ6vk",
+          "duration": 2006,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#7 STATIC FILES - USING CSS/JS/IMAGES WITH NODE.JS | Node.JS Basics For Beginners From A To Z",
+          "position": 59,
+          "youtubeVideoId": "jj7W1aRCLgA",
+          "duration": 1383,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#8 ROUTERS & MVC DESIGN PATTERN VỚI NODE.JS  | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 60,
+          "youtubeVideoId": "GKA_tnYXfxM",
+          "duration": 1423,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#9 HTTP REQUEST METHOD & USING DATABASE WITH NODE.JS | Node.JS Basics For Beginners From A To Z",
+          "position": 61,
+          "youtubeVideoId": "S49mg5JulLA",
+          "duration": 2868,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#10 CREATE THANH NAV - EJS LOOP DATA | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 62,
+          "youtubeVideoId": "wNGMbsfMYeI",
+          "duration": 2165,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#11 ROUTER PARAMS - XÂY DỰNG TRANG CHI TIẾT USERS | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 63,
+          "youtubeVideoId": "w4-Oon0ha7U",
+          "duration": 2613,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#12 SỬ DỤNG FORM VÀ POST REQUEST VỚI NODE.JS  | Node.JS Cơ Bản Cho Beginners Từ A Đến Z",
+          "position": 64,
+          "youtubeVideoId": "pzawVY6YgF0",
+          "duration": 2235,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#13 HOÀN THIỆN CRUD - THÊM MỚI, HIỂN THỊ, CẬP NHẬT VÀ XÓA DỮ LIỆU  | Node.JS Cơ Bản Từ A Đến Z",
+          "position": 65,
+          "youtubeVideoId": "wTZQz8ql-Rg",
+          "duration": 3316,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#14 RESTfull API \"CHUẨN CƠM MẸ NẤU\" VỚI NODE.JS | Node.JS Cơ Bản Cho Người Mới Bắt Đầu Từ A Đến Z",
+          "position": 66,
+          "youtubeVideoId": "in4n-27bCTg",
+          "duration": 3507,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#15.1 HÌ HỤC UPLOAD SINGLE FILE VỚI NODE.JS VÀ EXPRESS | Node.JS Cơ Bản Cho Người Mới Từ A Đến Z",
+          "position": 67,
+          "youtubeVideoId": "rEV3OYFsUWw",
+          "duration": 3658,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#15.2 STRUGGLING WITH UPLOADING MULTIPLE FILES WITH NODE.JS AND EXPRESS | Node.JS Basics For Begi...",
+          "position": 68,
+          "youtubeVideoId": "RQ0Wacx6Q7k",
+          "duration": 2979,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#16 MIDDLEWARE \"CHUẨN FORM\" VỚI NODE.JS VÀ EXPRESS  | Node.JS Cơ Bản Cho Người Mới Từ A Đến Z",
+          "position": 69,
+          "youtubeVideoId": "3-dbNrDK_pA",
+          "duration": 2163,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#17 WHAT'S NEXT - HẾT KHÓA NODE.JS THÌ LÀM GÌ TIẾP | Node.JS Cơ Bản Cho Người Mới Từ A Đến Z",
+          "position": 70,
+          "youtubeVideoId": "th4mwSY6uFs",
+          "duration": 704,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=jR-n-cQnpNI&list=PLncHg6Kn2JT4smWdJceM0bDg4YUF3yqLu",
+    "channel": "Hỏi Dân IT",
+    "total_videos": 70
+  }
+}

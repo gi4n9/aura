@@ -1,0 +1,220 @@
+{
+  "title": "Tự Học Docker Siêu Dễ - Docker Từ A Đến Z Cho Người Mới Bắt Đầu Với Hỏi Dân IT",
+  "description": "Docker (đọc là đốc kơ), nhiều người thắc mắc, tò mò tại sao bây giờ nó phổ biến vậy. Nghe nói là chúng ta đóng gói ứng dụng dễ lắm, và nhấn nút là nó chạy thôi, không cần cài đặt gì cả,cực kỳ nhàn hạ luôn.\n\nSeries này chính là cách mình \"tự học\" docker, học theo thiên hướng học và thực hành, hi vọng các bạn sẽ tìm thấy điều gì hữu ích cho chính bản thân mình.",
+  "thumbnailUrl": "https://i.ytimg.com/vi/Y3zqsFpUzMk/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLBLnuZXAzS3Qbwm_onsOkCve7MTKw",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "#1 DOCKER LÀ GÌ - TẠI SAO CHÚNG TA LẠI CẦN DOCKER ? | Docker Siêu Dễ Cho Người Mới Bắt Đầu",
+          "position": 1,
+          "youtubeVideoId": "Y3zqsFpUzMk",
+          "duration": 642,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#2 GETTING STARTED WITH DOCKER DESKTOP - PREPARING THE ENVIRONMENT FOR DOCKER | Docker Super Easy...",
+          "position": 2,
+          "youtubeVideoId": "Ic48-WLhtHg",
+          "duration": 1153,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Setup Docker với Virtual Box & Linux Alpine | Cài Docker Trên Máy Ảo Từ A Đến Z",
+          "position": 3,
+          "youtubeVideoId": "7uRgg71nUMo",
+          "duration": 1934,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Copy Files From Windows Host To Linux Virtual Machine | Share Files with Virtual Box",
+          "position": 4,
+          "youtubeVideoId": "DKkvYISg5S4",
+          "duration": 685,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#3 HELLO WORLD VỚI DOCKER - CHẠY ỨNG DỤNG ĐẦU TIÊN BẰNG DOCKER | Docker Siêu Dễ Cho Beginners",
+          "position": 5,
+          "youtubeVideoId": "krHjeCT8g3s",
+          "duration": 1072,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#4 BUILD & CHẠY IMAGE ỨNG DỤNG NODE.JS VỚI DOCKER | Docker Siêu Dễ Cho Beginners Từ A đến Z",
+          "position": 6,
+          "youtubeVideoId": "o0c8dXXNVSU",
+          "duration": 1381,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#5 CẬP NHẬT ỨNG DỤNG DOCKER - Replace The Old Container| Docker Siêu Dễ Cho Beginners Từ A đến Z",
+          "position": 7,
+          "youtubeVideoId": "MuwVdUTyGXQ",
+          "duration": 1308,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#6.1 CHIA SẺ ỨNG DỤNG DOCKER VỚI DOCKER HUB | Docker Siêu Dễ Cho Beginners Từ A đến Z",
+          "position": 8,
+          "youtubeVideoId": "2nWEVgpDRLo",
+          "duration": 2068,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#6.2 CHẠY IMAGE DOCKER TỪ DOCKER HUB TRÊN CLOUD | Docker Siêu Dễ Cho Beginners Từ A đến Z",
+          "position": 9,
+          "youtubeVideoId": "IO0slmeGvl8",
+          "duration": 962,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#7 WRITE DATA WITH VOLUME - PERSIST DATA WITH DOCKER CONTAINER | Docker Super Easy For Beginners ...",
+          "position": 10,
+          "youtubeVideoId": "R4a59qJy40s",
+          "duration": 1156,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#8 DEV SERVER WITH DOCKER BIND MOUNTS - LIVE RELOADING CODE | Docker Super Easy For Beginners Fro...",
+          "position": 11,
+          "youtubeVideoId": "g76hYK4rTxw",
+          "duration": 817,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#9 Multi CONTAINER APPS - QUẢN LÝ NHIỀU ỨNG DỤNG VỚI DOCKER |  Docker Siêu Dễ Cho Beginners",
+          "position": 12,
+          "youtubeVideoId": "8WyWNJorCvY",
+          "duration": 1797,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#10 DOCKER COMPOSE -  Dung Hợp Ứng Dụng Docker Thành Duy Nhất | Docker Siêu Dễ Cho Beginners",
+          "position": 13,
+          "youtubeVideoId": "WX0YLs1Jnjs",
+          "duration": 2215,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Docker Practice 01 - Preparing Production Environment | Fullstack Course SERN clone Bookingcare",
+          "position": 14,
+          "youtubeVideoId": "w946spjx_z0",
+          "duration": 655,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Docker Practice 02 - Build MySQL with Docker | SERN clone Bookingcare Fullstack Course",
+          "position": 15,
+          "youtubeVideoId": "PDt58n_hIKM",
+          "duration": 810,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Docker Practice 03 - Build Backend Node.JS with Docker | Fullstack Course SERN clone Bookingcare",
+          "position": 16,
+          "youtubeVideoId": "3tD0zzYG_IU",
+          "duration": 1589,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 04 - Build Backend Node.JS/MySQL với Docker Compose | Khóa Học Fullstack SERN",
+          "position": 17,
+          "youtubeVideoId": "L-Tzu2jT3Dw",
+          "duration": 895,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 05 - Build Frontend React Production | Khóa Học Fullstack SERN clone Bookingcare",
+          "position": 18,
+          "youtubeVideoId": "oGQqc9H0BG4",
+          "duration": 224,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 06 - Build Nginx chạy React Production | Khóa Học Fullstack SERN clone Bookingcare",
+          "position": 19,
+          "youtubeVideoId": "TMf0ha4AnKU",
+          "duration": 400,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Docker Practice 07 - Nginx Customize Fix Refresh React | Fullstack Course SERN clone Bookingcare",
+          "position": 20,
+          "youtubeVideoId": "cWQ3Kn1CU8s",
+          "duration": 172,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 08 - Nginx/React/Node.JS/MySQL với Docker Compose | Khóa Học Fullstack SERN",
+          "position": 21,
+          "youtubeVideoId": "wcQz4gSbSms",
+          "duration": 443,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 09 - Nginx Reverse Proxy với React/NodeJS cùng Docker | Khóa Học Fullstack SERN",
+          "position": 22,
+          "youtubeVideoId": "776UvQgrGzQ",
+          "duration": 417,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hướng Dẫn Cách Mua Hosting Giá Rẻ Để Chạy Website với Docker | Mua VPS Sao Cho Tiết Kiệm ?",
+          "position": 23,
+          "youtubeVideoId": "9qDw0fDPmfE",
+          "duration": 882,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hướng Setup Docker Cho VPS Hosting với Ubuntu | Cài Đặt Docker trên Server",
+          "position": 24,
+          "youtubeVideoId": "ePJAhJJQG7Q",
+          "duration": 556,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thực Hành Docker 10 - Deploy Fullstack SERN Production | Nginx (React)/Node.JS/MySQL với Docker",
+          "position": 25,
+          "youtubeVideoId": "D6rXJhHje3E",
+          "duration": 715,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=Y3zqsFpUzMk&list=PLncHg6Kn2JT4kLKJ_7uy0x4AdNrCHbe0n",
+    "channel": "Hỏi Dân IT",
+    "total_videos": 25
+  }
+}

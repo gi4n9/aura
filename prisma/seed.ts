@@ -1,92 +1,137 @@
 // prisma/seed.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, UserRole, CourseStatus } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 
 const prisma = new PrismaClient();
 
+// Cấu trúc JSON file (Cập nhật để đọc channel name nếu cần)
 type JsonData = {
-  metadata: {
-    playlist_title: string;
-    channel: string;
-    total_videos: number;
-    crawl_time: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string | null;
+  price: number;
+  status: CourseStatus;
+  _meta?: {
+    channel: string; // Lấy tên kênh từ meta data cào được
   };
-  videos: Array<{
-    stt: number;
+  chapters: Array<{
     title: string;
-    url: string;
-    id: string;
+    position: number;
+    lessons: Array<{
+      title: string;
+      youtubeVideoId: string;
+      duration: number;
+      position: number;
+    }>;
   }>;
 };
 
 async function main() {
-  // 1. Cập nhật danh sách tên file CHÍNH XÁC theo ảnh bạn gửi
-  const fileNames = [
-    "data_HTML,_CSS_từ_Zero_Tới_Hero_F8_Official.json",
-    "data_Javascript_Cơ_Bản_F8_Official.json",
-    "data_Javascript_Nâng_Cao_F8_Official.json",
-    "data_NodeJS_&_ExpressJS_F8_Official.json",
-    "data_React_Hooks_2022_F8_Official.json",
-    "data_ReactJS_2022_F8_Official.json",
-    "data_Session,_cookie,_CORS,_JWT,_SSO_F8_Official.json",
-  ];
+  console.log("🌱 Bắt đầu seed dữ liệu...");
 
-  console.log(`🚀 Bắt đầu import ${fileNames.length} playlists...`);
+  // ---------------------------------------------------------
+  // 1. TẠO ORGANIZATION MẶC ĐỊNH
+  // ---------------------------------------------------------
+  // Chúng ta tạo một tổ chức "bảo trợ" cho tất cả video từ Youtube
+  const defaultOrg = await prisma.organization.upsert({
+    where: { id: "org-youtube-free" }, // Dùng ID cố định để không bị tạo trùng
+    update: {},
+    create: {
+      id: "org-youtube-free",
+      name: "Học liệu mở YouTube",
+      description: "Tổng hợp các khóa học miễn phí chất lượng cao từ YouTube",
+      logoUrl:
+        "https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png",
+    },
+  });
 
-  for (const fileName of fileNames) {
+  console.log(`🏢 Đã tạo Organization: ${defaultOrg.name}`);
+
+  // ---------------------------------------------------------
+  // 2. TẠO INSTRUCTOR (Thuộc về Org trên)
+  // ---------------------------------------------------------
+  const instructorEmail = "teacher@edustream.com";
+
+  const instructor = await prisma.profile.upsert({
+    where: { email: instructorEmail },
+    update: {
+      organizationId: defaultOrg.id, // Update: Nếu user đã có thì gán vào Org này
+    },
+    create: {
+      email: instructorEmail,
+      fullName: "Giảng Viên YouTube",
+      role: UserRole.INSTRUCTOR,
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+      organizationId: defaultOrg.id, // Gán vào Organization
+    },
+  });
+
+  console.log(
+    `👤 Instructor: ${instructor.fullName} (Thuộc Org: ${defaultOrg.name})`
+  );
+
+  // ---------------------------------------------------------
+  // 3. QUÉT FILE VÀ IMPORT KHÓA HỌC
+  // ---------------------------------------------------------
+  // (Đoạn code lấy folder giữ nguyên như cũ của bạn)
+  const args = process.argv.slice(2);
+  let targetDir = args[0]
+    ? path.resolve(args[0])
+    : path.join(__dirname, "data");
+
+  if (!fs.existsSync(targetDir)) {
+    console.error(`❌ Folder không tồn tại: ${targetDir}`);
+    return;
+  }
+
+  const files = fs
+    .readdirSync(targetDir)
+    .filter((file) => file.startsWith("Course_") && file.endsWith(".json"));
+
+  for (const fileName of files) {
     try {
-      // 2. SỬA LỖI ĐƯỜNG DẪN Ở ĐÂY:
-      // Vì file json nằm cùng cấp với seed.ts, ta bỏ chữ "data" đi
-      const filePath = path.join(__dirname, fileName);
-
-      if (!fs.existsSync(filePath)) {
-        console.warn(`⚠️ Không tìm thấy file: ${fileName} -> Bỏ qua.`);
-        continue;
-      }
-
+      const filePath = path.join(targetDir, fileName);
       const rawData = fs.readFileSync(filePath, "utf-8");
-      const data: JsonData = JSON.parse(rawData);
+      const courseData: JsonData = JSON.parse(rawData);
 
-      console.log(`\n📂 Đang xử lý: ${data.metadata.playlist_title}...`);
+      console.log(`⏳ Processing: ${courseData.title}`);
 
-      // 3. Tạo Playlist
-      const playlist = await prisma.playlist.create({
+      // Nếu muốn Cách 2 (Tên Kênh = Tên Org), bạn sẽ xử lý logic tạo Org ở đây dựa vào courseData._meta.channel
+
+      const createdCourse = await prisma.course.create({
         data: {
-          title: data.metadata.playlist_title,
-          channel: data.metadata.channel,
-          // Mô tả giả lập
-          description: `Khóa học ${data.metadata.playlist_title} miễn phí từ kênh ${data.metadata.channel}.`,
-          // Nếu schema bạn ĐÃ CÓ totalVideos và crawlTime thì giữ nguyên
-          // Nếu chưa có thì comment lại 2 dòng dưới
-          totalVideos: data.metadata.total_videos,
-          crawlTime: new Date(data.metadata.crawl_time),
+          title: courseData.title,
+          description: courseData.description,
+          thumbnailUrl: courseData.thumbnailUrl,
+          price: 0, // Youtube thì free
+          status: CourseStatus.PUBLISHED,
+          instructorId: instructor.id,
+          organizationId: defaultOrg.id, // QUAN TRỌNG: Gán khóa học vào Org
+
+          chapters: {
+            create: courseData.chapters.map((chapter) => ({
+              title: chapter.title,
+              position: chapter.position,
+              lessons: {
+                create: chapter.lessons.map((lesson) => ({
+                  title: lesson.title,
+                  position: lesson.position,
+                  youtubeVideoId: lesson.youtubeVideoId,
+                  duration: lesson.duration,
+                  transcript: "",
+                })),
+              },
+            })),
+          },
         },
       });
 
-      console.log(`   + Đã tạo Playlist ID: ${playlist.id}`);
-
-      // 4. Map dữ liệu Video
-      const videoData = data.videos.map((video) => ({
-        stt: video.stt,
-        title: video.title,
-        youtubeId: video.id,
-        playlistId: playlist.id,
-      }));
-
-      // 5. Insert Video
-      const result = await prisma.video.createMany({
-        data: videoData,
-        skipDuplicates: true,
-      });
-
-      console.log(`   + Đã thêm ${result.count} videos.`);
+      console.log(`   ✅ Course created: ${createdCourse.title}`);
     } catch (error) {
-      console.error(`❌ Lỗi khi xử lý file ${fileName}:`, error);
+      console.error(`❌ Error file ${fileName}:`, error);
     }
   }
-
-  console.log("\n🎉 Hoàn tất import!");
 }
 
 main()

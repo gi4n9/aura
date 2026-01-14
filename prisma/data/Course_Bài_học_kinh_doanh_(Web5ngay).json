@@ -1,0 +1,716 @@
+{
+  "title": "Bài học kinh doanh (Web5ngay)",
+  "description": "Khóa học được import từ kênh Khanh Son Dang (KS)",
+  "thumbnailUrl": "https://i.ytimg.com/vi/1IcORQ6s19Y/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLBCE1O8j8NQfwoebKREJwBAH35Lbw",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "[Private video]",
+          "position": 1,
+          "youtubeVideoId": "oEYh4oOvalY",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 2,
+          "youtubeVideoId": "vumKJEt1cpE",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 3,
+          "youtubeVideoId": "QHiZe0ybFLw",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 4,
+          "youtubeVideoId": "ibRpO-cgLQo",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 5,
+          "youtubeVideoId": "p3hIzgZjN5o",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 6,
+          "youtubeVideoId": "J71G4HGJiqA",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 7,
+          "youtubeVideoId": "qsJUoGFiscE",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 8,
+          "youtubeVideoId": "x2JRtPxGF7Y",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 9,
+          "youtubeVideoId": "y0_fC3l2Gfg",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "How To Stop Being Poor",
+          "position": 10,
+          "youtubeVideoId": "1IcORQ6s19Y",
+          "duration": 1440,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Có Điều Này, Đời Không Thể Nghèo",
+          "position": 11,
+          "youtubeVideoId": "SH0G30ioDYo",
+          "duration": 1168,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "90% Đi Sai Con Đường Thành Công (kể cả bạn)",
+          "position": 12,
+          "youtubeVideoId": "S-4nNucqzSQ",
+          "duration": 1522,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "5 BÍ QUYẾT QUẢN LÝ THỜI GIAN |  Xong Việc Nhanh, Hết Trì Hoãn, Dư Dả Thì Giờ",
+          "position": 13,
+          "youtubeVideoId": "rzG44G8ZlXg",
+          "duration": 1711,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách SEO lên Top Google (Miễn Phí & Chưa Biết Gì Cũng Làm Được)",
+          "position": 14,
+          "youtubeVideoId": "gEJ4AuLzg8I",
+          "duration": 2079,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 15,
+          "youtubeVideoId": "WnbUE3X3oKk",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "SEO #3: Cách Kiếm Ít Nhất 7 Triệu/tháng Từ Bán Hàng Online",
+          "position": 16,
+          "youtubeVideoId": "dFYjsbi_r38",
+          "duration": 3383,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách Viết Hay (Ngàn Like)",
+          "position": 17,
+          "youtubeVideoId": "vBsV5swlCDA",
+          "duration": 1510,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách Vượt Qua Cơn Giận Trong 5 Phút",
+          "position": 18,
+          "youtubeVideoId": "_SHuyDYdTSc",
+          "duration": 1345,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 19,
+          "youtubeVideoId": "xGqcW4VkEJw",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Đầu tư 1, Lãi 100  (ko đùa)",
+          "position": 20,
+          "youtubeVideoId": "Ox0mdT-QscM",
+          "duration": 1497,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Must Know: 5 Tips to Be Successful in Life",
+          "position": 21,
+          "youtubeVideoId": "mQJ6MSLcgpU",
+          "duration": 1155,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "How To Prevent a Startup Failure",
+          "position": 22,
+          "youtubeVideoId": "s4Z0ZYRZ8aI",
+          "duration": 1742,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 23,
+          "youtubeVideoId": "x2GkF3q9Q-I",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Công thức sáng tạo: Cách có nhiều ý tưởng hay | Web5ngay",
+          "position": 24,
+          "youtubeVideoId": "pPmEcC4N8_M",
+          "duration": 2129,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 25,
+          "youtubeVideoId": "suDOxjpjyDA",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách Vượt Qua Sự CÔ ĐƠN",
+          "position": 26,
+          "youtubeVideoId": "GMa1qyrh-p0",
+          "duration": 2043,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách Bán Được Hàng (không biết gì cũng DƯ SỨC làm được)",
+          "position": 27,
+          "youtubeVideoId": "SmuZYYFHyqc",
+          "duration": 874,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Nhờ cách này, tôi miễn nhiễm 100% với người vô duyên, tài lanh, cà khịa",
+          "position": 28,
+          "youtubeVideoId": "jW-Xtab29Uk",
+          "duration": 1311,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hướng Dẫn Đặt Mục Tiêu 😎",
+          "position": 29,
+          "youtubeVideoId": "IIAkek1aUxk",
+          "duration": 1024,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "50 Triệu và 5 Lời Khuyên Tạo Động Lực – Bạn Chọn Cái Nào?",
+          "position": 30,
+          "youtubeVideoId": "BGRbGOxyA9A",
+          "duration": 1627,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 31,
+          "youtubeVideoId": "BbhnqNM_OVA",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 32,
+          "youtubeVideoId": "kQyk6NepES0",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 33,
+          "youtubeVideoId": "hi7xtsoOl_0",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cách Để Khách Hàng Yêu Bạn và Chỉ Mua Hàng Của Bạn #9",
+          "position": 34,
+          "youtubeVideoId": "lavEq7XhKAc",
+          "duration": 823,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 35,
+          "youtubeVideoId": "4nH3YfiJGFw",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 36,
+          "youtubeVideoId": "SxN4FQrr-bA",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 37,
+          "youtubeVideoId": "AA2sUtNMsIM",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Bán iPhone 7 Mà Không Cần Nhập Hàng? - #15",
+          "position": 38,
+          "youtubeVideoId": "N_7QEr66z6k",
+          "duration": 1116,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Đại Siêu Thị 1000 Mặt Hàng, Mà Không Cần Bỏ Vốn Nhập Hàng? #16",
+          "position": 39,
+          "youtubeVideoId": "x0Ptdl9rGZo",
+          "duration": 573,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 40,
+          "youtubeVideoId": "BIAxl7kL874",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 41,
+          "youtubeVideoId": "KAUF3abQsuw",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 42,
+          "youtubeVideoId": "OSPpTigMsng",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 43,
+          "youtubeVideoId": "wfjlGBHBoBY",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 44,
+          "youtubeVideoId": "Wn8s5ljlca0",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 45,
+          "youtubeVideoId": "H5osGlx3dcE",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 46,
+          "youtubeVideoId": "NkOHbTOE1nI",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 47,
+          "youtubeVideoId": "qxFDOHfa-sU",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 48,
+          "youtubeVideoId": "U3xScSrXU_4",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 49,
+          "youtubeVideoId": "9pHHSBqTN6E",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 50,
+          "youtubeVideoId": "zSzmhO_5jNw",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 51,
+          "youtubeVideoId": "R547VR_geh0",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Mỗi Ngày Tôi Bỏ 15.000đ Quảng Cáo Facebook, Nhưng Kết Quả Thu Về Thì...",
+          "position": 52,
+          "youtubeVideoId": "Qd8LTbM8eBo",
+          "duration": 951,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 53,
+          "youtubeVideoId": "IKSNWY2PLr4",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 54,
+          "youtubeVideoId": "rpzYxuTrY7U",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 55,
+          "youtubeVideoId": "sXe38rsJ13E",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 56,
+          "youtubeVideoId": "UKBBAyUkJn8",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 57,
+          "youtubeVideoId": "waVTDxjUDH8",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 58,
+          "youtubeVideoId": "QnpJnZ6xYzE",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 59,
+          "youtubeVideoId": "z9Hd7iJjiiE",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 60,
+          "youtubeVideoId": "GblzQ6Z7bBY",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 61,
+          "youtubeVideoId": "5FikkwzQ5o8",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Bí Quyết Bán Hàng Bằng Gmail Email - Không Xem Đừng Hối hận",
+          "position": 62,
+          "youtubeVideoId": "qNN8wauZ39M",
+          "duration": 2687,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 63,
+          "youtubeVideoId": "br4ryJE83wg",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 64,
+          "youtubeVideoId": "NrvEpnh5Bj0",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 65,
+          "youtubeVideoId": "dFs0MIwd86k",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 66,
+          "youtubeVideoId": "OJEaQYt_GSU",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Người Ta Chửi Mình Thì Phải Làm Sao?",
+          "position": 67,
+          "youtubeVideoId": "yzXYiYPqDoc",
+          "duration": 1899,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 68,
+          "youtubeVideoId": "SXlb0-f1WXU",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 69,
+          "youtubeVideoId": "VMBpbHAxY8c",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 70,
+          "youtubeVideoId": "wtL7_7rtB9c",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Be Poor For Life If You Make This Mistake",
+          "position": 71,
+          "youtubeVideoId": "hW3ygHC_cxo",
+          "duration": 1247,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cho Những Người Cố Gắng Mãi mà Vẫn Chưa Thành Công",
+          "position": 72,
+          "youtubeVideoId": "29nCg3BUW6Q",
+          "duration": 1187,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 73,
+          "youtubeVideoId": "jW0gGVMNjsg",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 74,
+          "youtubeVideoId": "VN_kkHVJEDY",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 75,
+          "youtubeVideoId": "dPNQDqU4yMg",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 76,
+          "youtubeVideoId": "7zGusKh8G3I",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 77,
+          "youtubeVideoId": "DI17ja8RrYs",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 78,
+          "youtubeVideoId": "HLHoDoF5OYg",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 79,
+          "youtubeVideoId": "thGPOclRkIc",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 80,
+          "youtubeVideoId": "4hOhW2CF_OA",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 81,
+          "youtubeVideoId": "vWAv5nLP0LQ",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Private video]",
+          "position": 82,
+          "youtubeVideoId": "o0aUYMnGpfQ",
+          "duration": 0,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Vì Sao Tôi Không Bao Giờ Cạn Ý Tưởng?",
+          "position": 83,
+          "youtubeVideoId": "COjO8AaGf6I",
+          "duration": 1345,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "50 Meaningful Quotes That Change Your Life -  Philosophy and Life Lessons",
+          "position": 84,
+          "youtubeVideoId": "qfoq8IX43vE",
+          "duration": 1662,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Làm sao biết mình \"sắp thành công\"?",
+          "position": 85,
+          "youtubeVideoId": "-DOo0TDGXLQ",
+          "duration": 1350,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "How to get what you want?",
+          "position": 86,
+          "youtubeVideoId": "DNgTz7RqynM",
+          "duration": 3179,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Phone Relief Hands-Free Headset",
+          "position": 87,
+          "youtubeVideoId": "O3RaCer964U",
+          "duration": 61,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=1IcORQ6s19Y&list=PLvYb6kemdFRkOovtbN3d64gbuNa9Nzdf3",
+    "channel": "Khanh Son Dang (KS)",
+    "total_videos": 87
+  }
+}

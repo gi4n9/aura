@@ -1,0 +1,684 @@
+{
+  "title": "ReactJS 2022",
+  "description": "Khoá học ReactJS mới nhất 2022, mục tiêu của khoá này là giúp các bạn có thể đầy đủ hành trang để đi làm ❤️",
+  "thumbnailUrl": "https://i.ytimg.com/vi/x0fSBAgBrOQ/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLDuJ4KkebD44C4MNeMYgp4Z4MO1cw",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "ReactJS là gì | Tại sao nên học ReactJS | Khóa học ReactJS miễn phí",
+          "position": 1,
+          "youtubeVideoId": "x0fSBAgBrOQ",
+          "duration": 641,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "SPA/MPA là gì | Khái niệm SPA |  ReactJS",
+          "position": 2,
+          "youtubeVideoId": "30sMCciFIAM",
+          "duration": 1340,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Arrow function in JavaScript ES6 | Arrow function concept",
+          "position": 3,
+          "youtubeVideoId": "9QeNLypIiZs",
+          "duration": 517,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Module trong JavaScript ES6",
+          "position": 4,
+          "youtubeVideoId": "08lWi4T2Bfg",
+          "duration": 890,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Enhanced object literals trong javascript ES6",
+          "position": 5,
+          "youtubeVideoId": "WB6FQdp41hs",
+          "duration": 315,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Spread trong JavaScript ES6",
+          "position": 6,
+          "youtubeVideoId": "MJZICS7nQk8",
+          "duration": 837,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Destructuring trong JavaScript ES6",
+          "position": 7,
+          "youtubeVideoId": "J1m4vLDUhEI",
+          "duration": 800,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "document.createElement() để làm gì | Phương thức createElement",
+          "position": 8,
+          "youtubeVideoId": "Nno-r1Cz_-I",
+          "duration": 602,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Note! React version 18 is available | Additional videos for ReactJS F8 course",
+          "position": 9,
+          "youtubeVideoId": "5KfoXHWzcLw",
+          "duration": 176,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thêm React vào Website | Github, NPMJS, UNPKG là gì?",
+          "position": 10,
+          "youtubeVideoId": "SdphnMywCbo",
+          "duration": 891,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Phương thức React.createElement() của thư viện ReactJS",
+          "position": 11,
+          "youtubeVideoId": "JN_SxpAujDw",
+          "duration": 871,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React-DOM là gì? | Tại sao cần React-DOM?",
+          "position": 12,
+          "youtubeVideoId": "zWOREJxiRVY",
+          "duration": 669,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Using ReactDOM Version 18 | ReactJS F8 Course Supplement Videos",
+          "position": 13,
+          "youtubeVideoId": "AJ8j6_L94Bc",
+          "duration": 423,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "JSX là gì? Tại sao cần JSX? | JSX ReactJS",
+          "position": 14,
+          "youtubeVideoId": "samx2yC15Pg",
+          "duration": 959,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Sử dụng JSX render Arrays | Giải đáp JSX | JSX FQA",
+          "position": 15,
+          "youtubeVideoId": "i1cjVyIZCKs",
+          "duration": 816,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React element types | React components",
+          "position": 16,
+          "youtubeVideoId": "uGopxH14kYA",
+          "duration": 853,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Props là gì? | Dùng props khi nào? | Khái niệm Props",
+          "position": 17,
+          "youtubeVideoId": "TvE2FuYiuXo",
+          "duration": 1542,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "DOM events? | Làm việc với JSX - phần 1",
+          "position": 18,
+          "youtubeVideoId": "7jQrn1KjcEw",
+          "duration": 838,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tạo Components | Làm việc với JSX - Phần 2",
+          "position": 19,
+          "youtubeVideoId": "5SU6P-cqoJw",
+          "duration": 1567,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Children props & Render props | Working with JSX - Part 3",
+          "position": 20,
+          "youtubeVideoId": "1Bse4Lx5CP8",
+          "duration": 1325,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "NodeJS là gì? Sử dụng NodeJS trong ReactJS? | cài đặt NodeJS",
+          "position": 21,
+          "youtubeVideoId": "ysjJlvQ3FFc",
+          "duration": 699,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hãy cài đúng React & ReactDOM 17 ở bài sau | Video bổ sung",
+          "position": 22,
+          "youtubeVideoId": "6qRyEeCDJ2g",
+          "duration": 133,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tạo dự án với React và Webpack | React JS",
+          "position": 23,
+          "youtubeVideoId": "1EBe-l1E3pM",
+          "duration": 1875,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Nâng cấp React & ReactDOM từ version 17 lên 18 | ReactJS",
+          "position": 24,
+          "youtubeVideoId": "okMA31wi-yg",
+          "duration": 259,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thư viện Create React App | Cài đặt thư viện cho Windows và MacOS",
+          "position": 25,
+          "youtubeVideoId": "gA3rFa6uu14",
+          "duration": 853,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hiểu rõ hơn về NPM, NPX và YARN | Cài đặt thư viện cho dự án",
+          "position": 26,
+          "youtubeVideoId": "7sX_8lKURqo",
+          "duration": 1891,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "CRA Folder Structure | Cấu trúc thư mục dự án | Create react app",
+          "position": 27,
+          "youtubeVideoId": "-Ka_3RkQAvk",
+          "duration": 757,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Hooks là gì? | Khái niệm Hooks - React Hooks",
+          "position": 28,
+          "youtubeVideoId": "5ismRwx4ebM",
+          "duration": 751,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useState trong React hook | React hook 2021",
+          "position": 29,
+          "youtubeVideoId": "rIaFc5MLCcs",
+          "duration": 1191,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Two-way binding | Ràng buộc hai chiều | React hooks",
+          "position": 30,
+          "youtubeVideoId": "CVaEWBFpxhc",
+          "duration": 1687,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Todolist with useState() | Xây dựng ứng dụng todolist | React hooks",
+          "position": 31,
+          "youtubeVideoId": "bpVFSiNsFHY",
+          "duration": 908,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tìm hiểu về thuật ngữ Mounted & Unmounted",
+          "position": 32,
+          "youtubeVideoId": "ELMyJQNxy50",
+          "duration": 337,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React useEffect hook chi tiết dành cho người mới | React JS",
+          "position": 33,
+          "youtubeVideoId": "hjIxfXKmkjk",
+          "duration": 1490,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useEffect() with dependencies | React hooks 2021 | React JS",
+          "position": 34,
+          "youtubeVideoId": "OOt2VRa1Oeg",
+          "duration": 783,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useEffect() with DOM events | React hooks 2021 | React JS",
+          "position": 35,
+          "youtubeVideoId": "xZcWHaGsKUQ",
+          "duration": 999,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useEffect() with timer functions | Làm việc với setInterval & setTimeout",
+          "position": 36,
+          "youtubeVideoId": "zGNOhVjrWFw",
+          "duration": 543,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useEffect() with preview avatar | Hàm dọn dẹp Cleanup function",
+          "position": 37,
+          "youtubeVideoId": "Fnb3GbY9FUY",
+          "duration": 751,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useEffect() with fake Chat App | Handling real-time functions",
+          "position": 38,
+          "youtubeVideoId": "eFrgfL3O_UQ",
+          "duration": 1126,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useLayoutEffect() hook | Phân biệt useEffect và useLayoutEffect | React JS",
+          "position": 39,
+          "youtubeVideoId": "loSqbCbH2xo",
+          "duration": 525,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useRef() hook | How to use useRef() hook",
+          "position": 40,
+          "youtubeVideoId": "qr1dQqRJRNo",
+          "duration": 1055,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React.memo() HOC | Phương thức memo trong react | React JS",
+          "position": 41,
+          "youtubeVideoId": "pPoKG_l3UFQ",
+          "duration": 660,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useCallback() hook | Tránh tạo ra hàm mới không cần thiết với useCallback()",
+          "position": 42,
+          "youtubeVideoId": "_aiLvBnYwnA",
+          "duration": 612,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useMemo() hook | Avoid re-executing unnecessary logic with useMemo()",
+          "position": 43,
+          "youtubeVideoId": "TGaxZyZzB7E",
+          "duration": 666,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useReducer() hook | Khi nào sử dụng useReducer()?",
+          "position": 44,
+          "youtubeVideoId": "yn-8PVKBBn0",
+          "duration": 958,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Todo App with useReducer() hook | Hiểu rõ hơn về useReducer()",
+          "position": 45,
+          "youtubeVideoId": "p54lj4vM_LA",
+          "duration": 1295,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useReducer() recap | React hooks 2021 | React JS",
+          "position": 46,
+          "youtubeVideoId": "vzbW1TMXlZo",
+          "duration": 1098,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React Context & useContext() hook | Khái niệm useContext()",
+          "position": 47,
+          "youtubeVideoId": "TENin-HxvRg",
+          "duration": 1132,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Global State with Context + useReducer |  Trạng thái toàn cục",
+          "position": 48,
+          "youtubeVideoId": "GE4jeED9B1s",
+          "duration": 1734,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "useImperativeHandle() hook | React JS",
+          "position": 49,
+          "youtubeVideoId": "dSzf0nv6QmM",
+          "duration": 1005,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Using CSS in ReactJS Projects | CSS in React",
+          "position": 50,
+          "youtubeVideoId": "s-vzXxTG9pQ",
+          "duration": 737,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "CSS module là gì? | Sử dụng CSS module như thế nào?",
+          "position": 51,
+          "youtubeVideoId": "U6pZ5uf2oLM",
+          "duration": 891,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Thư viện clsx và classnames | Sử dụng nhiều class & class động trong ReactJS",
+          "position": 52,
+          "youtubeVideoId": "T1NogjaceIo",
+          "duration": 732,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Install SASS để dùng SCSS | Cài đặt và sử dụng SCSS trong dự án",
+          "position": 53,
+          "youtubeVideoId": "UIHO6QXj0ms",
+          "duration": 323,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "React Router V6 | Thư viện React router dom | Định tuyến trong ReactJS",
+          "position": 54,
+          "youtubeVideoId": "5jYlY4y5Dfs",
+          "duration": 907,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Introducing Tiktok Clone project | Practice ReactJS course at F8",
+          "position": 55,
+          "youtubeVideoId": "VCgk2y-LUJY",
+          "duration": 247,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tạo dự án Tiktok và đẩy lên Github | Tiktok Clone | Thực hành ReactJS tại F8",
+          "position": 56,
+          "youtubeVideoId": "v8fnbIqFwgM",
+          "duration": 622,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cài đặt customize-cra tuỳ chỉnh cấu hình Webpack | Dự án Tiktok Clone",
+          "position": 57,
+          "youtubeVideoId": "R4HQI7B4qbw",
+          "duration": 403,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Install babel plugin module resolver | Tiktok Clone project with ReactJS",
+          "position": 58,
+          "youtubeVideoId": "wwGkGi1WFgg",
+          "duration": 1169,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cài đặt và cấu hình Prettier trên VS Code | Format code với Prettier",
+          "position": 59,
+          "youtubeVideoId": "1s8iJZltSlo",
+          "duration": 498,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cấu hình sử dụng CSS, SASS | Dự án Tiktok Clone với ReactJS",
+          "position": 60,
+          "youtubeVideoId": "N8PmDt4dcG8",
+          "duration": 839,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Cài đặt và cấu hình Router | Xây dựng cơ chế tải Layout cho dự án Tiktok Clone",
+          "position": 61,
+          "youtubeVideoId": "FwTQ0yoF0_g",
+          "duration": 2235,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Building the DefaultLayout framework for the Tiktok Clone project | Practice ReactJS at F8",
+          "position": 62,
+          "youtubeVideoId": "VkMAlrn3-Ww",
+          "duration": 1382,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng UI Phần Header Dự Án Tiktok Clone (Phần 1) | Thực hành ReactJS",
+          "position": 63,
+          "youtubeVideoId": "hFK4okw-XYs",
+          "duration": 3532,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Building UI Header Section of Tiktok Clone Project (Part 2) | ReactJS Practice",
+          "position": 64,
+          "youtubeVideoId": "6lB3HhjEr7E",
+          "duration": 2650,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng UI Phần Header Dự Án Tiktok Clone (Phần 3) | Thực Hành ReactJS",
+          "position": 65,
+          "youtubeVideoId": "LPGQoWG7pno",
+          "duration": 3312,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng UI Phần Header Dự Án Tiktok Clone (Phần 4) | Thực Hành ReactJS",
+          "position": 66,
+          "youtubeVideoId": "oOYwdi2f_Qo",
+          "duration": 2547,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Building UI Header Section of Tiktok Clone Project (Part 5) | ReactJS Practice",
+          "position": 67,
+          "youtubeVideoId": "WL4dL3R6Pac",
+          "duration": 2137,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng UI Phần Header Dự Án Tiktok Clone (Phần 6) | Thực Hành ReactJS",
+          "position": 68,
+          "youtubeVideoId": "VRpsvMwtdws",
+          "duration": 2306,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng UI Phần Header Dự Án Tiktok Clone (Phần 7) | Thực Hành ReactJS",
+          "position": 69,
+          "youtubeVideoId": "iyJ7b4_AdjQ",
+          "duration": 2064,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng Logic Phần Header Dự Án Tiktok Clone (Phần 1) | Thực Hành ReactJS",
+          "position": 70,
+          "youtubeVideoId": "cgLkdc6Y8Zk",
+          "duration": 1838,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng Logic Phần Header Dự Án Tiktok Clone (Phần 2) | Thực Hành ReactJS",
+          "position": 71,
+          "youtubeVideoId": "8b_H4onKXWc",
+          "duration": 2286,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây Dựng Logic Phần Header Dự Án Tiktok Clone (Phần 3) | Thực Hành ReactJS",
+          "position": 72,
+          "youtubeVideoId": "ZoFl6gxRv6g",
+          "duration": 902,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Sử dụng thư viện Axios | Gọi API từ trình duyệt hoặc Node JS | Dự án ReactJS",
+          "position": 73,
+          "youtubeVideoId": "_zeOSnVHI2I",
+          "duration": 2188,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Sửa lỗi và hoàn thiện phần Header (Phần 1) | Dự án Tiktok Clone | Thực hành ReactJS",
+          "position": 74,
+          "youtubeVideoId": "cZbm5P7V-iM",
+          "duration": 1613,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Sửa lỗi và hoàn thiện phần Header (Phần 2) |  Dự án Tiktok Clone | Thực hành ReactJS",
+          "position": 75,
+          "youtubeVideoId": "3dit5NJVxMU",
+          "duration": 2156,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Code Refactoring and Optimization | Tiktok Clone Project | ReactJS Practice",
+          "position": 76,
+          "youtubeVideoId": "9KIub8JNcXg",
+          "duration": 1739,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tìm hiểu và ứng dụng thư viện PropTypes trong React | Thực hành ReactJS",
+          "position": 77,
+          "youtubeVideoId": "_azdqV1MoXE",
+          "duration": 898,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Applying PropTypes to Tiktok Clone Project | ReactJS Practice",
+          "position": 78,
+          "youtubeVideoId": "UbhnlxLWXZU",
+          "duration": 1269,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Khắc Phục Vấn Đề Nhiều File Index.js | Thực hành ReactJS",
+          "position": 79,
+          "youtubeVideoId": "cMq0BwAF2To",
+          "duration": 760,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tối ưu Header án Tiktok Clone  phần cuối - final | Thực hành ReactJS",
+          "position": 80,
+          "youtubeVideoId": "J-6vcwggqGQ",
+          "duration": 1569,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Xây dựng UI phần Sidebar dự án Tiktok Clone (Phần 1) | Thực hành ReactJS",
+          "position": 81,
+          "youtubeVideoId": "I6DWZWkAhhY",
+          "duration": 2916,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Building the Sidebar UI of the Tiktok Clone project (Part 2) | ReactJS Practice",
+          "position": 82,
+          "youtubeVideoId": "-5jFoaGqcF8",
+          "duration": 2181,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Building the Sidebar UI of the Tiktok Clone project (Part 3) | ReactJS Practice",
+          "position": 83,
+          "youtubeVideoId": "SYAwVG6Ujco",
+          "duration": 2532,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=x0fSBAgBrOQ&list=PL_-VfJajZj0UXjlKfBwFX73usByw3Ph9Q",
+    "channel": "F8 Official",
+    "total_videos": 83
+  }
+}

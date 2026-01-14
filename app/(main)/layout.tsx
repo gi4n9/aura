@@ -16,9 +16,6 @@ export default function MainLayout({
                 {children}
             </main>
             <ChatBot />
-
-            {/* Footer  */}
-            <Footer />
         </div>
     );
 }

@@ -1,0 +1,340 @@
+{
+  "title": "Tự Học Next.JS Cơ Bản (với React và TypeScript) | Hỏi Dân IT",
+  "description": "Next.JS là một framework hỗ trợ việc code React ở phía Server.\n\nĐây là khóa học miễn phí giúp chúng ta hiểu và sử dụng React với Next.JS (ngôn ngữ typescript)",
+  "thumbnailUrl": "https://i.ytimg.com/vi/XIGx1sfvRoc/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLCoBjbSWLkTKRGTbYOG6PHn_GBAoA",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "[FULL] Khóa Học Next.JS 13 Siêu Cơ Bản Dành Cho Beginners | Học React với Hỏi Dân IT",
+          "position": 1,
+          "youtubeVideoId": "XIGx1sfvRoc",
+          "duration": 16069,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[FULL] Next.JS Hot Topic | Các Tính Năng Cốt Lõi của Next.js v14 và v13",
+          "position": 2,
+          "youtubeVideoId": "EnzPVKoz4nc",
+          "duration": 6394,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Demo Nextjs Course (TypeScript - Frontend React Pro++) | Detailed Analysis of React Framework",
+          "position": 3,
+          "youtubeVideoId": "dsha7HgqMhI",
+          "duration": 1479,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#0 Demo Kết Quả Đạt Được | Khóa Học Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 4,
+          "youtubeVideoId": "QNd76WGGCZs",
+          "duration": 428,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#1. NextJS Là Gì mà HOT vậy ? | Tự Học Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 5,
+          "youtubeVideoId": "c5zbK5jnw1g",
+          "duration": 708,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#2. Setup Môi trường  Dự Án | Tự Học Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 6,
+          "youtubeVideoId": "yboNTNTgCFA",
+          "duration": 325,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#3. Yêu Cầu Trước Khi Bắt Đầu Học NexJS | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 7,
+          "youtubeVideoId": "jZXe0XfgTVc",
+          "duration": 187,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#4. How to Learn the Course Effectively | Next.JS Basics for Beginners with React and Typescript",
+          "position": 8,
+          "youtubeVideoId": "d5lqlhVXoPs",
+          "duration": 173,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#5. Lịch sử version của Next.JS  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 9,
+          "youtubeVideoId": "gTQBCY10Yoo",
+          "duration": 639,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#6. Hello World với Next.JS  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 10,
+          "youtubeVideoId": "ht1AOrWF8fM",
+          "duration": 640,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#7. Cấu Trúc Dự Án Next.js Cài Đặt  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 11,
+          "youtubeVideoId": "jSeA9OwkDKE",
+          "duration": 459,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#8. Lưu Ý Về Lựa Chọn Tài Liệu | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 12,
+          "youtubeVideoId": "OcoSQQrIvBs",
+          "duration": 191,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#9. Client Component (SPA) | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 13,
+          "youtubeVideoId": "8q5-3DHkbMs",
+          "duration": 387,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#10. Server Component | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 14,
+          "youtubeVideoId": "PbVTyRZu6is",
+          "duration": 197,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#11.  Tại sao cần Next.js ? | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 15,
+          "youtubeVideoId": "yozeiS5K8jE",
+          "duration": 150,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#12. Tư duy sử dụng component với Next.js | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 16,
+          "youtubeVideoId": "VTn-qo6tIeE",
+          "duration": 407,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#13. Giới thiệu về Routing | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 17,
+          "youtubeVideoId": "G06Sw4NKEpE",
+          "duration": 122,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#14. Định nghĩa Route (Page) | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 18,
+          "youtubeVideoId": "P4RjFFq8Hqc",
+          "duration": 340,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#15. Bài tập tạo Page  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 19,
+          "youtubeVideoId": "uo-Y6UNCbCg",
+          "duration": 120,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#16. Điều Hướng Trang Navigation  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 20,
+          "youtubeVideoId": "O9W75UBc_Fc",
+          "duration": 700,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#17. Dàn Layout  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 21,
+          "youtubeVideoId": "Uzc1_j8homw",
+          "duration": 275,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#18. Using CSS with Next.JS | Next.JS Basics for Beginners with React and Typescript",
+          "position": 22,
+          "youtubeVideoId": "GdSWU8pK6qI",
+          "duration": 702,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#19. Tích Hợp React Bootstrap | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 23,
+          "youtubeVideoId": "IyHiRKvZWsk",
+          "duration": 620,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#20. Bài tập tạo base giao diện Home Page  | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 24,
+          "youtubeVideoId": "UWtlhiEQh7g",
+          "duration": 823,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#21. Setup Dự Án Backend | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 25,
+          "youtubeVideoId": "qiUS9uBs4wA",
+          "duration": 231,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#22. Fetching data với Next.js | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 26,
+          "youtubeVideoId": "657Gt-zU8ms",
+          "duration": 796,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#23. useSWR | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 27,
+          "youtubeVideoId": "oV4obc-m7m0",
+          "duration": 803,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#24. Display List Blog | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 28,
+          "youtubeVideoId": "FbwJ8Q0Nq3g",
+          "duration": 608,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#25. Design Modal Add New | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 29,
+          "youtubeVideoId": "8JMumSENB60",
+          "duration": 981,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#26. API Add New | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 30,
+          "youtubeVideoId": "8AMZv6PHPdM",
+          "duration": 867,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#27. Mutate Data với SWR | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 31,
+          "youtubeVideoId": "WBomguhcarM",
+          "duration": 303,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#28. Bài tập Update Blog (modal + api) | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 32,
+          "youtubeVideoId": "uZ--9C09eF8",
+          "duration": 574,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#29. Tạo Page by id | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 33,
+          "youtubeVideoId": "Un2f176tDXc",
+          "duration": 960,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#30. Bài Tập Design Page view detail | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 34,
+          "youtubeVideoId": "EZwdN7eRVIs",
+          "duration": 137,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#31. API View detail | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 35,
+          "youtubeVideoId": "i0aj5TgUf6o",
+          "duration": 334,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#32. Bài tập delete | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 36,
+          "youtubeVideoId": "NlfvwRv6pb4",
+          "duration": 228,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#33. Meta data | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 37,
+          "youtubeVideoId": "e0_QDSfxBKI",
+          "duration": 591,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "#34. Tổng kết | Next.JS Cơ Bản Cho Beginners với React và Typescript",
+          "position": 38,
+          "youtubeVideoId": "iVonwI32MmA",
+          "duration": 374,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Tối Ưu Hóa SEO với Next.js 13 Đạt 100 Điểm với Lighthouse | SEO Siêu Cơ Bản Dành cho Beginners",
+          "position": 39,
+          "youtubeVideoId": "wwFHxgYiS0I",
+          "duration": 10530,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "Oh dear... Next.js 15 có đáng để upgrade ??? Review nhanh về Next 15",
+          "position": 40,
+          "youtubeVideoId": "hVzlmOomLRU",
+          "duration": 1912,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=XIGx1sfvRoc&list=PLncHg6Kn2JT6zw4JiFOE1z90ghnyrFl5B&pp=0gcJCbYEOCosWNin",
+    "channel": "Hỏi Dân IT",
+    "total_videos": 40
+  }
+}

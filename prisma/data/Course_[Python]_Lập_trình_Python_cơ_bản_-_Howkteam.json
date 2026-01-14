@@ -1,0 +1,308 @@
+{
+  "title": "[Python] Lập trình Python cơ bản - Howkteam",
+  "description": "GIỚI THIỆU KHÓA HỌC\n\nVới mục đích giới thiệu đến mọi người NGÔN NGỮ PYTHON, một ngôn ngữ lập trình khá mới mẻ so với C, C++, Java, PHP ở Việt Nam.\n\nThông qua khóa học LẬP TRÌNH PYTHON CƠ BẢN, Kteam sẽ hướng dẫn các bạn kiến thức cơ bản của Python. Để từ đó, có được nền tảng cho phép bạn tiếp tục tìm hiểu những kiến thức tuyệt vời khác của Python hoặc là một ngôn ngữ khác.\nCụ thể trong khóa học này, Kteam sẽ giới thiệu với các bạn Python ở phiên bản Python 3.X (3.6.2)\n\nĐỐI TƯỢNG THAM GIA\n\nSerial này dành cho các bạn muốn học, tìm hiểu về lập trình và muốn tìm một ngôn ngữ dễ học cho người mới bắt đầu, có khuynh hướng làm về mảng “Khoa học máy tính”. \n\nNgoài ra, khóa LẬP TRÌNH PYTHON CƠ BẢN cũng dành cho những bạn có nhiều ý tưởng nhưng thiếu kiến thức về lập trình, muốn có một ngôn ngữ đơn giản, dễ học cho việc hiện thực hóa ý tưởng đó.\n\nKhóa học này không có những yêu cầu khắt khe về kiến thức nền. Do đó nếu bạn là một người không biết nhiều về lập trình cũng có thể tiếp cận - Bạn cũng không cần phải là một thiên tài toán học\n\nThời lượng mỗi video từ 3 – 30 phút nhằm chia nhỏ quá trình thực hiện, giúp bạn dễ tiếp thu và ứng dụng source code hỗ trợ từ thư viện Howkteam.com\n\nTÀI LIỆU \n\nNhằm phục vụ mục đích học tập Offline của cộng đồng, Kteam hỗ trợ tính năng lưu trữ nội dung 36 BÀI HỌC PYTHON dưới dạng file PDF trong link bên dưới.\n\nPDF files : https://www.howkteam.vn/course/lap-trinh-python-co-ban-37\n\nKẾT\n\nNếu bạn có bất kỳ khó khăn hay thắc mắc gì về khóa học, đừng ngần ngại đặt câu hỏi trong phần BÌNH LUẬN bên dưới mỗi video hoặc tham gia các cộng đồng hỏi đáp của Kteam để được hỗ trợ \n\n- Community: https://www.howkteam.vn/questions \n- Group FB: http://www.Group.Howkteam.com \n\nCảm ơn các bạn đã theo dõi bài viết. Hãy để lại bình luận hoặc góp ý của mình để phát triển bài viết tốt hơn. Đừng quên “Luyện tập – Thử thách – Không ngại khó”. \n\n#Python #Python_Cơ_Bản #Howkteam  #Python_Basic #Tự_Học_Python #Free_Education #Share_To_Be_Better #SublimeText",
+  "thumbnailUrl": "https://i.ytimg.com/vi/NZj6LI5a9vc/hqdefault.jpg?sqp=-oaymwEXCNACELwBSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLAl_ZXojVe42ntbgPNZEY64hoRnuA",
+  "price": 0,
+  "status": "PUBLISHED",
+  "chapters": [
+    {
+      "title": "Chương 1: Danh sách bài học",
+      "position": 1,
+      "lessons": [
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 1: Giới thiệu ngôn ngữ lập trình Python | HowKteam",
+          "position": 1,
+          "youtubeVideoId": "NZj6LI5a9vc",
+          "duration": 765,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 2: Cài đặt môi trường Python | HowKteam",
+          "position": 2,
+          "youtubeVideoId": "jf-q_dG8WzI",
+          "duration": 376,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 3: Chạy file Python | HowKteam",
+          "position": 3,
+          "youtubeVideoId": "QFxqY8qv42E",
+          "duration": 803,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 4: Comment trong Python | HowKteam",
+          "position": 4,
+          "youtubeVideoId": "t3dERE9T5yg",
+          "duration": 594,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 5: Biến(Variable) trong Python | HowKteam",
+          "position": 5,
+          "youtubeVideoId": "nclE18Yl-kA",
+          "duration": 978,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 6: Kiểu số trong Python | HowKteam",
+          "position": 6,
+          "youtubeVideoId": "IAVvgqDBiv0",
+          "duration": 2315,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 7: Kiểu chuỗi trong Python - Phần 1 | HowKteam",
+          "position": 7,
+          "youtubeVideoId": "Vb6XWSLPQfg",
+          "duration": 1591,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 8: Kiểu chuỗi trong Python - Phần 2 | HowKteam",
+          "position": 8,
+          "youtubeVideoId": "gzWriEOVjU0",
+          "duration": 1776,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 9: Kiểu chuỗi trong Python p3 | HowKteam",
+          "position": 9,
+          "youtubeVideoId": "LRUHnuHljPQ",
+          "duration": 2432,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 10: Kiểu chuỗi trong Python - Phần 4 | HowKteam",
+          "position": 10,
+          "youtubeVideoId": "q2TNJMBx6GE",
+          "duration": 1755,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 11: Kiểu chuỗi trong Python - Phần 5 | HowKteam",
+          "position": 11,
+          "youtubeVideoId": "u2Kd3weqPZE",
+          "duration": 952,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 12: List trong Python - Phần 1 | HowKteam",
+          "position": 12,
+          "youtubeVideoId": "UzTE665WXb8",
+          "duration": 2596,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 13: List trong Python - Phần 2 | HowKteam",
+          "position": 13,
+          "youtubeVideoId": "9IH3EynbcpU",
+          "duration": 1119,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 14: Tuple trong Python | HowKteam",
+          "position": 14,
+          "youtubeVideoId": "dDFFCbRGm3o",
+          "duration": 1232,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 15: Hashable và Unhashable trong Python | HowKteam",
+          "position": 15,
+          "youtubeVideoId": "gw9zbl2Q7r4",
+          "duration": 1475,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 16: Set trong Python | HowKteam",
+          "position": 16,
+          "youtubeVideoId": "S-CWHkKiOBs",
+          "duration": 1895,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 17: Dict trong Python - Phần 1| HowKteam",
+          "position": 17,
+          "youtubeVideoId": "zFDTmZjJFws",
+          "duration": 1313,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 18: Dict trong Python - Phần 2 | HowKteam",
+          "position": 18,
+          "youtubeVideoId": "jmwBKuJl2Zg",
+          "duration": 1093,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 19: Xử lý File trong Python| HowKteam",
+          "position": 19,
+          "youtubeVideoId": "6J8-jkoRBXw",
+          "duration": 1415,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 20: Iteration trong Python| HowKteam",
+          "position": 20,
+          "youtubeVideoId": "GSUwh958k_A",
+          "duration": 1256,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 21: Hàm xuất trong Python| HowKteam",
+          "position": 21,
+          "youtubeVideoId": "rhOyCSIf1is",
+          "duration": 1332,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 22: Hàm nhập trong Python| HowKteam",
+          "position": 22,
+          "youtubeVideoId": "rK4MphZVhDM",
+          "duration": 1001,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 23: Kiểu Boolean trong python| HowKteam",
+          "position": 23,
+          "youtubeVideoId": "iB9EhSZvfFk",
+          "duration": 1570,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 24: Cấu trúc rẽ nhánh trong Python| HowKteam",
+          "position": 24,
+          "youtubeVideoId": "4_Jb1xZsDJ8",
+          "duration": 1374,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 25: While Loop trong Python| HowKteam",
+          "position": 25,
+          "youtubeVideoId": "wq7Th3nXyCQ",
+          "duration": 1116,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 26: For Loop trong Python - Phần 1| HowKteam",
+          "position": 26,
+          "youtubeVideoId": "9TxJ71NNO64",
+          "duration": 2291,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 27: For Loop trong Python - Phần 2| HowKteam",
+          "position": 27,
+          "youtubeVideoId": "LwC0n2A6QRQ",
+          "duration": 2067,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 28: Function trong python - Sơ lược về hàm| HowKteam",
+          "position": 28,
+          "youtubeVideoId": "a6FnNvt3Fw4",
+          "duration": 1379,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 29: Function trong python - Positional| HowKteam",
+          "position": 29,
+          "youtubeVideoId": "M77p3PB-qzM",
+          "duration": 661,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 30: Function trong Python - Packing và unpacking | HowKteam",
+          "position": 30,
+          "youtubeVideoId": "0Gf5MVTWuCY",
+          "duration": 850,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 31: Function trong Python - Locals và globals| HowKteam",
+          "position": 31,
+          "youtubeVideoId": "w7qnt6iIakM",
+          "duration": 805,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 32: Function trong Python - Return| HowKteam",
+          "position": 32,
+          "youtubeVideoId": "3bdMH8z50zE",
+          "duration": 422,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 33: Function trong Python - Yield| HowKteam",
+          "position": 33,
+          "youtubeVideoId": "aChGfj5h3UQ",
+          "duration": 847,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 34: Function trong Python - Lambda| HowKteam",
+          "position": 34,
+          "youtubeVideoId": "7YTL1u5Ja5A",
+          "duration": 916,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 35: Function trong Python - Functional tools| HowKteam",
+          "position": 35,
+          "youtubeVideoId": "W5Xvw_2WPeg",
+          "duration": 719,
+          "transcript": "",
+          "mindMapUrl": null
+        },
+        {
+          "title": "[Khóa học lập trình Python cơ bản] - Bài 36: Function trong Python - Đệ Quy| HowKteam",
+          "position": 36,
+          "youtubeVideoId": "AFNMgGmWcdQ",
+          "duration": 609,
+          "transcript": "",
+          "mindMapUrl": null
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "source_url": "https://www.youtube.com/watch?v=NZj6LI5a9vc&list=PL33lvabfss1xczCv2BA0SaNJHu_VXsFtg",
+    "channel": "K team",
+    "total_videos": 36
+  }
+}
