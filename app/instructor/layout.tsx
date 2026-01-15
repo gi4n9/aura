@@ -10,8 +10,8 @@ export default async function InstructorLayout({ children }: { children: React.R
 
   if (!user) return redirect("/login");
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-  
+  const dbUser = await prisma.profile.findUnique({ where: { id: user.id } });
+
   if (!dbUser || (dbUser.role !== "INSTRUCTOR" && dbUser.role !== "ADMIN")) {
     return redirect("/");
   }

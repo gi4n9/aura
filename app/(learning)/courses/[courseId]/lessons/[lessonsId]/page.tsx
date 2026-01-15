@@ -36,10 +36,10 @@ export default async function LessonIdPage({ params }: LessonIdPageProps) {
     if (!lesson) return redirect(`/courses/${courseId}`);
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen bg-[#F9F8F4] overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-screen bg-[#F9F8F4] overflow-hidden pt-80px">
 
             {/* MAIN CONTENT (Video + Description) */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col pt-4 lg:pt-0">
                 <div className="flex-1 p-6 lg:p-10 flex flex-col overflow-y-auto custom-scrollbar">
 
                     {/* Back Button Mobile Only */}

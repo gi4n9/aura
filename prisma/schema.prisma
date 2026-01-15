@@ -26,6 +26,12 @@ enum CourseStatus {
   ARCHIVED
 }
 
+enum PublishStatus {
+  ARCHIVED
+  DRAFT
+  PUBLISHED
+}
+
 // ================= 1. IDENTITY & ACCESS =================
 
 // Profile map 1-1 với Supabase Auth User
@@ -90,11 +96,12 @@ model Course {
 }
 
 model Chapter {
-  id       String   @id @default(uuid())
+  id       String        @id @default(uuid())
   title    String
   courseId String
-  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons  Lesson[]
+  status   PublishStatus @default(DRAFT)
   position Int // Để sắp xếp thứ tự chương
 }
 

@@ -10,8 +10,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) return redirect("/login");
 
   // Check quyền trong DB
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-  
+  const dbUser = await prisma.profile.findUnique({ where: { id: user.id }, select: { role: true } });
+
   if (!dbUser || dbUser.role !== "ADMIN") {
     return redirect("/"); // Đá về trang chủ nếu không phải Admin
   }

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
-type Role = "ADMIN" | "INSTRUCTOR" | "USER";
+type Role = "ADMIN" | "INSTRUCTOR" | "STUDENT";
 
 export default function DashboardSidebar({ role }: { role: Role }) {
   const pathname = usePathname();

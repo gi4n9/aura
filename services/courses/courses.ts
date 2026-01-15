@@ -1,16 +1,28 @@
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/dist/client/components/navigation";
+import { createClient } from "@/utils/supabase/server";
 
 // 1. Lấy danh sách tất cả khóa học
 export async function getCourses() {
-  const courses = await prisma.playlist.findMany({
+  const courses = await prisma.course.findMany({
     orderBy: {
       createdAt: "desc",
     },
     include: {
-      videos: {
+      instructor: true, // Lấy thông tin giảng viên
+      organization: true, // Lấy thông tin tổ chức
+      _count: {
+        select: { chapters: true }, // Đếm số chương
+      },
+      // Lấy chương đầu tiên và bài học đầu tiên để hiển thị preview (nếu cần)
+      chapters: {
+        orderBy: { position: "asc" },
         take: 1,
-        orderBy: {
-          stt: "asc",
+        include: {
+          lessons: {
+            orderBy: { position: "asc" },
+            take: 1,
+          },
         },
       },
     },
@@ -18,18 +30,29 @@ export async function getCourses() {
   return courses;
 }
 
-// 2. Lấy thông tin chi tiết khóa học theo ID
+// 2. Lấy thông tin chi tiết khóa học theo ID (Kèm toàn bộ chương và bài học)
 export async function getCourseById(id: string) {
-  const course = await prisma.playlist.findUnique({
+  const course = await prisma.course.findUnique({
     where: { id },
     include: {
-      videos: {
+      instructor: true,
+      organization: true,
+      chapters: {
         orderBy: {
-          stt: "asc",
+          position: "asc", // Sắp xếp chương theo thứ tự
+        },
+        include: {
+          lessons: {
+            orderBy: {
+              position: "asc", // Sắp xếp bài học theo thứ tự
+            },
+          },
         },
       },
       _count: {
-        select: { videos: true },
+        select: {
+          chapters: true, // Đếm số chương
+        },
       },
     },
   });
@@ -37,9 +60,20 @@ export async function getCourseById(id: string) {
 }
 
 // 3. Lấy danh sách rút gọn cho dropdown
-export async function getCourseForSelect() {
-  return await prisma.playlist.findMany({
-    orderBy: { createdAt: "desc" },
+export async function getCourseOfInstructorForSelect() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return redirect("/login");
+
+  return await prisma.course.findMany({
+    where: {
+      instructorId: user.id,
+      status: "PUBLISHED", // Thường chỉ cho chọn khóa đã public
+    },
+    orderBy: { title: "asc" },
     select: {
       id: true,
       title: true,
@@ -50,15 +84,19 @@ export async function getCourseForSelect() {
 // 4. Tạo khóa học mới
 export async function createCourseService(data: {
   title: string;
-  description: string;
-  channel: string;
+  description?: string;
+  instructorId: string;
+  thumbnailUrl?: string;
+  price?: number;
 }) {
-  return await prisma.playlist.create({
+  return await prisma.course.create({
     data: {
       title: data.title,
-      description: data.description,
-      channel: data.channel,
-      thumbnail: "",
+      description: data.description || "",
+      instructorId: data.instructorId,
+      thumbnailUrl: data.thumbnailUrl || null,
+      price: data.price || 0,
+      status: "DRAFT",
     },
   });
 }

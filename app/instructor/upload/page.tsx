@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import UploadVideoForm from "@/app/components/UploadVideoForm";
-import { getPlaylistsForSelect } from "@/app/actions/playlist";
+import { getCourseOfInstructorForSelect } from "@/services/courses/courses";
 
 export default async function UploadPage() {
     // 1. Lấy danh sách khóa học từ Database
-    const playlists = await getPlaylistsForSelect();
+    const playlists = await getCourseOfInstructorForSelect();
 
     return (
         <div className="max-w-2xl mx-auto">

@@ -58,7 +58,7 @@ export async function login(formData: FormData) {
   let redirectUrl = "/";
 
   try {
-    const dbUser = await prisma.user.findUnique({
+    const dbUser = await prisma.profile.findUnique({
       where: { id: data.user.id },
       select: { role: true },
     });
@@ -70,7 +70,6 @@ export async function login(formData: FormData) {
     }
   } catch (e) {
     console.error("Error fetching user role:", e);
-    return { error: "Đã xảy ra lỗi khi lấy thông tin người dùng." };
   }
 
   revalidatePath("/", "layout");

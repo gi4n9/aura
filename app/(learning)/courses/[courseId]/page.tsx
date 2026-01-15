@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookOpen, Clock, CheckCircle, PlayCircle, Star, Users } from "lucide-react";
 import CourseSidebar from "@/app/components/CourseSidebar";
 import VideoPlayer from "@/app/components/VideoPlayer";
+import CourseDescription from "@/app/components/courseComponents/CourseDescription";
 
 
 // Định nghĩa params cho Next.js 15+ (Promise)
@@ -54,7 +55,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
     // Nếu có activeLesson -> Hiển thị Player + Sidebar
     if (activeLesson) {
         return (
-            <div className="min-h-screen bg-[#F9F8F4] pb-20 pt-6">
+            <div className="min-h-screen bg-[#F9F8F4] pt-24 lg:pt-24">
                 <div className="container mx-auto px-4 lg:px-6">
 
                     {/* Breadcrumb nhỏ */}
@@ -98,8 +99,8 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
         <div className="min-h-screen bg-[#F9F8F4] text-stone-900 pb-20">
 
             {/* Hero Section */}
-            <div className="bg-white border-b border-stone-200 pt-24 pb-16">
-                <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="bg-white border-b border-stone-200 pb-24 pt-20">
+                <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                     <div className="lg:col-span-7">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-100 text-stone-600 text-xs font-bold tracking-widest uppercase rounded-full mb-6 border border-stone-200">
                             {course.organization?.name || "Professional Course"}
@@ -107,9 +108,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
                         <h1 className="font-serif text-4xl md:text-6xl text-stone-900 mb-6 leading-tight">
                             {course.title}
                         </h1>
-                        <p className="text-xl text-stone-600 font-light leading-relaxed mb-8">
-                            {course.description || "Khóa học chuyên sâu giúp bạn làm chủ kiến thức từ cơ bản đến nâng cao."}
-                        </p>
+                        <CourseDescription description={course.description || "Khóa học chuyên sâu giúp bạn làm chủ kiến thức từ cơ bản đến nâng cao."} />
 
                         {/* Metadata Authors */}
                         <div className="flex items-center gap-6 pt-6 border-t border-stone-100">
@@ -142,7 +141,7 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
                     </div>
 
                     {/* Hero Card Bên Phải */}
-                    <div className="lg:col-span-5">
+                    <div className="lg:col-span-5 sticky top-24">
                         <div className="bg-white p-2 rounded-2xl border border-stone-200 shadow-xl">
                             <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-stone-900 mb-4 group cursor-pointer">
                                 <Image
