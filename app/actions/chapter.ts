@@ -105,3 +105,22 @@ export async function updateChapter(
     };
   }
 }
+
+export async function getChapterByCourseId(courseId: string) {
+  try {
+    const chapters = await prisma.chapter.findMany({
+      where: {
+        courseId: courseId,
+      },
+      orderBy: { position: "asc" },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+    return chapters;
+  } catch (error) {
+    console.log("Get Chapter Error:", error);
+    return [];
+  }
+}

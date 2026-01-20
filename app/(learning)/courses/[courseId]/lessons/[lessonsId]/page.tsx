@@ -81,7 +81,7 @@ export default async function LessonIdPage({ params }: LessonIdPageProps) {
                 </div>
             </div>
 
-            {/* SIDEBAR - Fix props ở đây */}
+            {/* SIDEBAR */}
             <div className="w-full lg:w-96 flex-shrink-0 h-auto lg:h-full border-t lg:border-t-0 bg-white z-10 lg:border-l border-stone-200">
                 <CourseSidebar
                     courseId={course.id}          // Truyền ID riêng

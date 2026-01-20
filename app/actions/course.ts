@@ -7,7 +7,6 @@ import {
   getCourseOfInstructorForSelect,
 } from "@/services/courses/courses";
 import { prisma } from "@/lib/prisma";
-import { p } from "framer-motion/client";
 
 // --- 1. TẠO KHÓA HỌC MỚI ---
 export async function createCourse(formData: FormData) {

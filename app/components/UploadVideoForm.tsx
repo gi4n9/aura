@@ -2,19 +2,25 @@
 
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, UploadCloud, CheckCircle, Video } from "lucide-react";
+import { Loader2, UploadCloud, CheckCircle, Video, List } from "lucide-react";
 import { processVideoUpload } from "../actions/process-video";
+import { getChapterByCourseId } from "../actions/chapter";
 
 // Định nghĩa kiểu dữ liệu cho props
-interface PlaylistOption {
+interface Option {
     id: string;
     title: string;
 }
 
 // Nhận thêm props playlists
-export default function UploadVideoForm({ playlists }: { playlists: PlaylistOption[] }) {
+export default function UploadVideoForm({ playlists }: { playlists: Option[] }) {
     const [file, setFile] = useState<File | null>(null);
-    const [selectedPlaylistId, setSelectedPlaylistId] = useState(""); // State lưu ID khóa học được chọn
+
+    // State quản lý chọn Course & Chapter
+    const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [chapters, setChapters] = useState<Option[]>([]);
+    const [selectedChapterId, setSelectedChapterId] = useState("");
+
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
 
@@ -26,8 +32,19 @@ export default function UploadVideoForm({ playlists }: { playlists: PlaylistOpti
             .replace(/\s+/g, "-").replace(/[^\w\-\.]/g, "").toLowerCase();
     }
 
+    const handleCourseChange = async (courseId: string) => {
+        setSelectedCourseId(courseId);
+        setSelectedChapterId(""); // Reset chapter cũ
+        setChapters([]);
+
+        if (courseId) {
+            const data = await getChapterByCourseId(courseId);
+            setChapters(data);
+        }
+    };
+
     const handleUpload = async () => {
-        if (!file || !selectedPlaylistId) { // Kiểm tra phải chọn khóa học mới cho upload
+        if (!file || !selectedCourseId || !selectedChapterId) { // Kiểm tra phải chọn khóa học và chương mới cho upload
             alert("Vui lòng chọn khóa học và video!");
             return;
         }
@@ -53,7 +70,7 @@ export default function UploadVideoForm({ playlists }: { playlists: PlaylistOpti
                 publicUrl,
                 fileName,
                 file.name.replace(".mp4", ""),
-                selectedPlaylistId // <--- Truyền ID khóa học người dùng chọn
+                selectedChapterId // <--- Truyền ID khóa học người dùng chọn
             );
 
             if (!result.success) throw new Error(result.error);
@@ -79,8 +96,8 @@ export default function UploadVideoForm({ playlists }: { playlists: PlaylistOpti
                     <Video size={16} /> Chọn khóa học
                 </label>
                 <select
-                    value={selectedPlaylistId}
-                    onChange={(e) => setSelectedPlaylistId(e.target.value)}
+                    value={selectedCourseId}
+                    onChange={(e) => handleCourseChange(e.target.value)}
                     disabled={loading}
                     className="w-full p-3 border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-[#C5A059] outline-none"
                 >
@@ -96,7 +113,34 @@ export default function UploadVideoForm({ playlists }: { playlists: PlaylistOpti
                 )}
             </div>
 
-            {/* 2. Phần chọn file (Giữ nguyên) */}
+            {/* 2. Chọn Chương */}
+            {selectedCourseId && (
+                <div className="mb-6 text-left animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                        <List size={16} /> Chọn chương học
+                    </label>
+                    <select
+                        value={selectedChapterId}
+                        onChange={(e) => setSelectedChapterId(e.target.value)}
+                        disabled={loading}
+                        className="w-full p-3 border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-[#C5A059] outline-none"
+                    >
+                        <option value="">-- Chọn chương để thêm video --</option>
+                        {chapters.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.title}
+                            </option>
+                        ))}
+                    </select>
+                    {chapters.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1">
+                            Khóa học này chưa có chương nào. Hãy tạo chương trong phần "Chỉnh sửa khóa học" trước.
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* 3. Phần chọn file */}
             {!loading ? (
                 <div className="flex flex-col items-center gap-4">
                     <input
@@ -108,7 +152,7 @@ export default function UploadVideoForm({ playlists }: { playlists: PlaylistOpti
                     <button
                         onClick={handleUpload}
                         // Disable nút nếu chưa chọn file HOẶC chưa chọn khóa học
-                        disabled={!file || !selectedPlaylistId}
+                        disabled={!file || !selectedCourseId || !selectedChapterId}
                         className="bg-[#1a1a1a] text-white px-6 py-2 rounded-lg hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 w-full justify-center"
                     >
                         <UploadCloud size={20} /> Bắt đầu Upload
