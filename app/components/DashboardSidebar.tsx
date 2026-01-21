@@ -22,6 +22,8 @@ export default function DashboardSidebar({ role }: { role: Role }) {
     { name: "Tổng quan", href: "/admin", icon: LayoutDashboard },
     { name: "Quản lý Users", href: "/admin/users", icon: Users },
     { name: "Cài đặt", href: "/admin/settings", icon: Settings },
+    { name: "Thông tin quản trị", href: "/admin/profile", icon: Users },
+
   ];
 
   // Menu cho Instructor
@@ -29,6 +31,7 @@ export default function DashboardSidebar({ role }: { role: Role }) {
     { name: "Thống kê", href: "/instructor", icon: LayoutDashboard },
     { name: "Kho bài giảng", href: "/instructor/courses", icon: Video },
     { name: "Upload Video", href: "/instructor/upload", icon: UploadCloud },
+    { name: "Thông tin cá nhân", href: "/instructor/profile", icon: Users }
   ];
 
   const links = role === "ADMIN" ? adminLinks : instructorLinks;

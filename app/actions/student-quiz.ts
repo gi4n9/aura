@@ -56,7 +56,6 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         answerText: ans.selectedOption,
         score: isCorrect ? 1 : 0,
         feedback: isCorrect ? "Chính xác" : "Sai",
-        // createdAt sẽ tự động được thêm bởi DB
       });
     }
 

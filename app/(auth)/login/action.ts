@@ -14,7 +14,6 @@ export async function signup(formData: FormData) {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  // Lấy tên để gửi sang metadata cho Trigger bắt được
   const name = (formData.get("name") as string) || email.split("@")[0];
 
   const { error } = await supabase.auth.signUp({

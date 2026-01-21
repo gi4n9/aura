@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut } from "lucide-react";
+import { Menu, X, Search, LogOut, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -20,26 +23,33 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
   };
 
   const paddingClass = isScrolled ? "py-2" : "py-4";
-
   const bgClass = (isScrolled || isMenuOpen)
     ? "bg-[#F9F8F4] shadow-sm border-b border-stone-200"
     : "bg-transparent border-b border-transparent";
-
   const menuTopPosition = isScrolled ? "top-[50px]" : "top-[64px]";
+  const userInitial = user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
     <>
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${bgClass} ${paddingClass}`}
-      >
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${bgClass} ${paddingClass}`}>
         <div className="container mx-auto px-6 flex justify-between items-center relative z-50">
 
-          {/* --- LOGO --- */}
+          {/* LOGO */}
           <Link href="/" className="flex items-center gap-2 group" onClick={() => setIsMenuOpen(false)}>
             <div className="w-8 h-8 bg-nobel-gold rounded-full flex items-center justify-center text-white font-serif font-bold text-base shadow-sm group-hover:bg-nobel-dark transition-colors">
               α
@@ -49,7 +59,7 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* --- DESKTOP NAV --- */}
+          {/* DESKTOP NAV */}
           <nav className="hidden md:flex items-center gap-2">
             {[
               { label: "Khóa học", href: "/courses" },
@@ -57,38 +67,61 @@ export default function Header() {
               { label: "Về chúng tôi", href: "/about" },
               { label: "Liên hệ", href: "/contact" },
             ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-4 py-2 rounded-full text-[11px] lg:text-xs font-bold tracking-[0.15em] uppercase text-stone-500 transition-all duration-300 hover:bg-stone-700 hover:text-white hover:shadow-md"
-              >
+              <Link key={link.href} href={link.href} className="px-4 py-2 rounded-full text-[11px] lg:text-xs font-bold tracking-[0.15em] uppercase text-stone-500 transition-all duration-300 hover:bg-stone-700 hover:text-white hover:shadow-md">
                 {link.label}
               </Link>
             ))}
           </nav>
 
-          {/* --- AUTH & SEARCH --- */}
+          {/* AUTH & SEARCH */}
           <div className="hidden md:flex items-center gap-4">
             <button className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200">
               <Search size={18} />
             </button>
 
             {user ? (
-              <div className="flex items-center gap-3 pl-4 border-l border-stone-200 h-8">
-                <div className="flex items-center gap-2">
+              <div className="relative" ref={dropdownRef}>
+                {/* AVATAR BUTTON */}
+                <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 pl-4 border-l border-stone-200 focus:outline-none">
                   <div className="text-right hidden xl:block">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Account</p>
                   </div>
-                  {/* --- NEW AVATAR STYLE --- */}
-                  <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-serif font-bold text-sm border border-[#C5A059] shadow-sm">
-                    {user.email?.charAt(0).toUpperCase()}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-serif font-bold text-sm border shadow-sm transition-all ${isDropdownOpen ? 'bg-nobel-dark border-nobel-dark scale-105' : 'bg-[#1a1a1a] border-[#C5A059]'}`}>
+                    {userInitial}
                   </div>
-                </div>
-                <form action={signOut}>
-                  <button className="p-1.5 text-stone-400 hover:text-red-600 transition-colors" title="Đăng xuất">
-                    <LogOut size={16} />
-                  </button>
-                </form>
+                </button>
+
+                {/* DROPDOWN MENU (CHỈ DÀNH CHO USER) */}
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 mt-3 w-60 bg-white rounded-xl shadow-xl border border-stone-100 overflow-hidden"
+                    >
+                      <div className="p-4 bg-[#F9F8F4] border-b border-stone-100">
+                        <p className="font-bold text-stone-800 truncate text-sm">{user.email}</p>
+                        <p className="text-xs text-stone-500 font-serif italic">Học viên</p>
+                      </div>
+
+                      <div className="p-2 flex flex-col gap-1">
+                        <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
+                          <UserIcon size={16} /> Hồ sơ học tập
+                        </Link>
+                      </div>
+
+                      <div className="p-2 border-t border-stone-100">
+                        <form action={signOut}>
+                          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-stone-400 hover:bg-stone-100 hover:text-stone-800 transition-colors">
+                            <LogOut size={16} /> Đăng xuất
+                          </button>
+                        </form>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <div className="flex items-center gap-3">
@@ -102,49 +135,26 @@ export default function Header() {
             )}
           </div>
 
-          {/* --- MOBILE TOGGLE --- */}
-          <button
-            className="md:hidden text-nobel-dark p-2 rounded-md hover:bg-stone-100 transition-colors relative z-50"
-            onClick={toggleMenu}
-          >
+          {/* MOBILE TOGGLE */}
+          <button className="md:hidden text-nobel-dark p-2 rounded-md hover:bg-stone-100 transition-colors relative z-50" onClick={toggleMenu}>
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </header>
 
-      {/* --- MOBILE MENU --- */}
+      {/* MOBILE MENU */}
       <AnimatePresence>
         {isMenuOpen && (
           <div className={`fixed inset-0 z-40 md:hidden ${menuTopPosition}`}>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setIsMenuOpen(false)}
-            />
-
-            <motion.div
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              className="relative bg-[#F9F8F4] border-t border-stone-200 shadow-xl p-6 flex flex-col gap-2 h-auto max-h-[80vh] overflow-y-auto rounded-b-2xl"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="relative bg-[#F9F8F4] border-t border-stone-200 shadow-xl p-6 flex flex-col gap-2 h-auto max-h-[80vh] overflow-y-auto rounded-b-2xl">
               {[
                 { label: "Khóa học", href: "/courses" },
                 { label: "Danh mục", href: "/categories" },
                 { label: "Về chúng tôi", href: "/about" },
                 { label: "Liên hệ", href: "/contact" },
               ].map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-stone-800 font-serif text-xl font-medium hover:text-nobel-gold border-b border-stone-100 py-3 block"
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link key={link.href} href={link.href} className="text-stone-800 font-serif text-xl font-medium hover:text-nobel-gold border-b border-stone-100 py-3 block" onClick={() => setIsMenuOpen(false)}>
                   {link.label}
                 </Link>
               ))}
@@ -153,11 +163,13 @@ export default function Header() {
                 {user ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-stone-100">
-                      {/* --- NEW MOBILE AVATAR STYLE --- */}
                       <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-serif font-bold text-base border border-[#C5A059]">
-                        {user.email?.charAt(0).toUpperCase()}
+                        {userInitial}
                       </div>
-                      <span className="font-medium text-nobel-dark text-sm truncate">{user.email}</span>
+                      <div className="overflow-hidden">
+                        <p className="font-medium text-nobel-dark text-sm truncate">{user.email}</p>
+                        <Link href="/profile" className="text-xs text-[#C5A059] hover:underline block">Hồ sơ cá nhân</Link>
+                      </div>
                     </div>
                     <form action={signOut} className="w-full">
                       <button className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
@@ -167,20 +179,7 @@ export default function Header() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    <Link
-                      href="/login"
-                      className="w-full py-3 text-center text-stone-600 font-bold uppercase text-[10px] tracking-wider border border-stone-300 rounded-lg hover:bg-stone-50"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Đăng nhập
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="w-full py-3 text-center bg-nobel-dark text-white font-bold uppercase text-[10px] tracking-wider rounded-lg shadow-md hover:bg-stone-800"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Đăng ký miễn phí
-                    </Link>
+                    {/* Login/Register Links... */}
                   </div>
                 )}
               </div>
