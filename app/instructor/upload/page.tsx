@@ -1,7 +1,7 @@
 // Hàm vừa viết ở bước 1
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import UploadVideoForm from "@/app/components/UploadVideoForm";
+import UploadVideoForm from "@/app/components/courseComponents/UploadVideoForm";
 import { getCourseOfInstructorForSelect } from "@/services/courses/courses";
 
 export default async function UploadPage() {

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2, UploadCloud, CheckCircle, Video, List } from "lucide-react";
-import { processVideoUpload } from "../actions/process-video";
-import { getChapterByCourseId } from "../actions/chapter";
+import { processVideoUpload } from "../../actions/process-video";
+import { getChapterByCourseId } from "../../actions/chapter";
+import { useRouter } from "next/navigation";
 
 // Định nghĩa kiểu dữ liệu cho props
 interface Option {
@@ -14,6 +15,7 @@ interface Option {
 
 // Nhận thêm props playlists
 export default function UploadVideoForm({ playlists }: { playlists: Option[] }) {
+    const router = useRouter();
     const [file, setFile] = useState<File | null>(null);
 
     // State quản lý chọn Course & Chapter
@@ -70,14 +72,16 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
                 publicUrl,
                 fileName,
                 file.name.replace(".mp4", ""),
-                selectedChapterId // <--- Truyền ID khóa học người dùng chọn
+                selectedChapterId
             );
 
             if (!result.success) throw new Error(result.error);
 
             setStatus("Thành công! Video đã được thêm vào khóa học.");
+            if (result.lessonId) {
+                router.push(`/instructor/lesson/${result.lessonId}`)
+            }
             setFile(null);
-            // setSelectedPlaylistId(""); // Có thể reset hoặc giữ nguyên để up tiếp bài 2
 
         } catch (err: any) {
             console.error(err);

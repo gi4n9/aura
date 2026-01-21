@@ -143,7 +143,9 @@ model Question {
   // Cho AI
   aiExplanation String? // Giải thích của AI cho đáp án đúng/gợi ý chấm điểm
 
+  isArchived  Boolean      @default(false)
   submissions Submission[]
+  createdAt   DateTime     @default(now())
 }
 
 // ================= 3. LEARNING & INTERACTION =================

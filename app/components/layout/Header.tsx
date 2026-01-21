@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "../AuthProvider";
 import { Menu, X, Search, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";

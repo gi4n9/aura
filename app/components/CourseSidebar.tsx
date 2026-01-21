@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { Play, ChevronDown } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 // --- 1. SỬA TYPE DEFINITION Ở ĐÂY ---
 type LessonItem = {
@@ -31,6 +32,7 @@ export default function CourseSidebar({
   currentVideoId: string;
 }) {
   const activeRef = useRef<HTMLAnchorElement>(null);
+  const pathName = usePathname();
 
   useEffect(() => {
     if (activeRef.current) {
@@ -72,17 +74,16 @@ export default function CourseSidebar({
               {chapter.lessons.map((lesson) => {
                 // --- 2. XỬ LÝ FALLBACK KHI VIDEO ID LÀ NULL ---
                 const videoId = lesson.youtubeVideoId || "";
-                const isActive = videoId === currentVideoId;
+                const isActive = pathName?.includes(lesson.id);
 
                 return (
                   <Link
                     key={lesson.id}
-                    // Dùng biến videoId đã xử lý fallback
-                    href={`/courses/${courseId}?videoId=${videoId}`}
+                    href={`/courses/${courseId}/lessons/${lesson.id}`}
                     ref={isActive ? activeRef : null}
                     className={`flex gap-3 p-3 rounded-lg transition-all cursor-pointer group border ${isActive
-                        ? "bg-[#F9F8F4] border-[#C5A059]/30 shadow-sm"
-                        : "bg-transparent border-transparent hover:bg-stone-50"
+                      ? "bg-[#F9F8F4] border-[#C5A059]/30 shadow-sm"
+                      : "bg-transparent border-transparent hover:bg-stone-50"
                       }`}
                   >
                     {/* Thumbnail Area */}

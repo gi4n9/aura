@@ -3,20 +3,14 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Clock, CheckCircle, PlayCircle, Star, Users } from "lucide-react";
-import CourseSidebar from "@/app/components/CourseSidebar";
-import VideoPlayer from "@/app/components/VideoPlayer";
 import CourseDescription from "@/app/components/courseComponents/CourseDescription";
 
-
-// Định nghĩa params cho Next.js 15+ (Promise)
 interface PageProps {
     params: Promise<{ courseId: string }>;
-    searchParams: Promise<{ videoId?: string }>;
 }
 
-export default async function CoursePage({ params, searchParams }: PageProps) {
+export default async function CoursePage({ params }: PageProps) {
     const { courseId } = await params;
-    const { videoId } = await searchParams; // Lấy videoId từ URL (?videoId=...)
 
     // 1. Fetch dữ liệu khóa học
     const course = await prisma.course.findUnique({
@@ -38,63 +32,10 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
     // Tìm bài học đầu tiên (để nút "Bắt đầu học" biết trỏ đi đâu)
     const firstLesson = course.chapters[0]?.lessons[0];
 
-    // Xác định bài học đang active (nếu có videoId trên URL)
-    let activeLesson = null;
-    if (videoId) {
-        // Tìm trong toàn bộ các chương xem bài nào có videoId trùng khớp
-        for (const chapter of course.chapters) {
-            const found = chapter.lessons.find(l => l.youtubeVideoId === videoId);
-            if (found) {
-                activeLesson = found;
-                break;
-            }
-        }
-    }
+    // --- CHẾ ĐỘ TỔNG QUAN (OVERVIEW MODE) ---
+    // Trang này bây giờ luôn hiển thị thông tin giới thiệu khóa học.
+    // Việc học sẽ diễn ra ở trang con /lessons/[id]
 
-    // --- TRƯỜNG HỢP 1: CHẾ ĐỘ HỌC (VIEWING MODE) ---
-    // Nếu có activeLesson -> Hiển thị Player + Sidebar
-    if (activeLesson) {
-        return (
-            <div className="min-h-screen bg-[#F9F8F4] pt-24 lg:pt-24">
-                <div className="container mx-auto px-4 lg:px-6">
-
-                    {/* Breadcrumb nhỏ */}
-                    <div className="mb-6 flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-stone-400">
-                        <Link href="/courses" className="hover:text-[#C5A059]">Courses</Link>
-                        <span>/</span>
-                        <Link href={`/courses/${courseId}`} className="hover:text-[#C5A059] line-clamp-1">{course.title}</Link>
-                        <span>/</span>
-                        <span className="text-[#C5A059]">Learning</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        {/* CỘT TRÁI: VIDEO PLAYER */}
-                        <div className="lg:col-span-8">
-                            <VideoPlayer
-                                videoId={activeLesson.youtubeVideoId || ""}
-                                title={activeLesson.title}
-                                description={activeLesson.transcript || "Chưa có mô tả cho bài học này."}
-                            />
-                        </div>
-
-                        {/* CỘT PHẢI: SIDEBAR */}
-                        <div className="lg:col-span-4">
-                            <div className="sticky top-6">
-                                <CourseSidebar
-                                    courseId={course.id}
-                                    chapters={course.chapters} // Truyền toàn bộ cấu trúc chapters
-                                    currentVideoId={activeLesson.youtubeVideoId || ""}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // --- TRƯỜNG HỢP 2: CHẾ ĐỘ TỔNG QUAN (OVERVIEW MODE) ---
-    // Nếu KHÔNG có videoId -> Hiển thị trang giới thiệu (Theme AlphaQubit)
     return (
         <div className="min-h-screen bg-[#F9F8F4] text-stone-900 pb-20">
 
@@ -148,10 +89,11 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
                                     src={course.thumbnailUrl || "/placeholder-course.jpg"}
                                     alt="Thumbnail" fill className="object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
                                 />
-                                {/* Nút Play to đùng */}
+                                {/* Nút Play to đùng - Link tới bài học đầu tiên */}
                                 {firstLesson && (
                                     <Link
-                                        href={`/courses/${course.id}?videoId=${firstLesson.youtubeVideoId}`}
+                                        // 👇 CẬP NHẬT LINK MỚI
+                                        href={`/courses/${course.id}/lessons/${firstLesson.id}`}
                                         className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors"
                                     >
                                         <div className="w-16 h-16 bg-[#C5A059] rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
@@ -168,7 +110,8 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
 
                                 {firstLesson ? (
                                     <Link
-                                        href={`/courses/${course.id}?videoId=${firstLesson.youtubeVideoId}`}
+                                        // 👇 CẬP NHẬT LINK MỚI
+                                        href={`/courses/${course.id}/lessons/${firstLesson.id}`}
                                         className="block w-full py-4 bg-[#1a1a1a] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#C5A059] transition-colors shadow-lg"
                                     >
                                         Vào học ngay
@@ -210,7 +153,8 @@ export default async function CoursePage({ params, searchParams }: PageProps) {
                                     {chapter.lessons.map((lesson) => (
                                         <Link
                                             key={lesson.id}
-                                            href={`/courses/${course.id}?videoId=${lesson.youtubeVideoId}`}
+                                            // 👇 CẬP NHẬT LINK MỚI CHO TỪNG BÀI HỌC
+                                            href={`/courses/${course.id}/lessons/${lesson.id}`}
                                             className="px-6 py-4 flex items-center justify-between group hover:bg-stone-50 transition-colors cursor-pointer"
                                         >
                                             <div className="flex items-center gap-4">

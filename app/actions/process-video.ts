@@ -9,11 +9,11 @@ import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
 
-// 1. Cấu hình YouTube
+// --- 1. CẤU HÌNH YOUTUBE ---
 const oauth2Client = new google.auth.OAuth2(
   process.env.YOUTUBE_CLIENT_ID,
   process.env.YOUTUBE_CLIENT_SECRET,
-  "https://developers.google.com/oauthplayground"
+  "https://developers.google.com/oauthplayground",
 );
 
 oauth2Client.setCredentials({
@@ -22,110 +22,130 @@ oauth2Client.setCredentials({
 
 const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
-// 2. Cấu hình Gemini
+// --- 2. CẤU HÌNH GEMINI ---
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const fileManager = new GoogleAIFileManager(
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY!
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
 );
 
 export async function processVideoUpload(
-  videoUrl: string, // Link file tạm trên Supabase
-  filePathSupabase: string, // Đường dẫn file để xóa sau khi xong
+  videoUrl: string, // URL Public để tải video về
+  filePathSupabase: string, // Đường dẫn file (Path) trong bucket để xóa
   title: string,
-  chapterId: string // ID của Chapter
+  chapterId: string,
 ) {
   let tempFilePath = "";
   let youtubeId = "";
+  let geminiFileName = "";
 
   try {
-    console.log(`🚀 Bắt đầu xử lý: ${title}`);
+    console.log(`🚀 [START] Bắt đầu xử lý: ${title}`);
 
-    // --- BƯỚC A: Tải video từ Supabase về server ---
+    // =========================================================
+    // BƯỚC 1: TẢI VIDEO TỪ SUPABASE VỀ SERVER TRUNG GIAN
+    // =========================================================
     const response = await fetch(videoUrl);
-    if (!response.ok) throw new Error("Không thể tải video từ Supabase");
+    if (!response.ok) throw new Error("Không thể tải video từ Supabase.");
 
     const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(await blob.arrayBuffer());
 
-    // Tạo thư mục tạm
+    // Tạo thư mục tạm nếu chưa có
     const tempDir = path.join(process.cwd(), "tmp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    tempFilePath = path.join(tempDir, `${Date.now()}_video.mp4`);
+    // Lưu file với timestamp để tránh trùng tên
+    tempFilePath = path.join(
+      tempDir,
+      `${Date.now()}_${path.basename(filePathSupabase)}`,
+    );
     fs.writeFileSync(tempFilePath, buffer);
-    console.log("💾 Đã lưu file tạm trên server.");
+    console.log("💾 Đã lưu file tạm thành công.");
 
-    // --- BƯỚC B: Upload lên YouTube ---
-    console.log("🎥 Đang đẩy lên YouTube...");
+    // =========================================================
+    // BƯỚC 2: UPLOAD LÊN YOUTUBE
+    // =========================================================
+    console.log("🎥 Đang upload lên YouTube...");
 
-    try {
-      const stream = Readable.from(buffer);
-      const ytRes = await youtube.videos.insert({
-        part: ["snippet", "status"],
-        requestBody: {
-          snippet: {
-            title: title,
-            description: "Bài giảng được upload tự động bởi Aura LMS.",
-          },
-          status: { privacyStatus: "unlisted" }, // Video không công khai
+    // Tạo stream từ buffer để upload
+    const stream = Readable.from(buffer);
+
+    const ytRes = await youtube.videos.insert({
+      part: ["snippet", "status"],
+      requestBody: {
+        snippet: {
+          title: title,
+          description: "Video bài giảng thuộc hệ thống Aura LMS.",
         },
-        media: { body: stream },
-      });
+        status: { privacyStatus: "unlisted" }, // Không công khai
+      },
+      media: { body: stream },
+    });
 
-      if (ytRes.data.id) {
-        youtubeId = ytRes.data.id;
-        console.log(`✅ Upload YouTube thành công! ID: ${youtubeId}`);
-      } else {
-        throw new Error("Không nhận được Video ID từ YouTube.");
-      }
-    } catch (ytError: any) {
-      console.error("❌ Lỗi YouTube API:", ytError.message);
-      throw new Error("Lỗi xác thực YouTube. Kiểm tra lại Refresh Token.");
+    if (ytRes.data.id) {
+      youtubeId = ytRes.data.id;
+      console.log(`✅ YouTube Upload OK. ID: ${youtubeId}`);
+    } else {
+      throw new Error("Không nhận được YouTube Video ID.");
     }
 
-    // --- BƯỚC C: Gửi cho Gemini phân tích ---
-    console.log("🧠 Đang gửi cho AI phân tích...");
+    // =========================================================
+    // BƯỚC 3: GỬI GEMINI PHÂN TÍCH & TẠO QUIZ
+    // =========================================================
+    console.log("🧠 Đang gửi video cho Gemini...");
+
     const uploadResult = await fileManager.uploadFile(tempFilePath, {
       mimeType: "video/mp4",
       displayName: title,
     });
+    geminiFileName = uploadResult.file.name;
 
-    // Polling đợi xử lý
-    let file = await fileManager.getFile(uploadResult.file.name);
+    // Polling trạng thái xử lý của Gemini
+    let file = await fileManager.getFile(geminiFileName);
     while (file.state === "PROCESSING") {
+      console.log("... Đang đợi Gemini xử lý video ...");
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      file = await fileManager.getFile(uploadResult.file.name);
+      file = await fileManager.getFile(geminiFileName);
     }
 
     if (file.state === "FAILED") {
-      throw new Error("Gemini không đọc được video này (State: FAILED).");
+      throw new Error("Gemini xử lý video thất bại.");
     }
 
-    // Prompt
+    // Cấu hình Model & Prompt
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
         maxOutputTokens: 8192,
         temperature: 0.7,
+        responseMimeType: "application/json",
       },
     });
+
     const prompt = `
-      Bạn là chuyên gia giáo dục. Hãy xem video này và trả về kết quả dưới dạng JSON THUẦN TÚY.
+      Bạn là chuyên gia giáo dục. Hãy phân tích video và tạo 10 câu hỏi trắc nghiệm bằng TIẾNG VIỆT.
+
       YÊU CẦU QUAN TRỌNG:
-      1. Tạo từ 10 đến 20 CÂU HỎI trắc nghiệm chất lượng nhất, tập trung vào trọng tâm bài giảng.
-      2. OUTPUT FORMAT: Chỉ trả về JSON thuần túy. Không dùng Markdown. Không viết lời mở đầu.
-      Cấu trúc JSON bắt buộc:
+      1. **Explanation:** BẮT BUỘC mỗi câu hỏi phải có trường "explanation" giải thích tại sao đáp án đó đúng.
+      2. **Format:** Tuyệt đối không dùng Markdown, không dùng backtick (\`).
+      3. **Options:** Mảng chuỗi thuần túy, KHÔNG có prefix như "A.", "1.".
+      4. **Answer:** Chỉ chứa ký tự "A", "B", "C", hoặc "D" (tương ứng index 0, 1, 2, 3).
+
+      CẤU TRÚC JSON OUTPUT:
       {
-        "transcript": "Tóm tắt chi tiết nội dung lời giảng...",
+        "transcript": "Tóm tắt nội dung bài giảng khoảng 300 từ...",
         "quiz": [
-          {"question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "answer": "A"}
-        ],
-        "mindmap": ["Ý chính 1", "Ý chính 2", "Ý chính 3"]
+          {
+            "question": "Nội dung câu hỏi?",
+            "options": ["Đáp án 1", "Đáp án 2", "Đáp án 3", "Đáp án 4"], 
+            "answer": "A", 
+            "explanation": "Đáp án A đúng vì trong video diễn giả đã đề cập đến..."
+          }
+        ]
       }
-      Lưu ý: Không thêm markdown, không thêm lời dẫn, chỉ trả về JSON.
     `;
-    console.log("⏳ AI đang soạn 10-20 câu hỏi...");
+
+    console.log("⏳ Gemini đang soạn câu hỏi...");
     const result = await model.generateContent([
       {
         fileData: {
@@ -138,86 +158,91 @@ export async function processVideoUpload(
 
     const aiText = result.response.text();
 
-    // Parse JSON an toàn
-    const startIndex = aiText.indexOf("{");
-    const endIndex = aiText.lastIndexOf("}");
-    if (startIndex === -1 || endIndex === -1)
-      throw new Error("AI không trả về đúng JSON.");
-
-    const cleanJson = aiText.substring(startIndex, endIndex + 1);
+    // Xử lý JSON an toàn (Clean Markdown nếu lỡ có)
+    const jsonString = aiText
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
     let aiData;
+
     try {
-      aiData = JSON.parse(cleanJson);
+      aiData = JSON.parse(jsonString);
     } catch (e) {
-      throw new Error("Lỗi parse JSON từ AI.");
+      console.error("Raw AI Text:", aiText);
+      throw new Error("Lỗi định dạng JSON từ AI.");
     }
 
-    console.log("✨ AI đã phân tích xong!");
+    console.log(`✨ AI đã tạo xong ${aiData.quiz?.length || 0} câu hỏi.`);
 
-    // --- BƯỚC D: Lưu vào Database (Theo Schema Mới) ---
-    // Validate chapterId
-    console.log("Kiểm tra chapter ID:", chapterId);
-
+    // =========================================================
+    // BƯỚC 4: LƯU VÀO DATABASE
+    // =========================================================
     const existingChapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
     });
+    if (!existingChapter) throw new Error("Chapter không tồn tại.");
 
-    if (!existingChapter) {
-      throw new Error(`Chapter ${chapterId} không tồn tại trong hệ thống.`);
-    }
-
-    // 1. Tính toán vị trí (position) trong Lesson
+    // Tính vị trí bài học
     const lastLesson = await prisma.lesson.findFirst({
       where: { chapterId: chapterId },
       orderBy: { position: "desc" },
     });
     const newPosition = lastLesson ? lastLesson.position + 1 : 1;
 
-    // 2. Tạo Lesson và Questions cùng lúc (Nested Write)
+    // Lưu Lesson + Questions (Transaction ngầm định của Prisma)
     const lesson = await prisma.lesson.create({
       data: {
         title: title,
         chapterId: chapterId,
         position: newPosition,
-
-        // Map đúng trường trong Schema
         youtubeVideoId: youtubeId,
-
-        // Map transcript
         transcript: aiData.transcript,
-
-        // Lưu ý: Schema Lesson không có trường status, status nằm ở Chapter
-        // status: "PUBLISHED", <--- Đã xóa dòng này
-
-        // Tạo các câu hỏi trắc nghiệm vào bảng Question
         questions: {
           create: aiData.quiz.map((q: any) => ({
             content: q.question,
-            options: q.options, // Lưu mảng options dưới dạng Json [cite: 16]
-            correctAnswer: q.answer, // [cite: 17]
-            type: "MULTIPLE_CHOICE", // Enum QuestionType [cite: 15]
-            aiExplanation: "Được tạo tự động bởi AI", // [cite: 18]
+            options: q.options,
+            correctAnswer: q.answer,
+            type: "MULTIPLE_CHOICE",
+            aiExplanation: q.explanation || "Chưa có giải thích.",
           })),
         },
       },
     });
 
-    // --- BƯỚC E: Dọn dẹp ---
-    if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-    await fileManager.deleteFile(uploadResult.file.name);
-
-    const supabase = await createClient();
-    await supabase.storage.from("videos").remove([filePathSupabase]);
-
     return {
       success: true,
       lessonId: lesson.id,
-      message: "Quy trình hoàn tất thành công.",
+      message: "Xử lý thành công!",
     };
   } catch (error: any) {
-    console.error("❌ Lỗi quy trình:", error);
-    if (tempFilePath && fs.existsSync(tempFilePath))
-      fs.unlinkSync(tempFilePath);
+    console.error("❌ LỖI PROCESS VIDEO:", error.message);
     return { success: false, error: error.message };
+  } finally {
+    try {
+      // 1. Xóa file tạm trên server (tmp folder)
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+        console.log("🧹 Đã xóa file tạm local.");
+      }
+
+      // 2. Xóa file trên Gemini File Manager
+      if (geminiFileName) {
+        await fileManager.deleteFile(geminiFileName);
+        console.log("🧹 Đã xóa file trên Gemini.");
+      }
+
+      // 3. Xóa file gốc trên Supabase (Dùng filePathSupabase chuẩn)
+      if (filePathSupabase) {
+        const supabase = await createClient();
+        const { error: delErr } = await supabase.storage
+          .from("videos")
+          .remove([filePathSupabase]); // Phải truyền mảng chứa path
+
+        if (delErr) console.error("⚠️ Lỗi xóa Supabase:", delErr.message);
+        else console.log("🧹 Đã xóa file trên Supabase.");
+      }
+    } catch (cleanupError) {
+      console.error("⚠️ Lỗi trong quá trình dọn dẹp:", cleanupError);
+    }
   }
 }

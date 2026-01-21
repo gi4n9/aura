@@ -1,19 +1,19 @@
-import CourseSidebar from "@/app/components/CourseSidebar";
-import VideoPlayer from "@/app/components/VideoPlayer";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import LessonLayout from "@/app/components/lesson/LessonLayout";
 
-interface LessonIdPageProps {
+
+interface LessonPageProps {
     params: Promise<{
         courseId: string;
-        lessonId: string;
+        lessonsId: string;
     }>;
 }
 
-export default async function LessonIdPage({ params }: LessonIdPageProps) {
-    const { courseId, lessonId } = await params;
+export default async function LessonIdPage({ params }: LessonPageProps) {
+    const { courseId, lessonsId } = await params;
 
-    // 1. Fetch Course & Chapters & Lessons (Để render Sidebar)
+    // 1. Fetch Course & Chapters (Cho Sidebar)
     const course = await prisma.course.findUnique({
         where: { id: courseId },
         include: {
@@ -28,68 +28,38 @@ export default async function LessonIdPage({ params }: LessonIdPageProps) {
 
     if (!course) return redirect("/courses");
 
-    // 2. Fetch Lesson hiện tại
+    const serializedCourse = {
+        ...course,
+        price: course.price ? Number(course.price) : 0, // Ép kiểu Decimal -> Number
+        // Nếu có các trường Decimal khác (như rating), bạn cũng phải ép kiểu tương tự
+    };
+
+    // 2. Fetch Lesson & Questions (Cho Content)
     const lesson = await prisma.lesson.findUnique({
-        where: { id: lessonId },
+        where: { id: lessonsId },
+        include: {
+            questions: {
+                where: { isArchived: false },
+                orderBy: { createdAt: "asc" }
+            }
+        }
     });
 
     if (!lesson) return redirect(`/courses/${courseId}`);
 
+    // 3. Format Questions
+    const formattedQuestions = lesson.questions.map((q) => ({
+        id: q.id,
+        content: q.content,
+        options: q.options as string[],
+    }));
+
+    // 4. Render Layout Client
     return (
-        <div className="flex flex-col lg:flex-row h-screen bg-[#F9F8F4] overflow-hidden pt-80px">
-
-            {/* MAIN CONTENT (Video + Description) */}
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col pt-4 lg:pt-0">
-                <div className="flex-1 p-6 lg:p-10 flex flex-col overflow-y-auto custom-scrollbar">
-
-                    {/* Back Button Mobile Only */}
-                    <div className="lg:hidden mb-4">
-                        <a href={`/courses/${courseId}`} className="text-sm font-bold text-stone-500 hover:text-[#C5A059]">
-                            ← Back to Course
-                        </a>
-                    </div>
-
-                    <div className="max-w-5xl mx-auto w-full">
-                        <VideoPlayer
-                            videoId={lesson.youtubeVideoId || ""}
-                            title={lesson.title}
-                            description={lesson.transcript || ""}
-                        />
-
-                        {/* Lesson Info */}
-                        <div className="mt-8 pb-20">
-                            <div className="flex items-center justify-between mb-4">
-                                <h1 className="font-serif text-2xl md:text-3xl text-stone-900 leading-tight">
-                                    {lesson.title}
-                                </h1>
-                            </div>
-                            <div className="w-16 h-1 bg-[#C5A059] mb-6"></div>
-
-                            {/* Transcript / Content Area */}
-                            <div className="prose prose-stone max-w-none">
-                                <h3 className="font-serif text-lg mb-2 text-stone-800">Transcript & Notes</h3>
-                                <div className="p-6 bg-white border border-stone-200 rounded-xl text-stone-600 leading-relaxed shadow-sm text-sm">
-                                    {lesson.transcript ? (
-                                        <p className="whitespace-pre-line">{lesson.transcript}</p>
-                                    ) : (
-                                        <p className="italic text-stone-400">No transcript available for this lesson.</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* SIDEBAR */}
-            <div className="w-full lg:w-96 flex-shrink-0 h-auto lg:h-full border-t lg:border-t-0 bg-white z-10 lg:border-l border-stone-200">
-                <CourseSidebar
-                    courseId={course.id}          // Truyền ID riêng
-                    chapters={course.chapters}    // Truyền danh sách chương
-                    currentVideoId={lesson.youtubeVideoId || ""} // Truyền ID video để highlight
-                />
-            </div>
-
-        </div>
+        <LessonLayout
+            course={serializedCourse}
+            lesson={lesson}
+            formattedQuestions={formattedQuestions}
+        />
     );
 }
