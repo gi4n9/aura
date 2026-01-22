@@ -3,8 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
-import Header from "./components/layout/Header";
-import Footer from "./components/layout/Footer";
+import NextTopLoader from 'nextjs-toploader';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,6 +24,17 @@ export default async function RootLayout({
   return (
     <html lang="vi">
       <body className={inter.className}>
+        <NextTopLoader
+          color="#C5A059" // Màu vàng gold của Aura
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+          shadow="0 0 10px #C5A059,0 0 5px #C5A059"
+        />
         <AuthProvider initialUser={user}>
           {children}
         </AuthProvider>

@@ -2,12 +2,23 @@
 
 import { google } from "googleapis";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GoogleAIFileManager } from "@google/generative-ai/server";
+import { GoogleAIFileManager, FileState } from "@google/generative-ai/server"; // Import thêm FileState
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import fs from "fs";
 import path from "path";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegPath from "ffmpeg-static";
+import { path as ffprobePath } from "ffprobe-static";
 import { Readable } from "stream";
+
+// Ép buộc fluent-ffmpeg dùng đúng file .exe
+ffmpeg.setFfmpegPath(ffmpegPath as string);
+ffmpeg.setFfprobePath(ffprobePath);
+
+// Log ra để kiểm tra (xem console server khi chạy)
+console.log("Path FFMPEG:", ffmpegPath);
+console.log("Path FFPROBE:", ffprobePath);
 
 // --- 1. CẤU HÌNH YOUTUBE ---
 const oauth2Client = new google.auth.OAuth2(
@@ -28,9 +39,23 @@ const fileManager = new GoogleAIFileManager(
   process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
 );
 
+const getVideoDuration = (filePath: string): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    // Thêm option timeout để tránh treo
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        console.error("FFprobe Error:", err);
+        return reject(err);
+      }
+      const duration = metadata.format.duration;
+      resolve(duration || 0);
+    });
+  });
+};
+
 export async function processVideoUpload(
-  videoUrl: string, // URL Public để tải video về
-  filePathSupabase: string, // Đường dẫn file (Path) trong bucket để xóa
+  videoUrl: string,
+  filePathSupabase: string,
   title: string,
   chapterId: string,
 ) {
@@ -39,7 +64,7 @@ export async function processVideoUpload(
   let geminiFileName = "";
 
   try {
-    console.log(`🚀 [START] Bắt đầu xử lý: ${title}`);
+    console.log(`🚀 [START] Bắt đầu xử lý (Prompt Engineering Mode): ${title}`);
 
     // =========================================================
     // BƯỚC 1: TẢI VIDEO TỪ SUPABASE VỀ SERVER TRUNG GIAN
@@ -50,107 +75,148 @@ export async function processVideoUpload(
     const blob = await response.blob();
     const buffer = Buffer.from(await blob.arrayBuffer());
 
-    // Tạo thư mục tạm nếu chưa có
+    // Tạo thư mục tạm
     const tempDir = path.join(process.cwd(), "tmp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    // Lưu file với timestamp để tránh trùng tên
     tempFilePath = path.join(
       tempDir,
       `${Date.now()}_${path.basename(filePathSupabase)}`,
     );
     fs.writeFileSync(tempFilePath, buffer);
     console.log("💾 Đã lưu file tạm thành công.");
+    console.log("⏱️ Đang tính toán thời lượng video (ffmpeg)...");
+    const durationInSeconds = await getVideoDuration(tempFilePath);
+    console.log(`⏱️ Thời lượng: ${durationInSeconds} giây`);
 
     // =========================================================
-    // BƯỚC 2: UPLOAD LÊN YOUTUBE
+    // BƯỚC 2: UPLOAD LÊN YOUTUBE & GEMINI (SONG SONG)
     // =========================================================
-    console.log("🎥 Đang upload lên YouTube...");
+    console.log("⚡ Đang upload lên YouTube và Gemini...");
 
-    // Tạo stream từ buffer để upload
-    const stream = Readable.from(buffer);
-
-    const ytRes = await youtube.videos.insert({
-      part: ["snippet", "status"],
-      requestBody: {
-        snippet: {
-          title: title,
-          description: "Video bài giảng thuộc hệ thống Aura LMS.",
+    // A. Upload YouTube
+    const youtubeUploadPromise = (async () => {
+      const stream = Readable.from(buffer);
+      const ytRes = await youtube.videos.insert({
+        part: ["snippet", "status"],
+        requestBody: {
+          snippet: {
+            title: title,
+            description: "Video bài giảng thuộc hệ thống Aura LMS.",
+          },
+          status: { privacyStatus: "unlisted" },
         },
-        status: { privacyStatus: "unlisted" }, // Không công khai
-      },
-      media: { body: stream },
-    });
+        media: { body: stream },
+      });
 
-    if (ytRes.data.id) {
-      youtubeId = ytRes.data.id;
-      console.log(`✅ YouTube Upload OK. ID: ${youtubeId}`);
-    } else {
-      throw new Error("Không nhận được YouTube Video ID.");
-    }
+      if (!ytRes.data.id) throw new Error("Không nhận được YouTube Video ID.");
+      console.log(`✅ YouTube Upload OK. ID: ${ytRes.data.id}`);
+      return ytRes.data.id;
+    })();
+
+    // B. Upload Gemini
+    const geminiUploadPromise = (async () => {
+      const uploadResult = await fileManager.uploadFile(tempFilePath, {
+        mimeType: "video/mp4",
+        displayName: title,
+      });
+      const name = uploadResult.file.name;
+      console.log(`⬆️ Đã upload lên Gemini: ${name}`);
+
+      // Polling trạng thái xử lý
+      let file = await fileManager.getFile(name);
+      while (file.state === FileState.PROCESSING) {
+        console.log("... Gemini đang xử lý video ...");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        file = await fileManager.getFile(name);
+      }
+
+      if (file.state === FileState.FAILED) {
+        throw new Error("Gemini xử lý video thất bại.");
+      }
+      return file;
+    })();
+
+    // Đợi cả 2 hoàn tất
+    const [ytId, geminiFile] = await Promise.all([
+      youtubeUploadPromise,
+      geminiUploadPromise,
+    ]);
+    youtubeId = ytId;
+    geminiFileName = geminiFile.name;
+    const geminiFileUri = geminiFile.uri;
+    console.log(`🔗 Gemini URI: ${geminiFileUri}`);
 
     // =========================================================
-    // BƯỚC 3: GỬI GEMINI PHÂN TÍCH & TẠO QUIZ
+    // BƯỚC 3: GỬI GEMINI PHÂN TÍCH (VỚI PROMPT "THÉP")
     // =========================================================
-    console.log("🧠 Đang gửi video cho Gemini...");
+    console.log("🧠 Đang gửi yêu cầu phân tích Verbatim...");
 
-    const uploadResult = await fileManager.uploadFile(tempFilePath, {
-      mimeType: "video/mp4",
-      displayName: title,
-    });
-    geminiFileName = uploadResult.file.name;
-
-    // Polling trạng thái xử lý của Gemini
-    let file = await fileManager.getFile(geminiFileName);
-    while (file.state === "PROCESSING") {
-      console.log("... Đang đợi Gemini xử lý video ...");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      file = await fileManager.getFile(geminiFileName);
-    }
-
-    if (file.state === "FAILED") {
-      throw new Error("Gemini xử lý video thất bại.");
-    }
-
-    // Cấu hình Model & Prompt
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
-        maxOutputTokens: 8192,
-        temperature: 0.7,
+        maxOutputTokens: 16384, // Tăng token output vì cần transcript dài
+        temperature: 0.1, // QUAN TRỌNG: Giảm sáng tạo để chép chính tả chuẩn xác
         responseMimeType: "application/json",
       },
     });
 
+    // --- PROMPT ĐƯỢC THIẾT KẾ RIÊNG ---
     const prompt = `
-      Bạn là chuyên gia giáo dục. Hãy phân tích video và tạo 10 câu hỏi trắc nghiệm bằng TIẾNG VIỆT.
+      Bạn là một chuyên gia phân tích video giáo dục và ngôn ngữ học.
+      Nhiệm vụ của bạn là xử lý video này và trả về kết quả JSON chính xác tuyệt đối theo các yêu cầu sau:
 
-      YÊU CẦU QUAN TRỌNG:
-      1. **Explanation:** BẮT BUỘC mỗi câu hỏi phải có trường "explanation" giải thích tại sao đáp án đó đúng.
-      2. **Format:** Tuyệt đối không dùng Markdown, không dùng backtick (\`).
-      3. **Options:** Mảng chuỗi thuần túy, KHÔNG có prefix như "A.", "1.".
-      4. **Answer:** Chỉ chứa ký tự "A", "B", "C", hoặc "D" (tương ứng index 0, 1, 2, 3).
+      ### NHIỆM VỤ 1: TRANSCRIPT (QUAN TRỌNG NHẤT)
+      - Yêu cầu: **NGUYÊN VĂN (VERBATIM)**.
+      - Bạn PHẢI nghe và chép lại chính xác từng từ tiếng Việt mà người nói phát ra.
+      - **TUYỆT ĐỐI KHÔNG** tóm tắt, không lược bỏ.
+      - **KHÔNG** bỏ qua các từ đệm (như "à", "ừ", "thì", "mà"...) nếu chúng xuất hiện, để đảm bảo khớp thời gian.
+      
+      ### NHIỆM VỤ 2: TIMELINE (Mốc thời gian)
+      - Chia video thành các đoạn (chapters) dựa trên nội dung.
+      - "time": Số giây bắt đầu (số nguyên).
+      - "label": Tiêu đề ngắn gọn cho đoạn đó.
 
-      CẤU TRÚC JSON OUTPUT:
+      ### NHIỆM VỤ 3: QUIZ (10 Câu hỏi)
+      - Tạo 10 câu hỏi trắc nghiệm tiếng Việt (4 đáp án A,B,C,D).
+      - **EXPLANATION (Giải thích):** Phần giải thích PHẢI trích dẫn cụ thể lý do dựa trên Transcript hoặc hình ảnh trong video. Ví dụ: "Đúng, vì ở phút thứ 2, giảng viên đã nói rằng...".
+
+      ### NHIỆM VỤ 4: TRANSLATIONS (Dịch thuật)
+      - Dựa vào kết quả Transcript nguyên văn ở Nhiệm vụ 1, hãy dịch nó sang:
+        1. Tiếng Anh (key: "en")
+        2. Tiếng Nhật (key: "ja")
+        3. Tiếng Hàn (key: "ko")
+      - Dịch sát nghĩa, giữ nguyên ngữ cảnh giáo dục.
+
+      ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
       {
-        "transcript": "Tóm tắt nội dung bài giảng khoảng 300 từ...",
+        "transcript": "Nội dung toàn bộ văn bản tiếng Việt nguyên văn...",
+        "timeline": [
+          { "time": 0, "label": "Giới thiệu" },
+          { "time": 120, "label": "Nội dung chính" }
+        ],
         "quiz": [
           {
-            "question": "Nội dung câu hỏi?",
-            "options": ["Đáp án 1", "Đáp án 2", "Đáp án 3", "Đáp án 4"], 
+            "question": "Câu hỏi...",
+            "options": ["A", "B", "C", "D"], 
             "answer": "A", 
-            "explanation": "Đáp án A đúng vì trong video diễn giả đã đề cập đến..."
+            "explanation": "Giải thích chi tiết..."
           }
-        ]
+        ],
+        "translations": {
+            "en": "English translation...",
+            "ja": "Japanese translation...",
+            "ko": "Korean translation..."
+        }
       }
     `;
 
-    console.log("⏳ Gemini đang soạn câu hỏi...");
+    console.log("⏳ Gemini đang thực hiện 4 nhiệm vụ cùng lúc...");
     const result = await model.generateContent([
       {
         fileData: {
-          mimeType: uploadResult.file.mimeType,
-          fileUri: uploadResult.file.uri,
+          mimeType: "video/mp4",
+          fileUri: geminiFileUri,
         },
       },
       { text: prompt },
@@ -158,7 +224,7 @@ export async function processVideoUpload(
 
     const aiText = result.response.text();
 
-    // Xử lý JSON an toàn (Clean Markdown nếu lỡ có)
+    // Xử lý JSON an toàn
     const jsonString = aiText
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -172,7 +238,9 @@ export async function processVideoUpload(
       throw new Error("Lỗi định dạng JSON từ AI.");
     }
 
-    console.log(`✨ AI đã tạo xong ${aiData.quiz?.length || 0} câu hỏi.`);
+    console.log(
+      `✨ AI hoàn tất! (Transcript: ${aiData.transcript?.length} chars)`,
+    );
 
     // =========================================================
     // BƯỚC 4: LƯU VÀO DATABASE
@@ -182,21 +250,24 @@ export async function processVideoUpload(
     });
     if (!existingChapter) throw new Error("Chapter không tồn tại.");
 
-    // Tính vị trí bài học
     const lastLesson = await prisma.lesson.findFirst({
       where: { chapterId: chapterId },
       orderBy: { position: "desc" },
     });
     const newPosition = lastLesson ? lastLesson.position + 1 : 1;
 
-    // Lưu Lesson + Questions (Transaction ngầm định của Prisma)
+    // Lưu Lesson + Questions + Timeline + Translations
     const lesson = await prisma.lesson.create({
       data: {
         title: title,
         chapterId: chapterId,
         position: newPosition,
         youtubeVideoId: youtubeId,
+        duration: Math.round(durationInSeconds),
         transcript: aiData.transcript,
+        timeline: aiData.timeline, // Prisma tự convert JSON
+        translations: aiData.translations, // Prisma tự convert JSON
+
         questions: {
           create: aiData.quiz.map((q: any) => ({
             content: q.question,
@@ -212,37 +283,31 @@ export async function processVideoUpload(
     return {
       success: true,
       lessonId: lesson.id,
-      message: "Xử lý thành công!",
+      message: "Xử lý thành công toàn diện!",
     };
   } catch (error: any) {
     console.error("❌ LỖI PROCESS VIDEO:", error.message);
     return { success: false, error: error.message };
   } finally {
+    // =========================================================
+    // BƯỚC 5: DỌN DẸP TÀI NGUYÊN
+    // =========================================================
     try {
-      // 1. Xóa file tạm trên server (tmp folder)
       if (tempFilePath && fs.existsSync(tempFilePath)) {
         fs.unlinkSync(tempFilePath);
         console.log("🧹 Đã xóa file tạm local.");
       }
-
-      // 2. Xóa file trên Gemini File Manager
       if (geminiFileName) {
         await fileManager.deleteFile(geminiFileName);
         console.log("🧹 Đã xóa file trên Gemini.");
       }
-
-      // 3. Xóa file gốc trên Supabase (Dùng filePathSupabase chuẩn)
       if (filePathSupabase) {
         const supabase = await createClient();
-        const { error: delErr } = await supabase.storage
-          .from("videos")
-          .remove([filePathSupabase]); // Phải truyền mảng chứa path
-
-        if (delErr) console.error("⚠️ Lỗi xóa Supabase:", delErr.message);
-        else console.log("🧹 Đã xóa file trên Supabase.");
+        await supabase.storage.from("videos").remove([filePathSupabase]);
+        console.log("🧹 Đã xóa file trên Supabase.");
       }
     } catch (cleanupError) {
-      console.error("⚠️ Lỗi trong quá trình dọn dẹp:", cleanupError);
+      console.error("⚠️ Lỗi dọn dẹp:", cleanupError);
     }
   }
 }

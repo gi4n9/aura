@@ -40,7 +40,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["@prisma/client", "bcrypt"],
+  serverExternalPackages: [
+    "@prisma/client",
+    "bcrypt",
+    "fluent-ffmpeg",
+    "ffmpeg-static",
+    "ffprobe-static",
+    "get-video-duration",
+  ],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },

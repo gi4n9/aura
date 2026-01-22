@@ -118,6 +118,12 @@ model Lesson {
   transcript     String? @db.Text // Transcript do AI tạo hoặc upload, dùng cho RAG
   mindMapUrl     String? // Link ảnh/json mindmap lưu trên Supabase Storage
 
+  // Lưu mảng JSON timeline: [{ "time": 0, "label": "Mở đầu" }, ...]
+  timeline Json?
+
+  // Lưu object JSON các bản dịch: { "en": "English text...", "ja": "Japanese text..." }
+  translations Json?
+
   // Câu hỏi tương tác trong video
   questions Question[]
 
