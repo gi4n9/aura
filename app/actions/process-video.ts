@@ -1,7 +1,7 @@
 "use server";
 
 import { google } from "googleapis";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server"; // Import thêm FileState
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
@@ -53,6 +53,82 @@ const getVideoDuration = (filePath: string): Promise<number> => {
   });
 };
 
+function cleanAndParseJSON(rawText: string) {
+  try {
+    let cleanText = rawText.replace(/```json/g, "").replace(/```/g, "");
+
+    // Logic cắt số thập phân dài ngoằng (giữ nguyên yêu cầu của bạn)
+    cleanText = cleanText.replace(/(\d+\.\d{4})\d+/g, "$1");
+
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error("❌ JSON Parse Failed. Raw Text:", rawText);
+    // Return fallback để không crash app
+    return {
+      transcript: "",
+      timeline: [],
+      quiz: [],
+      translations: { en: "", ja: "", ko: "" },
+    };
+  }
+}
+
+const videoAnalysisSchema: Schema = {
+  description:
+    "Kết quả phân tích video giáo dục bao gồm transcript, timeline, quiz và dịch thuật.",
+  type: SchemaType.OBJECT,
+  properties: {
+    transcript: {
+      type: SchemaType.STRING,
+      description: "Nội dung nguyên văn tiếng Việt.",
+    },
+    timeline: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          time: {
+            type: SchemaType.NUMBER,
+            description: "Thời gian bắt đầu (giây)",
+          },
+          label: { type: SchemaType.STRING, description: "Tên chương/đoạn" },
+        },
+        required: ["time", "label"],
+      },
+    },
+    quiz: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          question: { type: SchemaType.STRING },
+          options: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description: "Danh sách 4 đáp án A, B, C, D",
+          },
+          answer: {
+            type: SchemaType.STRING,
+            description: "Đáp án đúng (A, B, C hoặc D)",
+          },
+          explanation: { type: SchemaType.STRING },
+        },
+        required: ["question", "options", "answer", "explanation"],
+      },
+    },
+    translations: {
+      type: SchemaType.OBJECT,
+      properties: {
+        en: { type: SchemaType.STRING },
+        ja: { type: SchemaType.STRING },
+        ko: { type: SchemaType.STRING },
+      },
+      required: ["en", "ja", "ko"],
+    },
+  },
+  required: ["transcript", "timeline", "quiz", "translations"],
+};
+
 export async function processVideoUpload(
   videoUrl: string,
   filePathSupabase: string,
@@ -86,6 +162,7 @@ export async function processVideoUpload(
     fs.writeFileSync(tempFilePath, buffer);
     console.log("💾 Đã lưu file tạm thành công.");
     console.log("⏱️ Đang tính toán thời lượng video (ffmpeg)...");
+
     const durationInSeconds = await getVideoDuration(tempFilePath);
     console.log(`⏱️ Thời lượng: ${durationInSeconds} giây`);
 
@@ -158,6 +235,7 @@ export async function processVideoUpload(
         maxOutputTokens: 16384, // Tăng token output vì cần transcript dài
         temperature: 0.1, // QUAN TRỌNG: Giảm sáng tạo để chép chính tả chuẩn xác
         responseMimeType: "application/json",
+        responseSchema: videoAnalysisSchema,
       },
     });
 
@@ -169,6 +247,7 @@ export async function processVideoUpload(
       ### NHIỆM VỤ 1: TRANSCRIPT (QUAN TRỌNG NHẤT)
       - Yêu cầu: **NGUYÊN VĂN (VERBATIM)**.
       - Bạn PHẢI nghe và chép lại chính xác từng từ tiếng Việt mà người nói phát ra.
+      - **QUAN TRỌNG VỀ SỐ LIỆU:** Nếu giảng viên đọc số thập phân (ví dụ "4 phẩy 9"), hãy viết chính xác con số đó (4.9). **KHÔNG** tự ý thêm các số thập phân vô tận (như 4.9999999). Giữ số liệu ngắn gọn đúng như lời nói.
       - **TUYỆT ĐỐI KHÔNG** tóm tắt, không lược bỏ.
       - **KHÔNG** bỏ qua các từ đệm (như "à", "ừ", "thì", "mà"...) nếu chúng xuất hiện, để đảm bảo khớp thời gian.
       
@@ -177,9 +256,17 @@ export async function processVideoUpload(
       - "time": Số giây bắt đầu (số nguyên).
       - "label": Tiêu đề ngắn gọn cho đoạn đó.
 
-      ### NHIỆM VỤ 3: QUIZ (10 Câu hỏi)
-      - Tạo 10 câu hỏi trắc nghiệm tiếng Việt (4 đáp án A,B,C,D).
-      - **EXPLANATION (Giải thích):** Phần giải thích PHẢI trích dẫn cụ thể lý do dựa trên Transcript hoặc hình ảnh trong video. Ví dụ: "Đúng, vì ở phút thứ 2, giảng viên đã nói rằng...".
+      ### NHIỆM VỤ 3: QUIZ (10 CÂU HỎI CHUYÊN MÔN)
+      - **MỤC TIÊU:** Kiểm tra kiến thức kỹ thuật/học thuật mà học viên thu được.
+      - **NGUYÊN TẮC TẠO CÂU HỎI (QUAN TRỌNG):**
+        1. **CHỈ TẬP TRUNG:** Các định nghĩa, logic code, nguyên lý hoạt động, cú pháp, hoặc kiến thức cốt lõi.
+        2. **TUYỆT ĐỐI BỎ QUA:** - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
+           - Các câu hỏi về phong cách giảng dạy (Ví dụ: "Giảng viên đã đơn giản hóa thế nào?", "Giảng viên nói câu gì để mở đầu?").
+           - Các lời thoại giao đãi, chào hỏi, kể chuyện bên lề.
+        3. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
+      
+      - **CẤU TRÚC:** 4 đáp án A, B, C, D.
+      - **GIẢI THÍCH:** Phải giải thích dựa trên logic của bài học (Ví dụ: "Đúng, tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên...").
 
       ### NHIỆM VỤ 4: TRANSLATIONS (Dịch thuật)
       - Dựa vào kết quả Transcript nguyên văn ở Nhiệm vụ 1, hãy dịch nó sang:
@@ -187,6 +274,7 @@ export async function processVideoUpload(
         2. Tiếng Nhật (key: "ja")
         3. Tiếng Hàn (key: "ko")
       - Dịch sát nghĩa, giữ nguyên ngữ cảnh giáo dục.
+      - **LƯU Ý:** Khi dịch các con số, hãy giữ nguyên dạng số (Arabic numerals), KHÔNG cố gắng viết chuỗi số dài vô tận. Nếu gặp lỗi lặp lại, hãy dừng ngay lập tức.
 
       ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
       {
@@ -222,21 +310,7 @@ export async function processVideoUpload(
       { text: prompt },
     ]);
 
-    const aiText = result.response.text();
-
-    // Xử lý JSON an toàn
-    const jsonString = aiText
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    let aiData;
-
-    try {
-      aiData = JSON.parse(jsonString);
-    } catch (e) {
-      console.error("Raw AI Text:", aiText);
-      throw new Error("Lỗi định dạng JSON từ AI.");
-    }
+    const aiData = cleanAndParseJSON(result.response.text());
 
     console.log(
       `✨ AI hoàn tất! (Transcript: ${aiData.transcript?.length} chars)`,
@@ -271,7 +345,9 @@ export async function processVideoUpload(
         questions: {
           create: aiData.quiz.map((q: any) => ({
             content: q.question,
-            options: q.options,
+            options: q.options.map((opt: string) =>
+              opt.replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim(),
+            ),
             correctAnswer: q.answer,
             type: "MULTIPLE_CHOICE",
             aiExplanation: q.explanation || "Chưa có giải thích.",
