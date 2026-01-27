@@ -13,12 +13,11 @@ interface QuizPageProps {
 export default async function QuizPage({ params }: QuizPageProps) {
     const { lessonId } = await params;
 
-    // Lấy câu hỏi hiện tại (chưa bị archived)
     const lesson = await prisma.lesson.findUnique({
         where: { id: lessonId },
         include: {
             questions: {
-                where: { isArchived: false }, // Chỉ lấy câu hiện hành
+                where: { isArchived: false },
                 orderBy: { createdAt: "asc" },
             },
         },

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { PlusCircle, Loader2, Eye, EyeOff, Pencil } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, Pencil, FileQuestion } from "lucide-react"; // Added FileQuestion
 import { useRouter } from "next/navigation";
 import { createChapter, updateChapter } from "@/app/actions/chapter";
-
+import ChapterQuizModal from "./ChapterQuizModal"; // Import Modal
 
 interface ChaptersFormProps {
     initialData: {
@@ -14,18 +14,18 @@ interface ChaptersFormProps {
 }
 
 export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
-    const [isCreating, setIsCreating] = useState(false); // Trạng thái mở form nhập liệu
-    const [title, setTitle] = useState("");              // Lưu tên chương đang nhập
+    const [isCreating, setIsCreating] = useState(false);
+    const [title, setTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [editingChapter, setEditingChapter] = useState<{ id: string, title: string } | null>(null); // State for modal
     const router = useRouter();
 
-    // 1. Hàm bật/tắt form nhập liệu
+    // ... (existing toggleCreating, onSubmit, onTogglePublish)
     const toggleCreating = () => {
         setIsCreating((current) => !current);
         setTitle("");
     };
 
-    // 2. Hàm xử lý khi bấm nút "Tạo chương"
     const onSubmit = async () => {
         if (!title) return;
         try {
@@ -33,8 +33,8 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
             const res = await createChapter(courseId, title);
 
             if (res.success) {
-                toggleCreating(); // Tắt form sau khi tạo xong
-                router.refresh(); // Load lại trang để hiện chương mới
+                toggleCreating();
+                router.refresh();
             } else {
                 alert(res.error);
             }
@@ -45,7 +45,6 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
         }
     };
 
-    // 3. Hàm xử lý bật/tắt Publish nhanh
     const onTogglePublish = async (chapterId: string, currentStatus: string) => {
         try {
             setIsLoading(true);
@@ -122,6 +121,15 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                                     <span className="text-[10px] bg-stone-100 text-stone-500 px-2 py-0.5 rounded font-bold">Nháp</span>
                                 )}
 
+                                {/* Nút QUIZ (New) */}
+                                <button
+                                    onClick={() => setEditingChapter({ id: chapter.id, title: chapter.title })}
+                                    className="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold hover:bg-indigo-100 transition"
+                                    title="Quản lý câu hỏi trắc nghiệm"
+                                >
+                                    <FileQuestion size={14} /> Câu hỏi
+                                </button>
+
                                 {/* Nút Bật/Tắt Publish */}
                                 <button
                                     onClick={() => onTogglePublish(chapter.id, chapter.status)}
@@ -131,7 +139,7 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                                     {chapter.status === "PUBLISHED" ? <Eye size={16} /> : <EyeOff size={16} />}
                                 </button>
 
-                                {/* Nút Sửa (Icon bút chì) - Bạn có thể thêm link chuyển trang sau */}
+                                {/* Nút Sửa (Icon bút chì) */}
                                 <button className="p-1 hover:bg-stone-100 rounded transition text-stone-500 hover:text-[#C5A059]">
                                     <Pencil size={16} />
                                 </button>
@@ -139,6 +147,15 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Chapter Modal */}
+            {editingChapter && (
+                <ChapterQuizModal
+                    chapterId={editingChapter.id}
+                    chapterTitle={editingChapter.title}
+                    onClose={() => setEditingChapter(null)}
+                />
             )}
         </div>
     );

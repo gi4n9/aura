@@ -1,0 +1,169 @@
+# VIBE CODING PROTOCOL: NEXT.JS + PRISMA + SUPABASE
+
+## 1. SOURCE OF TRUTH (NGUỒN SỰ THẬT)
+- Mọi thay đổi về cấu trúc dữ liệu PHẢI bắt đầu từ `prisma/schema.prisma`.
+- Sau khi sửa schema, thực hiện theo thứ tự:
+    1. `npx prisma migrate dev` - Tạo migration file và apply vào database
+    2. `npx prisma generate` - Generate Prisma Client với types mới
+- AI tuyệt đối KHÔNG tự ý define Interface/Type trùng lặp với Prisma Model.
+- Luôn sử dụng types được export từ `@prisma/client` thay vì tự định nghĩa.
+
+## 2. DATA FETCHING (SERVER FIRST)
+- Ưu tiên sử dụng **Server Components** để fetch data trực tiếp qua Prisma.
+- Hạn chế tạo API Route (`/api/...`) trừ khi:
+    - Dùng cho Webhooks từ bên thứ ba
+    - Tích hợp với external services
+    - Client-side mutations (nhưng ưu tiên Server Actions)
+- Sử dụng `db` instance (PrismaClient) được khởi tạo tập trung (thường ở `lib/prisma.ts`).
+- Tránh fetch data trong Client Components trừ khi thực sự cần thiết (real-time updates, etc).
+
+## 3. MUTATIONS (SERVER ACTIONS)
+- Mọi thao tác ghi/sửa/xóa dữ liệu phải dùng **Server Actions** với directive `"use server"`.
+- Cấu trúc chuẩn của một Action:
+
+```typescript
+"use server"
+
+import { z } from "zod"
+import { db } from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
+
+// 1. Input Validation Schema
+const inputSchema = z.object({
+  // Define your schema here
+})
+
+export async function yourAction(data: z.infer<typeof inputSchema>) {
+  try {
+    // 2. Validate Input
+    const validated = inputSchema.parse(data)
+    
+    // 3. Auth Check
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized" }
+    }
+    
+    // 4. Database Operation
+    const result = await db.yourModel.create({
+      data: validated
+    })
+    
+    // 5. Return Success
+    return { success: true, data: result }
+    
+  } catch (error) {
+    console.error("Error in yourAction:", error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }
+  }
+}
+```
+
+- Luôn trả về object có dạng: `{ success: boolean, data?: T, error?: string }`
+- Không throw errors ra ngoài, luôn handle và return error message.
+
+## 4. TYPE SAFETY
+- Sử dụng kiểu dữ liệu được export từ `@prisma/client`:
+    ```typescript
+    import { User, Course, Lesson } from "@prisma/client"
+    ```
+- Đối với các query phức tạp (như dùng `include`), sử dụng `Prisma.validator`:
+    ```typescript
+    import { Prisma } from "@prisma/client"
+    
+    const courseWithLessons = Prisma.validator<Prisma.CourseDefaultArgs>()({
+      include: { lessons: true }
+    })
+    
+    type CourseWithLessons = Prisma.CourseGetPayload<typeof courseWithLessons>
+    ```
+- Hoặc sử dụng utility type:
+    ```typescript
+    type CourseWithLessons = Awaited<
+      ReturnType<typeof getCourseWithLessons>
+    >
+    ```
+- KHÔNG tự định nghĩa interface trùng với Prisma models.
+
+## 5. AUTHENTICATION CONTEXT
+- Khi viết logic liên quan đến User:
+    1. Lấy user từ Supabase Auth: `supabase.auth.getUser()`
+    2. Map với bảng `User` trong Prisma thông qua trường `external_id` hoặc `email`
+    3. Luôn kiểm tra quyền truy cập trước khi thực hiện operations
+
+```typescript
+// Example: Get current user from Prisma
+const supabase = await createClient()
+const { data: { user: authUser } } = await supabase.auth.getUser()
+
+if (!authUser) {
+  return { success: false, error: "Unauthorized" }
+}
+
+const currentUser = await db.user.findUnique({
+  where: { external_id: authUser.id }
+})
+```
+
+## 6. ERROR HANDLING
+- Luôn dùng try-catch trong Server Actions
+- Log errors với context đầy đủ: `console.error("Context:", error)`
+- Return user-friendly error messages, không expose sensitive info
+- Validation errors từ Zod nên được format rõ ràng
+
+## 7. FILE ORGANIZATION
+```
+app/
+├── (routes)/           # Route groups
+├── actions/            # Server Actions (grouped by domain)
+├── api/                # API routes (minimal usage)
+└── components/         # Shared components
+
+lib/
+├── prisma.ts          # PrismaClient instance
+├── supabase/          # Supabase client utilities
+└── utils.ts           # Helper functions
+
+prisma/
+├── schema.prisma      # SOURCE OF TRUTH
+├── migrations/        # Auto-generated
+└── seed.ts           # Seed data
+```
+
+## 8. BEST PRACTICES
+- Revalidate cache sau mutations: `revalidatePath()` hoặc `revalidateTag()`
+- Sử dụng `loading.tsx` và `error.tsx` cho better UX
+- Implement Optimistic Updates khi cần thiết
+- Luôn có loading states và error states trong UI
+- Sử dụng `unstable_cache` cho expensive queries (nếu cần)
+- Tránh N+1 queries, luôn optimize với `include` và `select`
+
+## 9. PERFORMANCE
+- Chỉ select fields cần thiết: 
+    ```typescript
+    await db.course.findMany({
+      select: { id: true, title: true } // Not selecting all fields
+    })
+    ```
+- Sử dụng pagination cho large datasets
+- Index các fields thường xuyên query trong schema.prisma
+- Avoid loading unnecessary relations
+
+## 10. WORKFLOW
+Khi nhận yêu cầu thay đổi feature:
+1. ✅ Cập nhật `prisma/schema.prisma` nếu cần
+2. ✅ Chạy migrations và generate
+3. ✅ Tạo/cập nhật Server Actions trong `app/actions/`
+4. ✅ Tạo/cập nhật Server Components để fetch data
+5. ✅ Implement UI với proper loading/error states
+6. ✅ Test authentication và authorization
+7. ✅ Verify type safety
+
+---
+
+**Nguyên tắc vàng**: Schema First → Server Actions → Server Components → Type Safety → Auth Check

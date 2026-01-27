@@ -6,8 +6,6 @@ import { AlertCircle, CheckCircle, Plus, Save, Trash2 } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
 
-import { useRouter } from "next/navigation";
-
 import { toast } from "sonner";
 
 
@@ -15,7 +13,7 @@ interface QuestionState {
     id?: string;
     content: string;
     options: string[];
-    correctAnswer: string;
+    correctAnswer: "A" | "B" | "C" | "D";
     aiExplanation: string;
 }
 
@@ -37,7 +35,6 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
     );
 
     const [isSaving, setIsSaving] = useState(false);
-    const router = useRouter();
 
     const handleAddQuestion = () => {
         setQuestions([
@@ -91,7 +88,7 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
 
             if (result.success) {
                 toast.success(result.message)
-                router.refresh();
+                // No need for router.refresh() - Server Action handles revalidatePath()
             } else {
                 toast.error(result.error || "Lỗi khi lưu")
             }

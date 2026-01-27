@@ -84,11 +84,19 @@ export default async function CourseEditPage({
                         Hoàn thành tất cả các mục {completionText}
                     </span>
                 </div>
-                <CourseActions
-                    disabled={!isComplete}
-                    courseId={course.id}
-                    isPublished={course.status === "PUBLISHED"}
-                />
+                <div className="flex items-center gap-2">
+                    <Link
+                        href={`/instructor/courses/${course.id}/submissions`}
+                        className="px-4 py-2 bg-white border border-stone-200 text-stone-700 font-bold text-sm rounded-md shadow-sm hover:bg-stone-50 flex items-center gap-2"
+                    >
+                        <ListChecks size={16} /> Xem bài nộp
+                    </Link>
+                    <CourseActions
+                        disabled={!isComplete}
+                        courseId={course.id}
+                        isPublished={course.status === "PUBLISHED"}
+                    />
+                </div>
             </div>
 
 
@@ -126,9 +134,9 @@ export default async function CourseEditPage({
                                 <IconBadge icon={ListChecks} />
                                 <h2 className="text-xl font-bold text-stone-800">Nội dung khóa học</h2>
                             </div>
-
-                            <ChaptersForm initialData={plainCourse} courseId={course.id} />
                         </div>
+
+                        <ChaptersForm initialData={plainCourse} courseId={course.id} />
                     </div>
                 </div>
             </div>

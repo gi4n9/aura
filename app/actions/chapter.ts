@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -13,13 +13,13 @@ export async function createChapter(courseId: string, title: string) {
   if (!user) return { success: false, error: "Unauthorized" };
 
   try {
-    const lastChapter = await prisma.chapter.findFirst({
+    const lastChapter = await db.chapter.findFirst({
       where: { courseId: courseId },
       orderBy: { position: "desc" },
     });
     const newPosition = lastChapter ? lastChapter.position + 1 : 1;
 
-    const chapter = await prisma.chapter.create({
+    const chapter = await db.chapter.create({
       data: {
         title,
         courseId,
@@ -63,7 +63,7 @@ export async function updateChapter(
 
   try {
     // Check quyền
-    const ownCourse = await prisma.course.findUnique({
+    const ownCourse = await db.course.findUnique({
       where: { id: courseId, instructorId: user.id },
     });
 
@@ -87,7 +87,7 @@ export async function updateChapter(
     console.log("5. Data chuẩn bị update vào DB:", dataToUpdate);
 
     // Update DB
-    const chapter = await prisma.chapter.update({
+    const chapter = await db.chapter.update({
       where: { id: chapterId },
       data: dataToUpdate,
     });
@@ -106,9 +106,11 @@ export async function updateChapter(
   }
 }
 
+// ... (existing code for updateChapter)
+
 export async function getChapterByCourseId(courseId: string) {
   try {
-    const chapters = await prisma.chapter.findMany({
+    const chapters = await db.chapter.findMany({
       where: {
         courseId: courseId,
       },
@@ -122,5 +124,31 @@ export async function getChapterByCourseId(courseId: string) {
   } catch (error) {
     console.log("Get Chapter Error:", error);
     return [];
+  }
+}
+
+// ============================================
+// DATA FETCHING FOR CHAPTER-LEVEL QUIZ EDITING
+// ============================================
+
+export async function getChapterLessons(chapterId: string) {
+  try {
+    const lessons = await db.lesson.findMany({
+      where: { chapterId },
+      orderBy: { position: "asc" },
+      select: {
+          id: true,
+          title: true,
+          position: true,
+          _count: {
+              select: { questions: { where: { isArchived: false } } }
+          }
+      }
+    });
+    
+    return { success: true, data: lessons };
+  } catch (error) {
+    console.error("Get Chapter Lessons Error:", error);
+    return { success: false, error: "Lỗi tải bài học" };
   }
 }

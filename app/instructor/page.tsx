@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { UploadCloud, PlayCircle, BookOpen, Eye, Search, Edit3, } from "lucide-react";
+import { UploadCloud, PlayCircle, BookOpen, Eye } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import Image from "next/image";
 
 export default async function InstructorDashboard() {
   const supabase = await createClient();
@@ -95,100 +94,31 @@ export default async function InstructorDashboard() {
         </div>
       </div>
 
-      {/* --- CONTENT LIST (YOUTUBE STUDIO STYLE) --- */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-
-        {/* Toolbar */}
-        <div className="p-4 border-b border-stone-200 flex items-center justify-between gap-4">
-          <h3 className="font-serif font-bold text-lg text-stone-800">Nội dung đã đăng</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
-              className="pl-9 pr-4 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#C5A059] w-64"
-            />
+      {/* --- RECENT ACTIVITY (Placeholder) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
+          <h3 className="font-serif font-bold text-lg text-stone-800 mb-4">Hoạt động gần đây</h3>
+          <div className="text-center py-10 text-stone-400 text-sm">
+            Chưa có hoạt động nào được ghi nhận.
           </div>
         </div>
 
-        {/* Table Header */}
-        <div className="grid grid-cols-12 gap-4 p-4 bg-stone-50 border-b border-stone-200 text-xs font-bold text-stone-500 uppercase tracking-wider">
-          <div className="col-span-6">Khóa học</div>
-          <div className="col-span-2 text-center">Trạng thái</div>
-          <div className="col-span-2 text-center">Giá bán</div>
-          <div className="col-span-2 text-center">Ngày tạo</div>
-        </div>
-
-        {/* Table Body */}
-        <div className="divide-y divide-stone-100">
-          {courses.length === 0 ? (
-            <div className="p-12 text-center text-stone-400">
-              <p className="mb-4">Bạn chưa có nội dung nào.</p>
-              <Link href="/instructor/create" className="text-[#C5A059] font-bold hover:underline">Tạo ngay</Link>
-            </div>
-          ) : (
-            courses.map((course) => {
-              const lessonCount = course.chapters.reduce((acc, ch) => acc + ch.lessons.length, 0);
-
-              return (
-                <div key={course.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-stone-50 transition-colors group">
-
-                  {/* Column 1: Info */}
-                  <div className="col-span-6 flex gap-4">
-                    <div className="relative w-32 aspect-video bg-stone-200 rounded overflow-hidden flex-shrink-0 border border-stone-200">
-                      <Image
-                        src={course.thumbnailUrl || "/placeholder-course.jpg"}
-                        alt={course.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col justify-center min-w-0">
-                      <h4 className="font-bold text-stone-800 line-clamp-1 group-hover:text-[#C5A059] transition-colors cursor-pointer">
-                        {course.title}
-                      </h4>
-                      <div className="flex items-center gap-2 text-xs text-stone-500 mt-1">
-                        <span className="flex items-center gap-1"><BookOpen size={12} /> {course._count.chapters} chương</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1"><PlayCircle size={12} /> {lessonCount} bài học</span>
-                      </div>
-                      {/* Quick Actions on Hover */}
-                      <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link href={`/instructor/courses/${course.id}/settings`} className="text-stone-500 hover:text-[#C5A059] text-xs font-bold uppercase flex items-center gap-1">
-                          <Edit3 size={12} /> Chỉnh sửa
-                        </Link>
-                        <Link href={`/courses/${course.id}`} className="text-stone-500 hover:text-[#C5A059] text-xs font-bold uppercase flex items-center gap-1">
-                          <Eye size={12} /> Xem thử
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Column 2: Status */}
-                  <div className="col-span-2 flex justify-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${course.status === 'PUBLISHED'
-                      ? 'bg-green-50 text-green-700 border-green-200'
-                      : 'bg-stone-100 text-stone-500 border-stone-200'
-                      }`}>
-                      {course.status === 'PUBLISHED' ? 'Công khai' : 'Nháp'}
-                    </span>
-                  </div>
-
-                  {/* Column 3: Price */}
-                  <div className="col-span-2 text-center text-sm font-bold text-stone-700 font-mono">
-                    {Number(course.price) === 0 ? "Miễn phí" : new Intl.NumberFormat("vi-VN").format(Number(course.price)) + " đ"}
-                  </div>
-
-                  {/* Column 4: Date */}
-                  <div className="col-span-2 text-center flex flex-col items-center justify-center text-xs text-stone-500">
-                    <span>{new Date(course.createdAt).toLocaleDateString("vi-VN")}</span>
-                    <span className="text-[10px] text-stone-400">{new Date(course.createdAt).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-
-                </div>
-              )
-            })
-          )}
+        <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
+          <h3 className="font-serif font-bold text-lg text-stone-800 mb-4">Mẹo phát triển kênh</h3>
+          <ul className="space-y-3 text-sm text-stone-600">
+            <li className="flex gap-2">
+              <span className="text-[#C5A059] font-bold">•</span>
+              Tạo tiêu đề hấp dẫn để tăng tỷ lệ click.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-[#C5A059] font-bold">•</span>
+              Tương tác với học viên qua phần bình luận.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-[#C5A059] font-bold">•</span>
+              Đăng tải nội dung đều đặn hàng tuần.
+            </li>
+          </ul>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
 import NextTopLoader from 'nextjs-toploader';
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,6 +38,7 @@ export default async function RootLayout({
         />
         <AuthProvider initialUser={user}>
           {children}
+          <Toaster richColors position="top-center" />
         </AuthProvider>
       </body>
     </html>
