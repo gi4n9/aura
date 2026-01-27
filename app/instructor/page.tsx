@@ -154,7 +154,7 @@ export default async function InstructorDashboard() {
                       </div>
                       {/* Quick Actions on Hover */}
                       <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link href={`/instructor/courses/${course.id}/edit`} className="text-stone-500 hover:text-[#C5A059] text-xs font-bold uppercase flex items-center gap-1">
+                        <Link href={`/instructor/courses/${course.id}/settings`} className="text-stone-500 hover:text-[#C5A059] text-xs font-bold uppercase flex items-center gap-1">
                           <Edit3 size={12} /> Chỉnh sửa
                         </Link>
                         <Link href={`/courses/${course.id}`} className="text-stone-500 hover:text-[#C5A059] text-xs font-bold uppercase flex items-center gap-1">

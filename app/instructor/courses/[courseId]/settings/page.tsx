@@ -8,8 +8,6 @@ import {
     ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
-import { Image as ImageIcon } from "lucide-react";
 import { TitleForm } from "@/app/components/courseComponents/TitleForm";
 import { DescriptionForm } from "@/app/components/courseComponents/DescriptionForm";
 import { PriceForm } from "@/app/components/courseComponents/PriceForm";
@@ -50,7 +48,7 @@ export default async function CourseEditPage({
 
     const plainCourse = {
         ...course,
-        price: course.price ? Number(course.price) : 0,
+        price: course.price ? course.price.toNumber() : null,
     };
 
     const hasPublishedChapter = course.chapters.some(chapter => chapter.status === "PUBLISHED");
