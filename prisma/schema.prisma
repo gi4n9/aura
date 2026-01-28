@@ -41,6 +41,8 @@ model Profile {
   fullName  String?
   avatarUrl String?
   role      UserRole @default(STUDENT)
+  interests String[] @default([]) // Selected categories e.g. ["backend", "frontend"]
+  learningPath Json? // Generated roadmap data
 
   // Quan hệ Organization (Trường học/Trung tâm)
   organizationId String?

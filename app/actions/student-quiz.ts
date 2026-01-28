@@ -21,12 +21,33 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
 
   try {
     // 1. Lấy danh sách câu hỏi từ DB
+    // 1. Lấy danh sách câu hỏi từ DB
     const questions = await prisma.question.findMany({
       where: {
         lessonId: lessonId,
         isArchived: false,
       },
     });
+
+    // 1.5 Ensure Enrollment Exists
+    const lessonInfo = await prisma.lesson.findUnique({
+        where: { id: lessonId },
+        select: { chapter: { select: { courseId: true } } }
+    });
+    
+    if (lessonInfo) {
+        const courseId = lessonInfo.chapter.courseId;
+        const  existingEnroll = await prisma.enrollment.findUnique({
+                where: { userId_courseId: { userId: user.id, courseId } }
+        });
+        if (!existingEnroll) {
+                // Determine if we should allow auto-enroll (e.g. check price or just do it because they are here)
+                // Assuming access control was handled at page level, so we just fix the record.
+                await prisma.enrollment.create({
+                    data: { userId: user.id, courseId, progress: 0 }
+                });
+        }
+    }
 
     let correctCount = 0;
     const feedbackData: any[] = [];
@@ -66,6 +87,45 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       });
     }
 
+    // 3.5 Update Enrollment Progress
+    if (lessonInfo) {
+        const courseId = lessonInfo.chapter.courseId;
+        
+        // Count Total Questions in Course
+        const totalCourseQuestions = await prisma.question.count({
+             where: { 
+                 isArchived: false,
+                 lesson: { chapter: { courseId } } 
+             }
+        });
+
+        // Count Answered Questions (Unique) by User
+        // Note: We just created new submissions, so they are included here.
+        const userSubmissions = await prisma.submission.findMany({
+             where: {
+                 userId: user.id,
+                 question: { lesson: { chapter: { courseId } } }
+             },
+             select: { questionId: true },
+             distinct: ['questionId']
+        });
+
+        const newProgress = totalCourseQuestions > 0 
+           ? Math.round((userSubmissions.length / totalCourseQuestions) * 100)
+           : 0;
+
+        // Update Enrollment
+        // Enrollment record is guaranteed to exist by step 1.5
+        try {
+            await prisma.enrollment.update({
+                where: { userId_courseId: { userId: user.id, courseId } },
+                data: { progress: newProgress }
+            });
+        } catch (e) {
+            console.error("Failed to update progress", e);
+        }
+    }
+
     // 4. Tính toán kết quả
     const totalQuestions = questions.length;
     const scorePercent =
@@ -73,6 +133,9 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         ? Math.round((correctCount / totalQuestions) * 100)
         : 0;
 
+    if (lessonInfo) {
+        revalidatePath(`/courses/${lessonInfo.chapter.courseId}`);
+    }
     revalidatePath(`/courses`);
 
     return {

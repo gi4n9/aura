@@ -11,10 +11,20 @@ interface Question {
     options: string[]; // ["A. ...", "B. ..."]
 }
 
-export default function QuizPlayer({ lessonId, questions }: { lessonId: string, questions: Question[] }) {
-    const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+export default function QuizPlayer({
+    lessonId,
+    questions,
+    initialResult,
+    initialAnswers
+}: {
+    lessonId: string,
+    questions: Question[],
+    initialResult?: any,
+    initialAnswers?: Record<string, string>
+}) {
+    const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(initialAnswers || {});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [result, setResult] = useState<any>(null); // Lưu kết quả trả về từ server
+    const [result, setResult] = useState<any>(initialResult || null); // Lưu kết quả trả về từ server
 
     // Xử lý khi chọn đáp án
     const handleSelect = (qId: string, optionPrefix: string) => {

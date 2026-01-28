@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, X, Search, LogOut, User as UserIcon, LayoutDashboard, Map } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 
@@ -13,7 +13,7 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,6 +64,7 @@ export default function Header() {
             {[
               { label: "Khóa học", href: "/courses" },
               { label: "Danh mục", href: "/categories" },
+              { label: "Roadmap", href: "/onboarding" }, // TODO: Conditional link if user has roadmap
               { label: "Về chúng tôi", href: "/about" },
               { label: "Liên hệ", href: "/contact" },
             ].map((link) => (
@@ -103,13 +104,20 @@ export default function Header() {
                     >
                       <div className="p-4 bg-[#F9F8F4] border-b border-stone-100">
                         <p className="font-bold text-stone-800 truncate text-sm">{user.email}</p>
-                        <p className="text-xs text-stone-500 font-serif italic">Học viên</p>
+                        <p className="text-xs text-stone-500 font-serif italic">
+                          {profile?.role === "INSTRUCTOR" ? "Giảng viên" : profile?.role === "ADMIN" ? "Quản trị viên" : "Học viên"}
+                        </p>
                       </div>
 
                       <div className="p-2 flex flex-col gap-1">
                         <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
                           <UserIcon size={16} /> Hồ sơ học tập
                         </Link>
+                        {(profile?.role === "INSTRUCTOR" || profile?.role === "ADMIN") && (
+                          <Link href="/instructor" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
+                            <LayoutDashboard size={16} /> Trang Giảng viên
+                          </Link>
+                        )}
                       </div>
 
                       <div className="p-2 border-t border-stone-100">

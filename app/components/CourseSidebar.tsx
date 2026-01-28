@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { Play, ChevronDown } from "lucide-react";
+import { Play, ChevronDown, BarChart3 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 // --- 1. SỬA TYPE DEFINITION Ở ĐÂY ---
@@ -56,7 +56,12 @@ export default function CourseSidebar({
             {totalLessons} Bài
           </span>
         </div>
-        <p className="text-xs text-stone-400 font-serif italic">Tiến độ học tập của bạn</p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-stone-400 font-serif italic">Tiến độ học tập</p>
+          <Link href={`/courses/${courseId}/progress`} className="text-[10px] font-bold text-stone-500 flex items-center gap-1 hover:text-[#C5A059] border border-stone-200 px-2 py-1 rounded bg-white hover:border-[#C5A059] transition-colors">
+            <BarChart3 size={12} /> Xem kết quả
+          </Link>
+        </div>
       </div>
 
       {/* Chapter & Lesson List */}

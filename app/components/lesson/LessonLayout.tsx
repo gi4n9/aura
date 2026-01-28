@@ -35,10 +35,14 @@ export default function LessonLayout({
     course,
     lesson,
     formattedQuestions,
+    initialResult,
+    userAnswers,
 }: {
     course: CourseData;
     lesson: LessonData;
     formattedQuestions: any[];
+    initialResult?: any;
+    userAnswers?: Record<string, string>;
 }) {
     // State quản lý hiển thị
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -164,12 +168,14 @@ export default function LessonLayout({
                        - Dùng 'min-h-full' thay vì 'h-full' để nội dung có thể dãn ra.
                    */}
                             <div className={`transition-all duration-500 ${!isVideoVisible
-                                    ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit" // Sửa thành min-h-fit hoặc để tự nhiên
-                                    : "w-full pb-10" // Thêm padding-bottom để không bị sát đáy
+                                ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit" // Sửa thành min-h-fit hoặc để tự nhiên
+                                : "w-full pb-10" // Thêm padding-bottom để không bị sát đáy
                                 }`}>
                                 <QuizPlayer
                                     lessonId={lesson.id}
                                     questions={formattedQuestions}
+                                    initialResult={initialResult}
+                                    initialAnswers={userAnswers}
                                 />
                             </div>
 
