@@ -1,24 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
 import NextTopLoader from 'nextjs-toploader';
 import { ClientToaster } from "@/app/components/ClientToaster";
 
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
-  variable: "--font-inter",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin", "vietnamese"],
-  variable: "--font-playfair",
-  display: "swap",
-  weight: ["400", "700"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 import { db } from "@/lib/prisma";
 
@@ -55,9 +43,10 @@ export default async function RootLayout({
 
   return (
     <html lang="vi">
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={inter.className}>
+
         <NextTopLoader
-          color="#C5A059" // Màu vàng gold của Aura
+          color="#C5A059"
           initialPosition={0.08}
           crawlSpeed={200}
           height={3}
@@ -67,6 +56,7 @@ export default async function RootLayout({
           speed={200}
           shadow="0 0 10px #C5A059,0 0 5px #C5A059"
         />
+
         <AuthProvider initialUser={user} initialProfile={userProfile}>
           {children}
           <ClientToaster />

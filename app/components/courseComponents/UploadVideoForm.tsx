@@ -79,7 +79,7 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
 
             setStatus("Thành công! Video đã được thêm vào khóa học.");
             if (result.lessonId) {
-                router.push(`/instructor/lesson/${result.lessonId}`)
+                router.push(`/instructor/courses/${selectedCourseId}/chapters/${selectedChapterId}/lesson/${result.lessonId}`)
             }
             setFile(null);
 

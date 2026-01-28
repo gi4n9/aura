@@ -1,4 +1,3 @@
-// Hàm vừa viết ở bước 1
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import UploadVideoForm from "@/app/components/courseComponents/UploadVideoForm";

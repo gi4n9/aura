@@ -10,9 +10,9 @@ const config: Config = {
     extend: {
       fontFamily: {
         // Font tiêu đề sang trọng
-        serif: ["var(--font-playfair)", "Georgia", "serif"],
+        serif: ['"Playfair Display"', "Georgia", "serif"],
         // Font nội dung hiện đại
-        sans: ["var(--font-inter)", "sans-serif"],
+        sans: ['"Inter"', "sans-serif"],
       },
       colors: {
         // Bộ màu AlphaQubit

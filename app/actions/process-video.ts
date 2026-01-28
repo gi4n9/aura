@@ -288,7 +288,7 @@ export async function processVideoUpload(
             "question": "Câu hỏi...",
             "options": ["A", "B", "C", "D"], 
             "answer": "A", 
-            "explanation": "Giải thích chi tiết..."
+            "explanation": "Tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên..."
           }
         ],
         "translations": {

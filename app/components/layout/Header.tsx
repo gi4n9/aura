@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut, User as UserIcon, LayoutDashboard, Map } from "lucide-react";
+import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 
@@ -110,8 +110,11 @@ export default function Header() {
                       </div>
 
                       <div className="p-2 flex flex-col gap-1">
-                        <Link href="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
-                          <UserIcon size={16} /> Hồ sơ học tập
+                        <Link href="/roadmap" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
+                          <Map size={16} /> Lộ Trình Học Tập
+                        </Link>
+                        <Link href="/setting" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
+                          <Settings size={16} /> Cài đặt
                         </Link>
                         {(profile?.role === "INSTRUCTOR" || profile?.role === "ADMIN") && (
                           <Link href="/instructor" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">

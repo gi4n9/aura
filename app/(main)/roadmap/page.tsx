@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import RoadmapView from "./RoadmapView";
+import RoadmapView from "../../components/RoadmapView";
 import { RoadmapData } from "@/services/roadmap-data";
 
 export default async function RoadmapPage() {
@@ -29,7 +29,7 @@ export default async function RoadmapPage() {
     const title = primaryInterest.charAt(0).toUpperCase() + primaryInterest.slice(1) + " Roadmap";
 
     return (
-        <div className="pt-20">
+        <div>
             <RoadmapView
                 initialNodes={roadmapData.nodes}
                 initialEdges={roadmapData.edges}

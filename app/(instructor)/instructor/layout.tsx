@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
-import DashboardSidebar from "../components/DashboardSidebar";
-
+import DashboardSidebar from "@/app/components/DashboardSidebar";
 
 export default async function InstructorLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();

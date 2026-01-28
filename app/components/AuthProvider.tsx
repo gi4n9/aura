@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 
 import { createClient } from "@/utils/supabase/client";
 
@@ -40,8 +40,14 @@ export const AuthProvider = ({
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
   const [isLoading, setIsLoading] = useState(!initialUser);
 
-  const supabase = createClient();
+  // Use useState to ensure supabase client is created only once
+  const [supabase] = useState(() => createClient());
   const router = useRouter();
+
+  // Use ref to track user ID without causing re-renders
+  const userIdRef = useRef<string | null>(initialUser?.id ?? null);
+  // Track if component has mounted to prevent refresh on initial load
+  const hasMountedRef = useRef(false);
 
   useEffect(() => {
     if (initialProfile) setProfile(initialProfile);
@@ -57,7 +63,7 @@ export const AuthProvider = ({
 
       try {
         const { data, error } = await supabase
-          .from("profile") // Changed to lowercase 'profile'
+          .from("profile")
           .select("*")
           .eq("id", user.id)
           .single();
@@ -73,17 +79,45 @@ export const AuthProvider = ({
     fetchProfile();
   }, [user, supabase]);
 
+  // Auth state listener with defensive guards to prevent infinite loops
   useEffect(() => {
-    // 1. Lắng nghe sự thay đổi Auth từ Supabase (Realtime)
+    let isInitialEvent = true; // Skip the first event fired on subscription
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (event === 'SIGNED_OUT') setProfile(null); // Clear profile on logout
+      // GUARD 1: Skip the initial event that fires when subscription is created
+      if (isInitialEvent) {
+        isInitialEvent = false;
+        setIsLoading(false);
+        return;
+      }
+
+      const newUserId = session?.user?.id ?? null;
+
+      // GUARD 2: Only update state if user ID actually changed
+      if (newUserId !== userIdRef.current) {
+        userIdRef.current = newUserId;
+        setUser(session?.user ?? null);
+
+        if (event === 'SIGNED_OUT') {
+          setProfile(null);
+        }
+      }
+
       setIsLoading(false);
 
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') router.refresh();
+      // GUARD 3: Only refresh on EXPLICIT sign in/out, not token refresh or other events
+      // And only after component has fully mounted
+      if (hasMountedRef.current && (event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
+        router.refresh();
+      }
     });
+
+    // Mark as mounted after a short delay to ensure hydration is complete
+    setTimeout(() => {
+      hasMountedRef.current = true;
+    }, 100);
 
     return () => {
       subscription.unsubscribe();
