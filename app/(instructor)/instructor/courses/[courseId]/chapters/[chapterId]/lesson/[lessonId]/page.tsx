@@ -18,7 +18,7 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
         id: q.id,
         content: q.content,
         options: q.options as string[],
-        correctAnswer: q.correctAnswer || "A",
+        correctAnswer: (q.correctAnswer as "A" | "B" | "C" | "D") || "A",
         aiExplanation: q.aiExplanation || ""
     }));
 

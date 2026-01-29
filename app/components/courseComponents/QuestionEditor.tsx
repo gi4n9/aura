@@ -11,7 +11,7 @@ interface QuestionData {
     id?: string;
     content: string;
     options: string[];
-    correctAnswer: string;
+    correctAnswer: "A" | "B" | "C" | "D";
     aiExplanation?: string;
 }
 
