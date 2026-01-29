@@ -28,6 +28,7 @@ export async function createCourse(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const thumbnailUrl = formData.get("thumbnailUrl") as string;
+  const categoryId = formData.get("category") as string;
   const priceRaw = formData.get("price") as string;
 
   if (!title || title.trim() === "") {
@@ -53,6 +54,7 @@ export async function createCourse(formData: FormData) {
       description,
       instructorId: user.id,
       thumbnailUrl,
+      categoryId,
       price,
     });
 
@@ -161,7 +163,7 @@ export async function publishCourse(courseId: string) {
       data: { status: "PUBLISHED" },
     });
 
-    revalidatePath(`/instructor/courses/${courseId}/edit`);
+    revalidatePath(`/instructor/courses/${courseId}/settings`);
 
     const plainCourse = {
       ...updatedCourse,

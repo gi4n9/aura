@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2, Save, CheckCircle } from "lucide-react";
 import { saveLessonQuestions } from "@/app/actions/question";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // Định nghĩa kiểu dữ liệu
 interface QuestionData {
@@ -67,10 +68,10 @@ export default function QuestionEditor({ lessonId, initialQuestions }: QuestionE
         setLoading(false);
 
         if (res.success) {
-            alert("Lưu thành công!");
+            toast.success("Lưu thành công!");
             router.refresh();
         } else {
-            alert("Lỗi: " + res.error);
+            toast.error("Lỗi: " + res.error);
         }
     };
 

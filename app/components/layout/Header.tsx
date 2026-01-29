@@ -63,7 +63,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-2">
             {[
               { label: "Khóa học", href: "/courses" },
-              { label: "Danh mục", href: "/categories" },
+              { label: "Lĩnh vực", href: "/categories" },
               { label: "Roadmap", href: "/onboarding" }, // TODO: Conditional link if user has roadmap
               { label: "Về chúng tôi", href: "/about" },
               { label: "Liên hệ", href: "/contact" },

@@ -87,6 +87,7 @@ export async function createCourseService(data: {
   description?: string;
   instructorId: string;
   thumbnailUrl?: string;
+  categoryId?: string;
   price?: number;
 }) {
   return await prisma.course.create({
@@ -95,6 +96,7 @@ export async function createCourseService(data: {
       description: data.description || "",
       instructorId: data.instructorId,
       thumbnailUrl: data.thumbnailUrl || null,
+      categoryId: data.categoryId || null,
       price: data.price || 0,
       status: "DRAFT",
     },

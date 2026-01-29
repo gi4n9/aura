@@ -25,7 +25,7 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
     return (
         <div className="min-h-screen bg-[#F9F8F4] p-6">
             <div className="max-w-4xl mx-auto mb-6">
-                <Link href={`/instructor/courses/${lesson.chapterId}`} className="text-stone-500 flex items-center gap-1 mb-4 hover:text-stone-800">
+                <Link href={`/instructor/courses`} className="text-stone-500 flex items-center gap-1 mb-4 hover:text-stone-800">
                     <ArrowLeft size={16} /> Quay lại khóa học
                 </Link>
                 <h1 className="text-3xl font-serif font-bold text-stone-800">{lesson.title}</h1>

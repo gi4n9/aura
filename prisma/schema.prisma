@@ -89,6 +89,10 @@ model Course {
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
+  // Phân loại
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
   // Nội dung
   chapters    Chapter[]
   enrollments Enrollment[]
@@ -154,6 +158,26 @@ model Question {
   isArchived  Boolean      @default(false)
   submissions Submission[]
   createdAt   DateTime     @default(now())
+}
+
+// ================= 2.1 CATEGORIES =================
+model Category {
+  id          String   @id @default(uuid())
+  name        String   // Tên danh mục (Ví dụ: "Lập trình", "Ngoại ngữ")
+  slug        String   @unique // URL friendly (ví dụ: "lap-trinh", "ngoai-ngu")
+  description String?
+  icon        String?  // Icon/Image URL
+
+  // Hierarchy (Danh mục cha - con)
+  parentId    String?
+  parent      Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[]  @relation("CategoryHierarchy")
+
+  // Courses in this category
+  courses     Course[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ================= 3. LEARNING & INTERACTION =================

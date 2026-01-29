@@ -10,10 +10,25 @@ import { createClient } from "@/utils/supabase/client";
 
 import { createCourse } from "@/app/actions/course";
 
+import { getCategoriesForSelect } from "@/app/actions/categories";
+
+import { toast } from "sonner";
+
+interface Category {
+    id: string;
+    name: string;
+    slug: string;
+}
+
 export default function CreateCoursePage() {
     const [isPending, setIsPending] = useState(false);
+
+    const [categories, setCategories] = useState<Category[]>([]);
+
     const [authorName, setAuthorName] = useState("Đang tải...");
+
     const router = useRouter();
+
 
     // 1. Lấy thông tin giảng viên để hiển thị (UX)
     useEffect(() => {
@@ -32,6 +47,16 @@ export default function CreateCoursePage() {
         };
 
         fetchUser();
+
+        const fetchCategories = async () => {
+            const categories = await getCategoriesForSelect();
+
+            if (categories) {
+                setCategories(categories);
+            }
+        }
+
+        fetchCategories();
     }, []);
 
     async function handleSubmit(formData: FormData) {
@@ -40,13 +65,14 @@ export default function CreateCoursePage() {
         // 👇 GỌI SERVER ACTION (createCourse)
         const res = await createCourse(formData);
 
+
         if (res?.success) {
             // Chuyển hướng sang trang Edit với ID vừa tạo
             // res.data chứa object course (bao gồm id)
-            router.push(`/instructor/courses/${res.data?.id}/edit`);
+            router.push(`/instructor/courses/${res.data?.id}/settings`);
             router.refresh();
         } else {
-            alert(res?.error || "Có lỗi xảy ra khi tạo khóa học");
+            toast.error(res?.error || "Có lỗi xảy ra khi tạo khóa học");
             setIsPending(false);
         }
     }
@@ -67,6 +93,23 @@ export default function CreateCoursePage() {
                         placeholder="Ví dụ: Lập trình Next.js từ cơ bản đến nâng cao..."
                         className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
                     />
+                </div>
+
+                {/* Chọn lĩnh vực */}
+                <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">Lĩnh vực</label>
+                    <select
+                        name="category"
+                        required
+                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
+                    >
+                        <option value="">Chọn lĩnh vực</option>
+                        {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                                {category.name}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Giảng viên (Read-only) */}
@@ -95,9 +138,6 @@ export default function CreateCoursePage() {
                         className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all resize-none"
                     />
                 </div>
-
-                {/* Giá khóa học (Optional - nếu bạn muốn cho nhập ngay lúc tạo) */}
-                {/* Nếu chưa cần nhập giá ngay thì có thể bỏ qua, chỉnh sửa sau */}
 
                 <button
                     type="submit"

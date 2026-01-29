@@ -48,6 +48,7 @@ export default async function FeaturedCourses() {
                                     src={course.thumbnailUrl || "/placeholder-course.jpg"}
                                     alt={course.title}
                                     fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                                     className="object-cover transition-transform duration-700 group-hover:scale-105 saturate-50 group-hover:saturate-100" // Hiệu ứng chuyển từ nhạt sang đậm màu
                                 />
                                 {/* Badge Organization */}
@@ -78,6 +79,7 @@ export default async function FeaturedCourses() {
                                                 src={course.instructor?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
                                                 alt="Avatar"
                                                 fill
+                                                sizes="32px"
                                                 className="object-cover"
                                             />
                                         </div>

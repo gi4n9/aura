@@ -35,7 +35,7 @@ export default async function CoursesPage() {
                     </p>
                 </div>
 
-                <Link href="/instructor/create">
+                <Link href="/instructor/create-course">
                     <button className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all font-medium shadow-lg shadow-slate-200">
                         <PlusCircle size={18} />
                         Tạo khóa học
@@ -53,7 +53,7 @@ export default async function CoursesPage() {
                     <p className="text-slate-500 max-w-sm mx-auto mt-2 mb-6">
                         Hãy bắt đầu chia sẻ kiến thức của bạn bằng cách tạo khóa học đầu tiên ngay hôm nay.
                     </p>
-                    <Link href="/instructor/create">
+                    <Link href="/instructor/create-course">
                         <span className="text-indigo-600 font-medium hover:underline cursor-pointer">
                             Tạo khóa học mới &rarr;
                         </span>
