@@ -1,15 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { format, isSameMonth, parseISO } from "date-fns";
+import { format, isSameMonth, parseISO, isToday } from "date-fns";
 import { vi } from "date-fns/locale";
-import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Circle } from "lucide-react";
+import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Circle, PlusCircle, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // --- TYPES ---
 interface LessonItem {
     id: string;
     title: string;
-    type: "Grammar" | "Vocabulary" | "Listening" | "Reading" | "Speaking";
+    type: "Grammar" | "Vocabulary" | "Listening" | "Reading" | "Speaking" | string;
+    courseTitle?: string;
+    courseId?: string; // Added courseId
+    chapterId?: string; // Added chapterId
+    isCompleted?: boolean;
 }
 
 interface StudySession {
@@ -22,91 +28,14 @@ interface StudySession {
     topics: LessonItem[];
 }
 
-// --- MOCK DATA ---
-const generateMockData = (): StudySession[] => {
-    const sessions: StudySession[] = [];
-
-    // Helper to create date
-    const d = (month: number, day: number) => new Date(2025, month - 1, day);
-
-    // OCT 2025
-    sessions.push({
-        id: "s1", index: 1, date: d(10, 27), isCompleted: true, completedAt: d(10, 27), score: "3/3",
-        topics: [
-            { id: "l1", title: "Giới thiệu về khóa học - Nghe & Đọc", type: "Grammar" }
-        ]
-    });
-    sessions.push({
-        id: "s2", index: 2, date: d(10, 28), isCompleted: true, completedAt: d(10, 27), score: "3/3",
-        topics: [
-            { id: "l2", title: "Bài giới thiệu khoá học - Từ vựng", type: "Vocabulary" }
-        ]
-    });
-    sessions.push({
-        id: "s3", index: 3, date: d(10, 29), isCompleted: true, completedAt: d(10, 27), score: "3/3",
-        topics: [
-            { id: "l3", title: "Listening: Tranh tả người", type: "Listening" }
-        ]
-    });
-    sessions.push({
-        id: "s4", index: 4, date: d(10, 30), isCompleted: true, completedAt: d(10, 28), score: "3/3",
-        topics: [
-            { id: "l4", title: "Reading: Giới thiệu chung về Part 5", type: "Vocabulary" }
-        ]
-    });
-    sessions.push({
-        id: "s5", index: 5, date: d(10, 31), isCompleted: true, completedAt: d(10, 28), score: "3/3",
-        topics: [
-            { id: "l5", title: "Chủ đề về Hợp đồng và Tiếp thị (Section 1)", type: "Vocabulary" }
-        ]
-    });
-
-    // NOV 2025
-    sessions.push({
-        id: "s6", index: 6, date: d(11, 1), isCompleted: true, completedAt: d(10, 30), score: "3/3",
-        topics: [
-            { id: "l6", title: "Listening: Giới thiệu chung về câu hỏi WH", type: "Listening" }
-        ]
-    });
-    sessions.push({
-        id: "s7", index: 7, date: d(11, 2), isCompleted: true, completedAt: d(10, 31), score: "3/3",
-        topics: [
-            { id: "l7", title: "Reading: Danh từ (Phần 1)", type: "Reading" }
-        ]
-    });
-    sessions.push({
-        id: "s8", index: 8, date: d(11, 3), isCompleted: true, completedAt: d(10, 31), score: "3/3",
-        topics: [
-            { id: "l8", title: "Reading: Danh từ (Phần 2)", type: "Reading" }
-        ]
-    });
-    sessions.push({
-        id: "s9", index: 9, date: d(11, 4), isCompleted: false, score: "0/3",
-        topics: [
-            { id: "l9", title: "Mind map 1", type: "Grammar" }
-        ]
-    });
-    sessions.push({
-        id: "s10", index: 10, date: d(11, 5), isCompleted: false, score: "1/3",
-        topics: [
-            { id: "l10", title: "Chủ đề về Hợp đồng và Tiếp thị (Section 2)", type: "Vocabulary" }
-        ]
-    });
-    sessions.push({
-        id: "s11", index: 11, date: d(11, 6), isCompleted: false, score: "0/3",
-        topics: [
-            { id: "l11", title: "Listening: Tranh tả vật", type: "Listening" }
-        ]
-    });
-
-    return sessions;
-};
-
 // --- COMPONENTS ---
 
 const SessionCard = ({ session }: { session: StudySession }) => {
     return (
-        <div className="bg-white rounded-xl border border-stone-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-200 flex flex-col h-full overflow-hidden">
+        <div className={`
+             rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full overflow-hidden group
+             ${isToday(session.date) ? "border-[#C5A059] ring-1 ring-[#C5A059]/30 bg-amber-50/20" : "bg-white border-stone-100 hover:border-green-200"}
+        `}>
             {/* Header */}
             <div className="p-4 pb-2 flex justify-between items-start">
                 <div className="flex items-center gap-2">
@@ -122,38 +51,62 @@ const SessionCard = ({ session }: { session: StudySession }) => {
                 </div>
 
                 <div className="flex items-center gap-1 text-[#F59E0B] font-bold text-sm">
-                    <Trophy size={16} />
-                    <span>{session.score}</span>
+                    {session.score && (
+                        <>
+                            <Trophy size={16} />
+                            <span>{session.score}</span>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Body */}
             <div className="px-4 py-2 flex-1 space-y-3">
-                {session.topics.map((topic) => (
-                    <div key={topic.id}>
-                        <div className="flex items-start gap-2 mb-1.5">
+                {session.topics.map((topic, idx) => (
+                    <div key={topic.id + idx} className="group/topic">
+                        {/* CLICKABLE ROW */}
+                        <Link
+                            href={topic.courseId && topic.chapterId
+                                ? `/courses/${topic.courseId}/lessons/${topic.id}`
+                                : "#"}
+                            className="flex items-start gap-2 mb-1.5 hover:bg-stone-50 p-1.5 -mx-1.5 rounded-lg transition-colors"
+                        >
                             <Circle size={8} className={`mt-1.5 shrink-0 ${session.isCompleted ? "text-green-500 fill-green-500" : "text-[#C5A059] fill-[#C5A059]"}`} />
-                            <p className="text-sm text-stone-600 font-medium leading-tight">
-                                {topic.title}
-                            </p>
+                            <div className="flex-1">
+                                <p className={`text-sm font-medium leading-tight line-clamp-2 transition-colors
+                                    ${topic.isCompleted ? "text-stone-500 line-through decoration-stone-300" : "text-stone-700 group-hover/topic:text-[#C5A059]"}
+                                `}>
+                                    {topic.title}
+                                </p>
+                            </div>
+                            {/* Hover Icon */}
+                            <ExternalLink size={14} className="mt-1 text-stone-300 opacity-0 group-hover/topic:opacity-100 transition-opacity" />
+                        </Link>
+
+                        {/* Tags */}
+                        <div className="flex gap-2 ml-4">
+                            <span className="inline-block px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-bold rounded border border-stone-200">
+                                {topic.type}
+                            </span>
+                            {topic.courseTitle && (
+                                <Link href={`/courses/${topic.courseId}`} className="inline-block px-2 py-0.5 bg-blue-50 text-blue-500 text-[10px] font-bold rounded border border-blue-100 max-w-[120px] truncate hover:underline">
+                                    {topic.courseTitle}
+                                </Link>
+                            )}
                         </div>
-                        {/* Tag */}
-                        <span className="inline-block px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-bold rounded border border-stone-200 ml-4">
-                            {topic.type}
-                        </span>
                     </div>
                 ))}
             </div>
 
             {/* Footer */}
             <div className="px-4 py-3 mt-auto">
-                {session.isCompleted && session.completedAt ? (
+                {session.isCompleted ? (
                     <p className="text-xs text-green-600 font-medium">
-                        Đã Hoàn Thành: {format(session.completedAt, "EEEE, d 'Tháng' M", { locale: vi })}
+                        Đã hoàn thành
                     </p>
                 ) : (
-                    <p className="text-xs text-stone-400 font-medium">
-                        Chưa hoàn thành
+                    <p className="text-xs text-stone-400 font-medium italic group-hover:text-stone-500 transition-colors">
+                        {isToday(session.date) ? "Đến giờ học rồi! 🚀" : "Chưa hoàn thành"}
                     </p>
                 )}
             </div>
@@ -161,11 +114,68 @@ const SessionCard = ({ session }: { session: StudySession }) => {
     );
 };
 
-export default function StudyTimeline() {
+export default function StudyTimeline({ initialSchedule }: { initialSchedule: any }) {
     const [viewMode, setViewMode] = useState<"grid" | "list" | "calendar">("grid");
-    const sessions = generateMockData();
 
-    // Group sessions by MonthYear
+    // --- TRANSFORM DATA ---
+    let sessions: StudySession[] = [];
+
+    if (initialSchedule && initialSchedule.items) {
+        const itemsByDate: { [key: string]: any[] } = {};
+
+        initialSchedule.items.forEach((item: any) => {
+            const dateKey = format(new Date(item.scheduledAt), "yyyy-MM-dd");
+            if (!itemsByDate[dateKey]) itemsByDate[dateKey] = [];
+            itemsByDate[dateKey].push(item);
+        });
+
+        const sortedDates = Object.keys(itemsByDate).sort();
+
+        sessions = sortedDates.map((dateStr, idx) => {
+            const dateItems = itemsByDate[dateStr];
+            const dateObj = new Date(dateStr);
+            const isAllCompleted = dateItems.every((i: any) => i.isCompleted);
+
+            return {
+                id: `session-${dateStr}`,
+                index: idx + 1,
+                date: dateObj,
+                isCompleted: isAllCompleted,
+                topics: dateItems.map((i: any) => ({
+                    id: i.lessonId,
+                    title: i.lesson.title,
+                    type: "Lesson",
+                    courseTitle: i.lesson.chapter?.course?.title,
+                    courseId: i.lesson.chapter?.course?.id, // Ensure these are queried
+                    chapterId: i.lesson.chapter?.id,
+                    isCompleted: i.isCompleted
+                }))
+            };
+        });
+    }
+
+    // EMPTY STATE
+    if (!initialSchedule || sessions.length === 0) {
+        return (
+            <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-12 text-center">
+                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
+                    <CalendarIcon size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-stone-800 mb-2">Chưa có kế hoạch học tập</h3>
+                <p className="text-stone-500 mb-6 max-w-sm mx-auto">
+                    Hãy tạo một lộ trình cá nhân hóa để Aura giúp bạn sắp xếp thời gian học tập hiệu quả nhất nhé!
+                </p>
+                <Link
+                    href="/onboarding/study-plan/create"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] text-white rounded-xl font-bold hover:bg-stone-800 transition shadow-lg"
+                >
+                    <PlusCircle size={18} /> Tạo Lộ Trình Mới
+                </Link>
+            </div>
+        );
+    }
+
+    // Grouping Logic
     const groupedSessions: { [key: string]: StudySession[] } = {};
     sessions.forEach(session => {
         const monthKey = format(session.date, "M-yyyy");
@@ -175,7 +185,6 @@ export default function StudyTimeline() {
         groupedSessions[monthKey].push(session);
     });
 
-    // Sort keys to ensure chronological order
     const sortedMonthKeys = Object.keys(groupedSessions).sort((a, b) => {
         const [ma, ya] = a.split('-').map(Number);
         const [mb, yb] = b.split('-').map(Number);
@@ -208,12 +217,6 @@ export default function StudyTimeline() {
                     >
                         <LayoutGrid size={18} />
                     </button>
-                    <button
-                        onClick={() => setViewMode("list")}
-                        className={`p-2 rounded-lg transition ${viewMode === "list" ? "bg-blue-50 text-blue-600" : "text-stone-400 hover:bg-stone-100"}`}
-                    >
-                        <List size={18} />
-                    </button>
                 </div>
             </div>
 
@@ -224,7 +227,7 @@ export default function StudyTimeline() {
                     const [month, year] = monthKey.split('-');
 
                     return (
-                        <div key={monthKey}>
+                        <div key={monthKey} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Month Separator */}
                             <div className="flex items-center justify-center mb-6">
                                 <div className="h-px bg-stone-200 flex-1"></div>
@@ -243,6 +246,12 @@ export default function StudyTimeline() {
                         </div>
                     );
                 })}
+            </div>
+
+            <div className="text-center pt-8">
+                <Link href="/onboarding/study-plan/create" className="text-sm text-stone-400 hover:text-stone-600 underline">
+                    Tạo lại hoặc chỉnh sửa lộ trình
+                </Link>
             </div>
         </div>
     );

@@ -1,7 +1,36 @@
 import StudyTimeline from "@/app/components/study-plan/StudyTimeline";
 import ProgressCard from "@/app/components/study-plan/ProgressCard";
+import { getMyStudyPlan } from "@/app/actions/study-plan";
+import { differenceInDays } from "date-fns";
 
-export default function StudyPlanPage() {
+export default async function StudyPlanPage() {
+    const schedule = await getMyStudyPlan();
+
+    // Calculate Progress Stats
+    let totalSessions = 0;
+    let completedSessions = 0;
+    let daysLeft = 0;
+    let totalDays = 0;
+
+    if (schedule) {
+        totalSessions = schedule.items.length;
+        completedSessions = schedule.items.filter((i: any) => i.isCompleted).length;
+
+        // Calculate remaining duration
+        if (schedule.targetEndDate) {
+            // If plan has hard target
+            daysLeft = differenceInDays(new Date(schedule.targetEndDate), new Date());
+        } else if (schedule.items.length > 0) {
+            // Else based on last scheduled item
+            const lastItem = schedule.items[schedule.items.length - 1];
+            daysLeft = differenceInDays(new Date(lastItem.scheduledAt), new Date());
+            totalDays = differenceInDays(new Date(lastItem.scheduledAt), new Date(schedule.startDate));
+        }
+    }
+
+    // Fallback if daysLeft is negative (overdue) or zero
+    if (daysLeft < 0) daysLeft = 0;
+
     return (
         <div className="min-h-screen pt-[80px]">
             {/* Page Header */}
@@ -17,16 +46,17 @@ export default function StudyPlanPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* LEFT COLUMN: TIMELINE (8 cols) */}
                 <div className="lg:col-span-8">
-                    <StudyTimeline />
+                    {/* Pass fetched schedule to Client Component */}
+                    <StudyTimeline initialSchedule={schedule} />
                 </div>
 
                 {/* RIGHT COLUMN: PROGRESS & MASCOT (4 cols) */}
                 <div className="lg:col-span-4 space-y-6">
                     <ProgressCard
-                        totalSessions={30}
-                        completedSessions={12} // Example data
-                        daysLeft={15}
-                        totalDays={110}
+                        totalSessions={totalSessions}
+                        completedSessions={completedSessions}
+                        daysLeft={daysLeft}
+                        totalDays={totalDays || 30}
                     />
                 </div>
             </div>

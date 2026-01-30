@@ -54,6 +54,9 @@ model Profile {
   studyPlans     StudyPlanItem[]
   submissions    Submission[]
   chatSessions   ChatSession[]
+  
+  // NEW: Study Schedules Config
+  studySchedules StudySchedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,6 +99,9 @@ model Course {
   // Nội dung
   chapters    Chapter[]
   enrollments Enrollment[]
+  
+  // NEW: Relation to Study Schedule
+  includedInSchedules StudyScheduleCourse[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -196,7 +202,7 @@ model Enrollment {
   @@unique([userId, courseId])
 }
 
-// Lịch học (Study Plan)
+// Lịch học (Study Plan) - INDIVIDUAL ITEMS
 model StudyPlanItem {
   id     String  @id @default(uuid())
   userId String
@@ -204,6 +210,10 @@ model StudyPlanItem {
 
   lessonId String
   lesson   Lesson @relation(fields: [lessonId], references: [id])
+  
+  // Link to parent schedule if needed, but keeping it loose is also fine
+  studyScheduleId String?
+  studySchedule   StudySchedule? @relation(fields: [studyScheduleId], references: [id])
 
   scheduledAt DateTime // Thời gian user dự kiến học
   isCompleted Boolean  @default(false)
@@ -211,6 +221,48 @@ model StudyPlanItem {
   // Dùng để hiển thị trên UI Calendar
   note String?
 }
+
+// NEW: STUDY SCHEDULE CONFIGURATION (One user can have multiple "Plans" e.g. "Summer Plan", "Exam Prep")
+model StudySchedule {
+    id        String @id @default(uuid())
+    userId    String
+    user      Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+    
+    name      String // e.g., "Fullstack Roadmap"
+    
+    // Preferences
+    startDate      DateTime
+    targetEndDate  DateTime?
+    
+    // Days of week available: [1, 3, 5] (Mon, Wed, Fri) stored as Int[] is tricky in Postgres w/ Prisma arrays sometimes, using simple version or JSON
+    // Or just "1,3,5" string
+    availableDays  Int[] 
+    
+    dailyLearningMinutes Int? // e.g. 60
+    
+    // Status
+    isActive  Boolean @default(true)
+    
+    // Relations
+    courses   StudyScheduleCourse[]
+    items     StudyPlanItem[]
+    
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model StudyScheduleCourse {
+    studyScheduleId String
+    studySchedule   StudySchedule @relation(fields: [studyScheduleId], references: [id], onDelete: Cascade)
+    
+    courseId String
+    course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+    
+    priority Int? // Order to learn: 1, 2, 3
+    
+    @@id([studyScheduleId, courseId])
+}
+
 
 // Bài làm của học sinh
 model Submission {
