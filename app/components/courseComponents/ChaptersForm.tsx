@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlusCircle, Loader2, Eye, EyeOff, Pencil, FileQuestion } from "lucide-react"; // Added FileQuestion
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createChapter, updateChapter } from "@/app/actions/chapter";
 import ChapterQuizModal from "./ChapterQuizModal"; // Import Modal
@@ -111,7 +112,11 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                             key={chapter.id}
                             className="flex items-center justify-between p-3 bg-white border border-stone-200 rounded-md shadow-sm hover:border-[#C5A059]/50 transition"
                         >
-                            <span className="text-sm font-medium text-stone-700">{chapter.title}</span>
+                            <Link href={`/instructor/courses/${courseId}/chapters/${chapter.id}`} className="flex-1 cursor-pointer">
+                                <span className="text-sm font-medium text-stone-700 hover:text-[#C5A059] transition">
+                                    {chapter.title}
+                                </span>
+                            </Link>
 
                             <div className="flex items-center gap-2">
                                 {/* Badge Status */}
@@ -121,11 +126,11 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                                     <span className="text-[10px] bg-stone-100 text-stone-500 px-2 py-0.5 rounded font-bold">Nháp</span>
                                 )}
 
-                                {/* Nút QUIZ (New) */}
+                                {/* Nút QUIZ (New) - Có thể giữ lại hoặc ẩn nếu muốn flow tập trung */}
                                 <button
                                     onClick={() => setEditingChapter({ id: chapter.id, title: chapter.title })}
                                     className="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold hover:bg-indigo-100 transition"
-                                    title="Quản lý câu hỏi trắc nghiệm"
+                                    title="Quản lý câu hỏi trắc nghiệm nhanh"
                                 >
                                     <FileQuestion size={14} /> Câu hỏi
                                 </button>
@@ -139,10 +144,14 @@ export const ChaptersForm = ({ initialData, courseId }: ChaptersFormProps) => {
                                     {chapter.status === "PUBLISHED" ? <Eye size={16} /> : <EyeOff size={16} />}
                                 </button>
 
-                                {/* Nút Sửa (Icon bút chì) */}
-                                <button className="p-1 hover:bg-stone-100 rounded transition text-stone-500 hover:text-[#C5A059]">
+                                {/* Nút Sửa (Icon bút chì) -> Dẫn sang trang quản lý Lesson */}
+                                <Link
+                                    href={`/instructor/courses/${courseId}/chapters/${chapter.id}`}
+                                    className="p-1 hover:bg-stone-100 rounded transition text-stone-500 hover:text-[#C5A059]"
+                                    title="Quản lý bài học"
+                                >
                                     <Pencil size={16} />
-                                </button>
+                                </Link>
                             </div>
                         </div>
                     ))}

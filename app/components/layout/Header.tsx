@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings } from "lucide-react";
+import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 
@@ -64,7 +64,6 @@ export default function Header() {
             {[
               { label: "Khóa học", href: "/courses" },
               { label: "Lĩnh vực", href: "/categories" },
-              { label: "Roadmap", href: "/onboarding" }, // TODO: Conditional link if user has roadmap
               { label: "Về chúng tôi", href: "/about" },
               { label: "Liên hệ", href: "/contact" },
             ].map((link) => (

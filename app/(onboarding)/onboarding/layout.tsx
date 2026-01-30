@@ -24,7 +24,7 @@ const Sidebar = () => {
     const menuItems = [
         { name: "Tổng quan", href: "/onboarding", icon: LayoutDashboard },
         { name: "Study plan", href: "/onboarding/study-plan", icon: Map },
-        { name: "My courses", href: "/onboarding/courses", icon: BookOpen },
+        { name: "My courses", href: "/onboarding/my-courses", icon: BookOpen },
         { name: "Test Practice", href: "/onboarding/practice", icon: FileText },
         { name: "Learning Profile", href: "/onboarding/profile", icon: User },
     ];
@@ -141,7 +141,7 @@ export default function OnboardingLayout({
             <Header />
 
             {/* Main Content Area */}
-            <main className="pl-64 pt-16 min-h-screen transition-all duration-300">
+            <main className="pl-64 min-h-screen transition-all duration-300">
                 <div className="container mx-auto p-8 max-w-7xl animate-fade-in">
                     {children}
                 </div>

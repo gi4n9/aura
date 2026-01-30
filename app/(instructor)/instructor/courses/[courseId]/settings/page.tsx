@@ -13,7 +13,7 @@ import { DescriptionForm } from "@/app/components/courseComponents/DescriptionFo
 import { PriceForm } from "@/app/components/courseComponents/PriceForm";
 import { CourseActions } from "@/app/components/courseComponents/CourseActions";
 import { ImageForm } from "@/app/components/courseComponents/ImageForm";
-import { ChaptersForm } from "@/app/components/courseComponents/ChaptersForm";
+import { CourseContentManager } from "@/app/components/courseComponents/CourseContentManager";
 
 const IconBadge = ({ icon: Icon }: { icon: any }) => (
     <div className="p-2 bg-stone-100 rounded-lg">
@@ -37,7 +37,7 @@ export default async function CourseEditPage({
     const course = await prisma.course.findUnique({
         where: {
             id: courseId,
-            instructorId: user.id
+            instructorId: user.id,
         },
         include: {
             chapters: { orderBy: { position: "asc" } },
@@ -126,18 +126,12 @@ export default async function CourseEditPage({
                     </div>
                 </div>
 
-                {/* --- CỘT PHẢI --- */}
+                {/* --- CỘT PHẢI: QUẢN LÝ NỘI DUNG (NEW) --- */}
                 <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm h-full">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-2">
-                                <IconBadge icon={ListChecks} />
-                                <h2 className="text-xl font-bold text-stone-800">Nội dung khóa học</h2>
-                            </div>
-                        </div>
-
-                        <ChaptersForm initialData={plainCourse} courseId={course.id} />
-                    </div>
+                    <CourseContentManager
+                        initialChapters={plainCourse.chapters}
+                        courseId={course.id}
+                    />
                 </div>
             </div>
             <div>

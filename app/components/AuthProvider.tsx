@@ -63,7 +63,7 @@ export const AuthProvider = ({
 
       try {
         const { data, error } = await supabase
-          .from("profile")
+          .from("Profile")
           .select("*")
           .eq("id", user.id)
           .single();
