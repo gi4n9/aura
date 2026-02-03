@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
 
 import { createClient } from "@/utils/supabase/client";
 
@@ -14,17 +14,19 @@ interface UserProfile {
   role: "STUDENT" | "INSTRUCTOR" | "ADMIN";
   fullName?: string;
   email?: string;
-  avatarUrl?: string; // Standardize with DB field name
+  avatarUrl?: string;
 }
 
 const AuthContext = createContext<{
   user: User | null;
   profile: UserProfile | null;
-  isLoading: boolean
+  isLoading: boolean;
+  refreshProfile: () => Promise<void>;
 }>({
   user: null,
   profile: null,
   isLoading: true,
+  refreshProfile: async () => { },
 });
 
 export const AuthProvider = ({
@@ -34,87 +36,95 @@ export const AuthProvider = ({
 }: {
   children: React.ReactNode;
   initialUser: User | null;
-  initialProfile: any | null; // Using any to avoid complex type matching with Prisma dates
+  initialProfile: any | null;
 }) => {
   const [user, setUser] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
   const [isLoading, setIsLoading] = useState(!initialUser);
 
-  // Use useState to ensure supabase client is created only once
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
-  // Use ref to track user ID without causing re-renders
   const userIdRef = useRef<string | null>(initialUser?.id ?? null);
-  // Track if component has mounted to prevent refresh on initial load
   const hasMountedRef = useRef(false);
 
+  // Hàm fetch profile riêng biệt để tái sử dụng
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("Profile")
+        .select("id, role, fullName, email, avatarUrl")
+        .eq("id", userId)
+        .single();
+
+      if (data && !error) {
+        setProfile(data as UserProfile);
+        return data as UserProfile;
+      }
+      return null;
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+      return null;
+    }
+  }, [supabase]);
+
+  // Public refresh function
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      await fetchProfile(user.id);
+    }
+  }, [user?.id, fetchProfile]);
+
+  // Cập nhật profile khi initialProfile thay đổi (từ server)
   useEffect(() => {
-    if (initialProfile) setProfile(initialProfile);
+    if (initialProfile) {
+      setProfile(initialProfile);
+    }
   }, [initialProfile]);
 
-  // Fetch Profile side-effect
+  // Auth state listener
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) {
-        setProfile(null);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from("Profile")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (data && !error) {
-          setProfile(data as UserProfile);
-        }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      }
-    };
-
-    fetchProfile();
-  }, [user, supabase]);
-
-  // Auth state listener with defensive guards to prevent infinite loops
-  useEffect(() => {
-    let isInitialEvent = true; // Skip the first event fired on subscription
+    let isInitialEvent = true;
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      // GUARD 1: Skip the initial event that fires when subscription is created
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip initial event
       if (isInitialEvent) {
         isInitialEvent = false;
         setIsLoading(false);
         return;
       }
 
-      const newUserId = session?.user?.id ?? null;
+      const newUser = session?.user ?? null;
+      const newUserId = newUser?.id ?? null;
 
-      // GUARD 2: Only update state if user ID actually changed
+      console.log(`[Auth] Event: ${event}, User: ${newUserId}`);
+
+      // Kiểm tra xem user có thực sự thay đổi không
       if (newUserId !== userIdRef.current) {
         userIdRef.current = newUserId;
-        setUser(session?.user ?? null);
+        setUser(newUser);
 
-        if (event === 'SIGNED_OUT') {
+        // QUAN TRỌNG: Fetch profile ngay khi user thay đổi
+        if (newUser) {
+          setIsLoading(true);
+          await fetchProfile(newUser.id);
+          setIsLoading(false);
+        } else {
+          // User logged out
           setProfile(null);
         }
       }
 
       setIsLoading(false);
 
-      // GUARD 3: Only refresh on EXPLICIT sign in/out, not token refresh or other events
-      // And only after component has fully mounted
+      // Refresh page để server components cập nhật
       if (hasMountedRef.current && (event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
         router.refresh();
       }
     });
 
-    // Mark as mounted after a short delay to ensure hydration is complete
     setTimeout(() => {
       hasMountedRef.current = true;
     }, 100);
@@ -122,16 +132,17 @@ export const AuthProvider = ({
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, router]);
+  }, [supabase, router, fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Hook để dùng ở các component con (Header, Profile...)
+// Hook để dùng ở các component con
 export const useAuth = () => {
   return useContext(AuthContext);
 };
+

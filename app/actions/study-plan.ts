@@ -50,6 +50,12 @@ export async function createStudyPlan(data: {
   if (!user) return { success: false, error: "Unauthorized" };
 
   try {
+    // 0. Deactivate old plans
+    await db.studySchedule.updateMany({
+        where: { userId: user.id, isActive: true },
+        data: { isActive: false }
+    });
+
     // 1. Create Schedule Container
     const schedule = await db.studySchedule.create({
       data: {
@@ -251,4 +257,83 @@ export async function getMyStudyPlan() {
     });
 
     return schedule;
+}
+
+export async function saveStudyPlan(
+    courseId: string, 
+    items: { lessonId: string; date: string }[],
+    config?: { days: number[]; lessonsPerDay: number }
+) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    try {
+        // 1. Fetch Course Info
+        const course = await db.course.findUnique({
+            where: { id: courseId },
+            select: { title: true }
+        });
+
+        if (!course) return { success: false, error: "Course not found" };
+
+        // 2. Deactivate old plans
+        await db.studySchedule.updateMany({
+            where: { userId: user.id, isActive: true },
+            data: { isActive: false }
+        });
+
+        const startDate = items.length > 0 ? new Date(items[0].date) : new Date();
+        const targetEndDate = items.length > 0 ? new Date(items[items.length - 1].date) : startDate;
+
+        // Fallback for days if not provided (though should be provided)
+        const days = config?.days && config.days.length > 0 ? config.days : [1, 3, 5]; 
+
+        // 3. Create Schedule
+        const schedule = await db.studySchedule.create({
+            data: {
+                userId: user.id,
+                name: `Lộ trình: ${course.title}`,
+                startDate: startDate,
+                targetEndDate: targetEndDate,
+                isActive: true,
+                availableDays: days,
+                dailyLearningMinutes: (config?.lessonsPerDay || 2) * 20, // Rough estimate: 20 mins per lesson
+            }
+        });
+
+        // 4. Link Course
+        await db.studyScheduleCourse.create({
+            data: {
+                studyScheduleId: schedule.id,
+                courseId: courseId,
+                priority: 1
+            }
+        });
+
+        // 5. Create Plan Items
+        if (items.length > 0) {
+            const planItemsData = items.map(item => ({
+                userId: user.id,
+                lessonId: item.lessonId,
+                studyScheduleId: schedule.id,
+                scheduledAt: new Date(item.date),
+                isCompleted: false
+            }));
+
+            await db.studyPlanItem.createMany({
+                data: planItemsData
+            });
+        }
+
+        revalidatePath("/(learning)/courses/[courseId]/progress", "page");
+        revalidatePath("/onboarding/study-plan");
+
+        return { success: true, scheduleId: schedule.id };
+
+    } catch (error) {
+        console.error("Save Plan Error:", error);
+        return { success: false, error: "Failed to save plan" };
+    }
 }

@@ -1,10 +1,18 @@
 import StudyTimeline from "@/app/components/study-plan/StudyTimeline";
 import ProgressCard from "@/app/components/study-plan/ProgressCard";
-import { getMyStudyPlan } from "@/app/actions/study-plan";
+import { getCachedStudyPlan } from "@/lib/cache";
+import { createClient } from "@/utils/supabase/server";
 import { differenceInDays } from "date-fns";
+import { redirect } from "next/navigation";
 
 export default async function StudyPlanPage() {
-    const schedule = await getMyStudyPlan();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) redirect("/login");
+
+    // Sử dụng cached query
+    const schedule = await getCachedStudyPlan(user.id);
 
     // Calculate Progress Stats
     let totalSessions = 0;
@@ -12,20 +20,29 @@ export default async function StudyPlanPage() {
     let daysLeft = 0;
     let totalDays = 0;
 
+    let expectedSessions = 0;
+
     if (schedule) {
         totalSessions = schedule.items.length;
         completedSessions = schedule.items.filter((i: any) => i.isCompleted).length;
 
-        // Calculate remaining duration
-        if (schedule.targetEndDate) {
-            // If plan has hard target
-            daysLeft = differenceInDays(new Date(schedule.targetEndDate), new Date());
-        } else if (schedule.items.length > 0) {
-            // Else based on last scheduled item
-            const lastItem = schedule.items[schedule.items.length - 1];
-            daysLeft = differenceInDays(new Date(lastItem.scheduledAt), new Date());
-            totalDays = differenceInDays(new Date(lastItem.scheduledAt), new Date(schedule.startDate));
-        }
+        const endDate = schedule.targetEndDate
+            ? new Date(schedule.targetEndDate)
+            : (schedule.items.length > 0 ? new Date(schedule.items[schedule.items.length - 1].scheduledAt) : new Date());
+
+        const startDate = new Date(schedule.startDate);
+
+        daysLeft = differenceInDays(endDate, new Date());
+        totalDays = differenceInDays(endDate, startDate) + 1;
+
+        // Safety check
+        if (totalDays <= 0) totalDays = 1;
+
+        const daysElapsed = differenceInDays(new Date(), startDate);
+        // Clamp daysElapsed
+        const safeDaysElapsed = Math.max(0, Math.min(daysElapsed, totalDays));
+
+        expectedSessions = Math.round((safeDaysElapsed / totalDays) * totalSessions);
     }
 
     // Fallback if daysLeft is negative (overdue) or zero
@@ -55,6 +72,7 @@ export default async function StudyPlanPage() {
                     <ProgressCard
                         totalSessions={totalSessions}
                         completedSessions={completedSessions}
+                        expectedSessions={expectedSessions}
                         daysLeft={daysLeft}
                         totalDays={totalDays || 30}
                     />

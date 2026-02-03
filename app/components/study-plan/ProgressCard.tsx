@@ -1,11 +1,22 @@
 "use client";
 
-import { Crown, AlertCircle, Clock, CalendarDays } from "lucide-react";
-import Mascot from "./Mascot";
+import { Crown, AlertCircle, CalendarDays } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Lazy load Mascot để không load Three.js ngay lập tức
+const Mascot = dynamic(() => import("./Mascot"), {
+    ssr: false,
+    loading: () => (
+        <div className="w-full h-[350px] flex items-center justify-center bg-gradient-to-b from-white to-[#F9F8F4]">
+            <div className="animate-pulse text-stone-300">Đang tải...</div>
+        </div>
+    ),
+});
 
 interface ProgressCardProps {
     totalSessions: number;
     completedSessions: number;
+    expectedSessions: number;
     daysLeft: number;
     totalDays: number;
 }
@@ -13,16 +24,18 @@ interface ProgressCardProps {
 export default function ProgressCard({
     totalSessions,
     completedSessions,
+    expectedSessions,
     daysLeft,
     totalDays
 }: ProgressCardProps) {
 
-    // Calculate status logic
-    const progressPercent = (completedSessions / totalSessions) * 100;
-    const expectedProgress = ((totalDays - daysLeft) / totalDays) * 100;
+    // Calculation logic
+    const safeTotal = totalSessions > 0 ? totalSessions : 1;
+    const progressPercent = Math.min(100, Math.max(0, (completedSessions / safeTotal) * 100));
+    const expectedPercent = Math.min(100, Math.max(0, (expectedSessions / safeTotal) * 100));
 
-    // Determination: if actual progress is < expected progress - 10%, then behind
-    const isBehind = progressPercent < (expectedProgress - 10);
+    // Status logic: Allow a small buffer (e.g. 1 session or 5%)
+    const isBehind = completedSessions < (expectedSessions - 1);
     const status = isBehind ? "behind" : "ahead";
 
     return (
@@ -48,24 +61,41 @@ export default function ProgressCard({
 
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-stone-500 font-medium flex items-center gap-2">
-                            <Crown size={16} className="text-[#C5A059]" /> Số buổi đã đạt
+                            <Crown size={16} className="text-[#C5A059]" /> Tiến độ thực tế
                         </span>
-                        <span className="font-bold text-[#C5A059]">
-                            {completedSessions}/{totalSessions}
-                        </span>
+                        <div className="text-right">
+                            <span className="font-bold text-[#C5A059]">
+                                {completedSessions}/{totalSessions} bài
+                            </span>
+                            <div className="text-[10px] text-stone-400">
+                                (Dự kiến: {expectedSessions} bài)
+                            </div>
+                        </div>
+
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="mt-2">
+                    <div className="mt-2 relative">
                         <div className="flex justify-between text-xs mb-1 text-stone-400">
                             <span>Hoàn thành: {Math.round(progressPercent)}%</span>
                         </div>
-                        <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden relative">
+                            {/* Expected Marker (Ghost Bar) */}
                             <div
-                                className={`h-full rounded-full transition-all duration-1000 ${isBehind ? "bg-blue-400" : "bg-[#C5A059]"
-                                    }`}
+                                className="absolute h-full bg-stone-200/50 border-r-2 border-stone-300 z-0"
+                                style={{ width: `${expectedPercent}%` }}
+                                title={`Tiến độ dự kiến: ${Math.round(expectedPercent)}%`}
+                            />
+
+                            {/* Actual Progress */}
+                            <div
+                                className={`absolute h-full rounded-full transition-all duration-1000 z-10 ${isBehind ? "bg-blue-400" : "bg-[#C5A059]"}`}
                                 style={{ width: `${progressPercent}%` }}
                             />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-stone-400 mt-1">
+                            <span>0%</span>
+                            <span>Mục tiêu: 100%</span>
                         </div>
                     </div>
 

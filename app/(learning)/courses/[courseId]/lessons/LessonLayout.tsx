@@ -1,28 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
     PanelLeftClose,
     PanelLeftOpen,
     Maximize2,
     Minimize2,
-    BookOpen,
     CheckCircle,
-    ArrowLeft
+    ArrowLeft,
+    Clock
 } from "lucide-react";
 import Link from "next/link";
 import CourseSidebar from "@/app/components/CourseSidebar";
-import VideoPlayer from "@/app/components/VideoPlayer";
-import QuizPlayer from "../courseComponents/QuizPlayer";
+import VideoPlayer, { VideoPlayerHandle } from "@/app/components/VideoPlayer";
+import QuizPlayer from "../../../../components/courseComponents/QuizPlayer";
+import TranscriptTimeline from "@/app/components/TranscriptTimeline";
 
 
-// Định nghĩa lại các Type cần thiết (khớp với data từ Prisma truyền xuống)
+// Định nghĩa lại các Type cần thiết
+type TimelineItem = {
+    time: number;
+    label: string;
+};
+
 type LessonData = {
     id: string;
     title: string;
     youtubeVideoId: string | null;
     transcript: string | null;
-    questions: any[]; // Data quiz đã format
+    timeline: TimelineItem[] | null;
+    duration: number | null;
+    questions: any[];
 };
 
 type CourseData = {
@@ -47,6 +55,60 @@ export default function LessonLayout({
     // State quản lý hiển thị
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isVideoVisible, setIsVideoVisible] = useState(true);
+
+    // State cho resizable quiz panel
+    const [quizPanelWidth, setQuizPanelWidth] = useState(400);
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStartX = useRef(0);
+    const dragStartWidth = useRef(400);
+
+    // Ref để control video player và container
+    const videoPlayerRef = useRef<VideoPlayerHandle>(null);
+    const videoContainerRef = useRef<HTMLDivElement>(null);
+
+    // Handler để seek video từ timeline + scroll đến video
+    const handleSeekToTime = useCallback((seconds: number) => {
+        // Seek video đến mốc thời gian
+        videoPlayerRef.current?.seekTo(seconds);
+
+        // Scroll đến video container với animation mượt
+        videoContainerRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }, []);
+
+    // Handlers cho drag resize
+    const handleDragStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+        dragStartX.current = e.clientX;
+        dragStartWidth.current = quizPanelWidth;
+    }, [quizPanelWidth]);
+
+    const handleDragMove = useCallback((e: MouseEvent) => {
+        if (!isDragging) return;
+
+        const deltaX = dragStartX.current - e.clientX;
+        const newWidth = Math.min(Math.max(dragStartWidth.current + deltaX, 300), 800);
+        setQuizPanelWidth(newWidth);
+    }, [isDragging]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    // Effect để add/remove mouse event listeners
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+        };
+    }, [isDragging, handleDragMove, handleDragEnd]);
 
     return (
         <div className="flex h-screen w-full bg-[#F9F8F4] overflow-hidden pt-[70px]">
@@ -113,44 +175,59 @@ export default function LessonLayout({
                 <div className="flex-1 flex overflow-hidden">
 
                     {/* --- CỘT GIỮA: VIDEO & TRANSCRIPT --- */}
-                    {isVideoVisible && (
-                        <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#F9F8F4] transition-all duration-300 ${
-                            // Nếu Sidebar đóng, set min-width nhỏ hơn để nó có thể co lại còn 50%
-                            !isSidebarOpen ? "min-w-0" : "min-w-[400px]"
-                            }`}>
-                            <div className="max-w-4xl mx-auto space-y-8">
-                                {/* Video Player */}
+                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#F9F8F4] transition-all duration-300 ${!isVideoVisible ? "hidden" : ""
+                        } ${!isSidebarOpen ? "min-w-0" : "min-w-[400px]"
+                        }`}>
+                        <div className="max-w-4xl mx-auto space-y-8">
+                            {/* Video Player */}
+                            <div ref={videoContainerRef}>
                                 <VideoPlayer
+                                    ref={videoPlayerRef}
                                     videoId={lesson.youtubeVideoId || ""}
+                                    lessonId={lesson.id}
                                     title={lesson.title}
-                                    description="" // Ta sẽ hiển thị mô tả bên dưới riêng
+                                    description=""
                                 />
+                            </div>
 
-                                {/* Transcript Section */}
-                                <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-                                    <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2 text-stone-800">
-                                        <BookOpen size={20} className="text-[#C5A059]" />
-                                        Nội dung bài giảng
-                                    </h3>
-                                    <div className="prose prose-stone text-sm max-w-none text-stone-600 leading-relaxed">
-                                        {lesson.transcript ? (
-                                            <p className="whitespace-pre-line">{lesson.transcript}</p>
-                                        ) : (
-                                            <p className="italic text-stone-400">Chưa có nội dung tóm tắt.</p>
-                                        )}
-                                    </div>
-                                </div>
+                            {/* Timeline Section - Click để nhảy đến mốc thời gian */}
+                            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
+                                <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2 text-stone-800">
+                                    <Clock size={20} className="text-[#C5A059]" />
+                                    Mốc thời gian bài giảng
+                                </h3>
+                                <TranscriptTimeline
+                                    timeline={lesson.timeline}
+                                    onSeek={handleSeekToTime}
+                                />
                             </div>
                         </div>
-                    )}
+                    </div>
+
+                    {/* --- DRAG HANDLE để resize quiz panel --- */}
+                    <div
+                        onMouseDown={handleDragStart}
+                        className={`w-1.5 hover:bg-[#C5A059] cursor-col-resize flex-shrink-0 
+                            transition-colors duration-200 relative group
+                            ${isVideoVisible ? 'bg-stone-200' : 'hidden'}
+                            ${isDragging ? '!bg-[#C5A059]' : ''}`}
+                    >
+                        {/* Visual indicator */}
+                        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-1 h-8 bg-[#C5A059] rounded-full" />
+                        </div>
+                    </div>
 
                     {/* --- CỘT PHẢI: BÀI TẬP (QUIZ) --- */}
-                    <div className={`border-l border-stone-200 bg-white flex flex-col transition-all duration-300 ease-in-out ${!isVideoVisible
-                        ? "w-full flex-1" // Chế độ tập trung: Full màn hình
-                        : !isSidebarOpen
-                            ? "flex-1 min-w-0" // Chế độ chia đôi: 50% màn hình
-                            : "w-[400px] flex-shrink-0" // Chế độ thường: Cố định 400px
-                        }`}>
+                    <div
+                        className={`border-l border-stone-200 bg-white flex flex-col transition-all ease-in-out ${!isVideoVisible
+                            ? "w-full flex-1 duration-300" // Chế độ tập trung: Full màn hình
+                            : !isSidebarOpen
+                                ? "flex-1 min-w-0 duration-300" // Chế độ chia đôi: 50% màn hình
+                                : "flex-shrink-0 duration-0" // Chế độ thường: width động
+                            }`}
+                        style={isVideoVisible && isSidebarOpen ? { width: `${quizPanelWidth}px` } : undefined}
+                    >
                         {/* Quiz Header */}
                         <div className={`p-4 border-b border-stone-200 flex items-center gap-2 flex-shrink-0 ${!isVideoVisible ? "bg-white shadow-sm justify-center" : "bg-stone-50"}`}>
                             <CheckCircle className="text-[#C5A059]" size={20} />

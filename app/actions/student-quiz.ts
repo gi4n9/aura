@@ -124,14 +124,84 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         } catch (e) {
             console.error("Failed to update progress", e);
         }
+
+        // 3.6 Update Study Plan Item
+        try {
+            await prisma.studyPlanItem.updateMany({
+                where: { 
+                    userId: user.id,
+                    lessonId: lessonId
+                },
+                data: { isCompleted: true }
+            });
+            revalidatePath("/onboarding/study-plan");
+        } catch (e) {
+            console.error("Failed to update study plan item", e);
+        }
     }
 
     // 4. Tính toán kết quả
     const totalQuestions = questions.length;
-    const scorePercent =
-      totalQuestions > 0
+    const scorePercent = totalQuestions > 0
         ? Math.round((correctCount / totalQuestions) * 100)
         : 0;
+
+    // 5. [NEW] Upsert QuizResult - Lưu kết quả tổng hợp
+    if (lessonInfo) {
+        const courseId = lessonInfo.chapter.courseId;
+        const isPassed = scorePercent >= 80; // Ngưỡng đạt 80%
+
+        // Tìm kết quả cũ
+        const existingResult = await prisma.quizResult.findUnique({
+            where: {
+                userId_lessonId: {
+                    userId: user.id,
+                    lessonId: lessonId
+                }
+            }
+        });
+
+        if (existingResult) {
+            // Chỉ cập nhật nếu điểm cao hơn
+            if (scorePercent > existingResult.score) {
+                await prisma.quizResult.update({
+                    where: { id: existingResult.id },
+                    data: {
+                        score: scorePercent,
+                        correctAnswers: correctCount,
+                        totalQuestions: totalQuestions,
+                        isPassed: isPassed || existingResult.isPassed, // Nếu đã pass thì giữ nguyên
+                        lastAttemptAt: new Date(),
+                        attemptCount: { increment: 1 }
+                    }
+                });
+            } else {
+                // Nếu điểm thấp hơn, chỉ cập nhật lầt attempt và thời gian
+                await prisma.quizResult.update({
+                    where: { id: existingResult.id },
+                    data: {
+                        lastAttemptAt: new Date(),
+                        attemptCount: { increment: 1 }
+                    }
+                });
+            }
+        } else {
+            // Tạo mới
+            await prisma.quizResult.create({
+                data: {
+                    userId: user.id,
+                    lessonId: lessonId,
+                    courseId: courseId,
+                    score: scorePercent,
+                    correctAnswers: correctCount,
+                    totalQuestions: totalQuestions,
+                    isPassed: isPassed,
+                    attemptCount: 1,
+                    lastAttemptAt: new Date()
+                }
+            });
+        }
+    }
 
     if (lessonInfo) {
         revalidatePath(`/courses/${lessonInfo.chapter.courseId}`);

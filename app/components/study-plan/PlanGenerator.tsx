@@ -101,7 +101,7 @@ export default function PlanGenerator({
             day.lessons.map(l => ({ lessonId: l.id, date: day.date.toISOString() }))
         );
 
-        const res = await saveStudyPlan(courseId, flatItems);
+        const res = await saveStudyPlan(courseId, flatItems, { days: selectedDays, lessonsPerDay });
         setIsSaving(false);
 
         if (res.success) {
@@ -143,8 +143,8 @@ export default function PlanGenerator({
                                         key={d.value}
                                         onClick={() => toggleDay(d.value)}
                                         className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${selectedDays.includes(d.value)
-                                                ? "bg-[#1a1a1a] text-[#C5A059] shadow-md scale-105"
-                                                : "bg-stone-100 text-stone-400 hover:bg-stone-200"
+                                            ? "bg-[#1a1a1a] text-[#C5A059] shadow-md scale-105"
+                                            : "bg-stone-100 text-stone-400 hover:bg-stone-200"
                                             }`}
                                     >
                                         {d.label}

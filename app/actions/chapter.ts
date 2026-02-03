@@ -152,3 +152,61 @@ export async function getChapterLessons(chapterId: string) {
     return { success: false, error: "Lỗi tải bài học" };
   }
 }
+
+// --- 3. XÓA CHƯƠNG ---
+export async function deleteChapter(courseId: string, chapterId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  try {
+    // Kiểm tra quyền sở hữu khóa học
+    const ownCourse = await db.course.findUnique({
+      where: { id: courseId, instructorId: user.id },
+    });
+
+    if (!ownCourse) {
+      return { success: false, error: "Không có quyền xóa chương này" };
+    }
+
+    // Kiểm tra xem chương có tồn tại và thuộc khóa học này không
+    const chapter = await db.chapter.findUnique({
+      where: { id: chapterId },
+      include: {
+        lessons: {
+          include: { questions: true }
+        }
+      }
+    });
+
+    if (!chapter || chapter.courseId !== courseId) {
+      return { success: false, error: "Chương không tồn tại" };
+    }
+
+    // Xóa tất cả questions của các lessons trong chapter
+    for (const lesson of chapter.lessons) {
+      await db.question.deleteMany({
+        where: { lessonId: lesson.id }
+      });
+    }
+
+    // Xóa tất cả lessons trong chapter
+    await db.lesson.deleteMany({
+      where: { chapterId: chapterId }
+    });
+
+    // Xóa chapter
+    await db.chapter.delete({
+      where: { id: chapterId }
+    });
+
+    revalidatePath(`/instructor/courses/${courseId}/settings`);
+    return { success: true };
+  } catch (error) {
+    console.error("Delete Chapter Error:", error);
+    return { success: false, error: "Lỗi xóa chương" };
+  }
+}

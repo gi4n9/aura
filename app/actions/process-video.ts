@@ -84,14 +84,18 @@ const videoAnalysisSchema: Schema = {
     },
     timeline: {
       type: SchemaType.ARRAY,
+      description: "Danh sách các mốc thời gian trong video. Mỗi mốc gồm thời gian (giây) và tiêu đề.",
       items: {
         type: SchemaType.OBJECT,
         properties: {
           time: {
-            type: SchemaType.NUMBER,
-            description: "Thời gian bắt đầu (giây)",
+            type: SchemaType.INTEGER, // Sử dụng INTEGER thay vì NUMBER
+            description: "Thời gian bắt đầu của đoạn tính bằng giây (số nguyên, ví dụ: 0, 60, 120)",
           },
-          label: { type: SchemaType.STRING, description: "Tên chương/đoạn" },
+          label: { 
+            type: SchemaType.STRING, 
+            description: "Tiêu đề ngắn gọn mô tả nội dung đoạn đó (ví dụ: 'Giới thiệu', 'Cài đặt môi trường')" 
+          },
         },
         required: ["time", "label"],
       },
@@ -240,8 +244,14 @@ export async function processVideoUpload(
     });
 
     // --- PROMPT ĐƯỢC THIẾT KẾ RIÊNG ---
+    const videoDuration = Math.round(durationInSeconds);
     const prompt = `
       Bạn là một chuyên gia phân tích video giáo dục và ngôn ngữ học.
+      
+      **THÔNG TIN VIDEO:**
+      - Tiêu đề: "${title}"
+      - Thời lượng: ${videoDuration} giây (tương đương ${Math.floor(videoDuration / 60)} phút ${videoDuration % 60} giây)
+      
       Nhiệm vụ của bạn là xử lý video này và trả về kết quả JSON chính xác tuyệt đối theo các yêu cầu sau:
 
       ### NHIỆM VỤ 1: TRANSCRIPT (QUAN TRỌNG NHẤT)
@@ -251,10 +261,20 @@ export async function processVideoUpload(
       - **TUYỆT ĐỐI KHÔNG** tóm tắt, không lược bỏ.
       - **KHÔNG** bỏ qua các từ đệm (như "à", "ừ", "thì", "mà"...) nếu chúng xuất hiện, để đảm bảo khớp thời gian.
       
-      ### NHIỆM VỤ 2: TIMELINE (Mốc thời gian)
-      - Chia video thành các đoạn (chapters) dựa trên nội dung.
-      - "time": Số giây bắt đầu (số nguyên).
-      - "label": Tiêu đề ngắn gọn cho đoạn đó.
+      ### NHIỆM VỤ 2: TIMELINE (Mốc thời gian video)
+      - Chia video thành các đoạn (chapters) có ý nghĩa dựa trên nội dung.
+      - **QUAN TRỌNG VỀ TIME:**
+        - "time" PHẢI là **SỐ NGUYÊN** (integer) tính bằng giây.
+        - **RÀNG BUỘC:** 0 <= time < ${videoDuration} (thời lượng video là ${videoDuration} giây).
+        - Ví dụ: Phút 2:30 = 150 giây, KHÔNG phải 150.0 hay "2:30".
+        - Mốc đầu tiên luôn là time = 0.
+        - Mốc cuối cùng PHẢI nhỏ hơn ${videoDuration} giây.
+      - **VỀ LABEL:**
+        - Ngắn gọn (dưới 50 ký tự).
+        - Mô tả nội dung chính của đoạn đó.
+        - Ví dụ: "Giới thiệu", "Cài đặt môi trường", "Code ví dụ đầu tiên".
+      - **SỐ LƯỢNG:** Chia thành 3-10 mốc tùy độ dài video.
+
 
       ### NHIỆM VỤ 3: QUIZ (10 CÂU HỎI CHUYÊN MÔN)
       - **MỤC TIÊU:** Kiểm tra kiến thức kỹ thuật/học thuật mà học viên thu được.
@@ -317,7 +337,29 @@ export async function processVideoUpload(
     );
 
     // =========================================================
-    // BƯỚC 4: LƯU VÀO DATABASE
+    // BƯỚC 4: VALIDATE & CLEAN TIMELINE
+    // =========================================================
+    const maxDuration = Math.round(durationInSeconds);
+    let validatedTimeline = aiData.timeline || [];
+    
+    // Filter các mốc có time >= duration
+    if (Array.isArray(validatedTimeline)) {
+      validatedTimeline = validatedTimeline
+        .filter((item: any) => {
+          const time = typeof item.time === 'number' ? item.time : parseInt(item.time, 10);
+          return !isNaN(time) && time >= 0 && time < maxDuration;
+        })
+        .map((item: any) => ({
+          time: Math.floor(typeof item.time === 'number' ? item.time : parseInt(item.time, 10)),
+          label: String(item.label || '').slice(0, 100), // Limit label length
+        }))
+        .sort((a: any, b: any) => a.time - b.time); // Sắp xếp theo thời gian
+      
+      console.log(`📍 Timeline: ${validatedTimeline.length} mốc (sau khi validate)`);
+    }
+
+    // =========================================================
+    // BƯỚC 5: LƯU VÀO DATABASE
     // =========================================================
     const existingChapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -337,10 +379,10 @@ export async function processVideoUpload(
         chapterId: chapterId,
         position: newPosition,
         youtubeVideoId: youtubeId,
-        duration: Math.round(durationInSeconds),
+        duration: maxDuration,
         transcript: aiData.transcript,
-        timeline: aiData.timeline, // Prisma tự convert JSON
-        translations: aiData.translations, // Prisma tự convert JSON
+        timeline: validatedTimeline, // Đã validate
+        translations: aiData.translations,
 
         questions: {
           create: aiData.quiz.map((q: any) => ({

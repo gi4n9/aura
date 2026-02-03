@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import LessonLayout from "@/app/components/lesson/LessonLayout";
+import LessonLayout from "@/app/(learning)/courses/[courseId]/lessons/LessonLayout";
 import { createClient } from "@/utils/supabase/server";
 import { getCachedCourse } from "@/lib/courses";
 
@@ -19,10 +19,23 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
     const coursePromise = getCachedCourse(courseId);
     const lessonPromise = prisma.lesson.findUnique({
         where: { id: lessonsId },
-        include: {
+        select: {
+            id: true,
+            title: true,
+            youtubeVideoId: true,
+            transcript: true,
+            timeline: true,
+            duration: true,
             questions: {
                 where: { isArchived: false },
-                orderBy: { createdAt: "asc" }
+                orderBy: { createdAt: "asc" },
+                select: {
+                    id: true,
+                    content: true,
+                    options: true,
+                    correctAnswer: true,
+                    aiExplanation: true,
+                }
             }
         }
     });
@@ -111,10 +124,17 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
         userAnswer: userAnswers[q.id] || null
     }));
 
+    // 4. Serialize lesson với proper types
+    type TimelineItem = { time: number; label: string };
+    const serializedLesson = {
+        ...lesson,
+        timeline: lesson.timeline as TimelineItem[] | null,
+    };
+
     return (
         <LessonLayout
             course={serializedCourse}
-            lesson={lesson}
+            lesson={serializedLesson}
             formattedQuestions={formattedQuestions}
             initialResult={initialResult}
             userAnswers={userAnswers}

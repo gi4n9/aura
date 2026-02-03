@@ -5,10 +5,13 @@ import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
 import NextTopLoader from 'nextjs-toploader';
 import { ClientToaster } from "@/app/components/ClientToaster";
-
-const inter = Inter({ subsets: ["latin"] });
-
 import { db } from "@/lib/prisma";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "Aura Learning",
@@ -23,6 +26,7 @@ export default async function RootLayout({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // KHÔNG CACHE profile trong layout - cần data mới nhất khi user thay đổi
   let userProfile = null;
   if (user) {
     try {
@@ -33,8 +37,8 @@ export default async function RootLayout({
           role: true,
           email: true,
           fullName: true,
-          avatarUrl: true
-        }
+          avatarUrl: true,
+        },
       });
     } catch (error) {
       console.error("Error fetching profile in RootLayout:", error);

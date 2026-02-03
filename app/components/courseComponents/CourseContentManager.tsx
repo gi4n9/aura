@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlusCircle, Loader2, Video, GripVertical, FileQuestion, ChevronRight, CheckCircle2, Circle } from "lucide-react";
+import { PlusCircle, Loader2, Video, GripVertical, FileQuestion, ChevronRight, CheckCircle2, Pencil, Trash2, X, Save, Circle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createChapter } from "@/app/actions/chapter";
+import { createChapter, updateChapter, deleteChapter } from "@/app/actions/chapter";
 import { createLesson } from "@/app/actions/lesson";
 import { getChapterLessons } from "@/app/actions/chapter";
 import { toast } from "sonner";
+import { ChapterActions } from "./ChapterActions";
 
 interface CourseContentManagerProps {
     initialChapters: { id: string; title: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; position: number }[];
@@ -26,9 +27,18 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
     const [isCreatingLesson, setIsCreatingLesson] = useState(false);
     const [newLessonTitle, setNewLessonTitle] = useState("");
 
+    // Editing chapter states
+    const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+    const [editingChapterTitle, setEditingChapterTitle] = useState("");
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+
     const router = useRouter();
 
     useEffect(() => {
+        setIsMounted(true);
         setChapters(initialChapters);
         // If the selected chapter is no longer in the list (e.g. after full refresh), reset or keep
         if (initialChapters.length > 0 && !selectedChapterId) {
@@ -99,6 +109,112 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
         }
     };
 
+    // Handler để bắt đầu edit chapter
+    const handleStartEditChapter = (chapter: { id: string; title: string }) => {
+        setEditingChapterId(chapter.id);
+        setEditingChapterTitle(chapter.title);
+    };
+
+    // Handler để cancel edit
+    const handleCancelEdit = () => {
+        setEditingChapterId(null);
+        setEditingChapterTitle("");
+    };
+
+    // Handler để save chapter title
+    const handleUpdateChapter = async () => {
+        if (!editingChapterId || !editingChapterTitle.trim()) return;
+
+        setIsUpdating(true);
+        try {
+            const res = await updateChapter(courseId, editingChapterId, {
+                title: editingChapterTitle.trim()
+            });
+
+            if (res.success) {
+                toast.success("Đã cập nhật chương");
+                setEditingChapterId(null);
+                setEditingChapterTitle("");
+
+                // Optimistic update
+                setChapters(chapters.map(ch =>
+                    ch.id === editingChapterId
+                        ? { ...ch, title: editingChapterTitle.trim() }
+                        : ch
+                ));
+
+                router.refresh();
+            } else {
+                toast.error(res.error || "Lỗi cập nhật chương");
+            }
+        } catch {
+            toast.error("Lỗi kết nối");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    // Handler để toggle publish status
+    const handleTogglePublish = async (chapterId: string, currentStatus: string) => {
+        const isCurrentlyPublished = currentStatus === "PUBLISHED";
+
+        try {
+            const res = await updateChapter(courseId, chapterId, {
+                isPublished: !isCurrentlyPublished
+            });
+
+            if (res.success) {
+                toast.success(isCurrentlyPublished ? "Đã chuyển về nháp" : "Đã xuất bản chương");
+
+                // Optimistic update
+                setChapters(chapters.map(ch =>
+                    ch.id === chapterId
+                        ? { ...ch, status: isCurrentlyPublished ? "DRAFT" : "PUBLISHED" }
+                        : ch
+                ));
+
+                router.refresh();
+            } else {
+                toast.error(res.error || "Lỗi cập nhật trạng thái");
+            }
+        } catch {
+            toast.error("Lỗi kết nối");
+        }
+    };
+
+    // Handler để delete chapter
+    const handleDeleteChapter = async (chapterId: string) => {
+        setIsDeleting(true);
+        try {
+            const res = await deleteChapter(courseId, chapterId);
+
+            if (res.success) {
+                toast.success("Đã xóa chương");
+                setDeleteConfirmId(null);
+
+                // Update local state
+                const newChapters = chapters.filter(ch => ch.id !== chapterId);
+                setChapters(newChapters);
+
+                // Update selected chapter
+                if (selectedChapterId === chapterId && newChapters.length > 0) {
+                    setSelectedChapterId(newChapters[0].id);
+                } else if (newChapters.length === 0) {
+                    setSelectedChapterId("");
+                    setLessons([]);
+                }
+
+                router.refresh();
+            } else {
+                toast.error(res.error || "Lỗi xóa chương");
+            }
+        } catch {
+            toast.error("Lỗi kết nối");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header: Select Chapter & Add Chapter */}
@@ -141,25 +257,115 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                     )}
                 </div>
 
-                {/* Chapter Selector */}
-                {chapters.length > 0 ? (
+                {/* Chapter List */}
+                {isMounted && chapters.length > 0 ? (
                     <div>
-                        <label className="block text-xs font-bold text-stone-500 uppercase mb-2">
-                            Chọn chương để biên tập
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-3">
+                            Danh sách chương ({chapters.length})
                         </label>
-                        <div className="relative">
-                            <select
-                                value={selectedChapterId}
-                                onChange={(e) => setSelectedChapterId(e.target.value)}
-                                className="w-full appearance-none bg-stone-50 border border-stone-200 text-stone-700 py-3 px-4 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-[#C5A059] font-medium cursor-pointer transition-all hover:bg-stone-100"
-                            >
-                                {chapters.map((chapter) => (
-                                    <option key={chapter.id} value={chapter.id}>
-                                        {chapter.title} {chapter.status === "PUBLISHED" ? "(Đã đăng)" : "(Nháp)"}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none rotate-90" size={16} />
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                            {chapters.map((chapter) => (
+                                <div key={chapter.id}>
+                                    {/* Delete Confirmation */}
+                                    {deleteConfirmId === chapter.id ? (
+                                        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg animate-in fade-in">
+                                            <span className="flex-1 text-sm text-red-700">
+                                                Xác nhận xóa &quot;{chapter.title}&quot;?
+                                            </span>
+                                            <button
+                                                onClick={() => handleDeleteChapter(chapter.id)}
+                                                disabled={isDeleting}
+                                                className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded hover:bg-red-600 disabled:opacity-50"
+                                            >
+                                                {isDeleting ? <Loader2 size={12} className="animate-spin" /> : "Xóa"}
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteConfirmId(null)}
+                                                className="px-3 py-1.5 bg-stone-100 text-stone-600 text-xs font-bold rounded hover:bg-stone-200"
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
+                                    ) : editingChapterId === chapter.id ? (
+                                        /* Edit Mode */
+                                        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg animate-in fade-in">
+                                            <input
+                                                value={editingChapterTitle}
+                                                onChange={(e) => setEditingChapterTitle(e.target.value)}
+                                                className="flex-1 px-3 py-1.5 border border-stone-300 rounded text-sm outline-none focus:ring-1 focus:ring-[#C5A059]"
+                                                autoFocus
+                                            />
+                                            <button
+                                                onClick={handleUpdateChapter}
+                                                disabled={isUpdating}
+                                                className="p-1.5 bg-[#C5A059] text-white rounded hover:bg-[#b08d4b] disabled:opacity-50"
+                                            >
+                                                {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                            </button>
+                                            <button
+                                                onClick={handleCancelEdit}
+                                                className="p-1.5 bg-stone-100 text-stone-600 rounded hover:bg-stone-200"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        /* Normal View */
+                                        <div
+                                            onClick={() => setSelectedChapterId(chapter.id)}
+                                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${selectedChapterId === chapter.id
+                                                ? "bg-[#C5A059]/10 border border-[#C5A059]/30"
+                                                : "bg-stone-50 border border-transparent hover:border-stone-200"
+                                                }`}
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`font-medium text-sm ${selectedChapterId === chapter.id ? "text-[#C5A059]" : "text-stone-700"
+                                                        }`}>
+                                                        {chapter.title}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleTogglePublish(chapter.id, chapter.status);
+                                                        }}
+                                                        className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full transition ${chapter.status === "PUBLISHED"
+                                                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                                            : "bg-stone-200 text-stone-500 hover:bg-stone-300"
+                                                            }`}
+                                                    >
+                                                        {chapter.status === "PUBLISHED" ? "Đã đăng" : "Nháp"}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleStartEditChapter(chapter);
+                                                    }}
+                                                    className="p-1.5 text-stone-400 hover:text-[#C5A059] hover:bg-stone-100 rounded transition"
+                                                    title="Sửa tên chương"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeleteConfirmId(chapter.id);
+                                                    }}
+                                                    className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                                                    title="Xóa chương"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 ) : (
@@ -168,6 +374,48 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                     </div>
                 )}
             </div>
+
+            {/* Selected Chapter Info & Publish Control */}
+            {selectedChapterId && chapters.length > 0 && (() => {
+                const selectedChapter = chapters.find(ch => ch.id === selectedChapterId);
+                if (!selectedChapter) return null;
+
+                return (
+                    <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">
+                                    Chương đang chọn
+                                </p>
+                                <h3 className="font-bold text-stone-800 text-lg">
+                                    {selectedChapter.title}
+                                </h3>
+                            </div>
+
+                            {/* Publish & Actions - Using ChapterActions component */}
+                            <ChapterActions
+                                disabled={false}
+                                courseId={courseId}
+                                chapterId={selectedChapter.id}
+                                isPublished={selectedChapter.status === "PUBLISHED"}
+                                onDelete={() => {
+                                    // Callback khi xóa thành công
+                                    const newChapters = chapters.filter(ch => ch.id !== selectedChapter.id);
+                                    setChapters(newChapters);
+
+                                    // Chọn chương khác hoặc reset
+                                    if (newChapters.length > 0) {
+                                        setSelectedChapterId(newChapters[0].id);
+                                    } else {
+                                        setSelectedChapterId("");
+                                        setLessons([]);
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Lesson List Panel */}
             {selectedChapterId && chapters.length > 0 && (

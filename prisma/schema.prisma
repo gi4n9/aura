@@ -54,6 +54,8 @@ model Profile {
   studyPlans     StudyPlanItem[]
   submissions    Submission[]
   chatSessions   ChatSession[]
+  videoProgress  VideoProgress[]
+  quizResults    QuizResult[]
   
   // NEW: Study Schedules Config
   studySchedules StudySchedule[]
@@ -99,6 +101,7 @@ model Course {
   // Nội dung
   chapters    Chapter[]
   enrollments Enrollment[]
+  quizResults QuizResult[]
   
   // NEW: Relation to Study Schedule
   includedInSchedules StudyScheduleCourse[]
@@ -141,8 +144,38 @@ model Lesson {
 
   // Study Plan liên kết tới bài học này
   studyPlanItems StudyPlanItem[]
+  
+  // Video progress tracking
+  videoProgress VideoProgress[]
+  quizResults   QuizResult[]
 
   createdAt DateTime @default(now())
+}
+
+// ================= VIDEO PROGRESS TRACKING =================
+model VideoProgress {
+  id        String  @id @default(uuid())
+  
+  userId    String
+  user      Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lessonId  String
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  // Progress data
+  currentTime     Int       @default(0)  // Thời điểm hiện tại (giây)
+  duration        Int       @default(0)  // Tổng thời lượng video (giây)
+  percentage      Float     @default(0)  // % đã xem (0-100)
+  isCompleted     Boolean   @default(false) // Đã xem xong (>= 90%)
+  
+  lastWatchedAt   DateTime  @default(now()) // Lần cuối xem
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, lessonId]) // Mỗi user chỉ có 1 record per lesson
+  @@index([userId])
+  @@index([lessonId])
 }
 
 model Question {
@@ -282,6 +315,33 @@ model Submission {
   gradedAt DateTime?
 
   createdAt DateTime @default(now())
+}
+
+// Tổng hợp kết quả làm bài tập của học viên theo từng bài học
+model QuizResult {
+  id        String   @id @default(uuid())
+  userId    String
+  user      Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  // Denormalize để query nhanh theo khóa học
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  score          Float    @default(0)   // Điểm số (0-100 hoặc theo thang điểm)
+  totalQuestions Int      @default(0)
+  correctAnswers Int      @default(0)
+  isPassed       Boolean  @default(false) // Đạt yêu cầu hay chưa
+  
+  attemptCount   Int      @default(1)   // Số lần làm bài
+  
+  lastAttemptAt  DateTime @default(now())
+  
+  @@unique([userId, lessonId]) // Mỗi user chỉ lưu 1 kết quả tổng hợp cho 1 bài học
+  @@index([courseId])
+  @@index([userId])
 }
 
 // ================= 4. AI CHAT & MEMORY =================

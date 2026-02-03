@@ -18,12 +18,19 @@ export async function login(formData: FormData) {
     return { error: error.message };
   }
 
+  // Revalidate để clear cache
+  revalidatePath("/", "layout");
   redirect("/");
 }
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  
+  // Clear cache và refresh layout
   revalidatePath("/", "layout");
+  
   redirect("/login");
 }
+
+

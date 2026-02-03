@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { db } from "@/lib/prisma";
-import { ArrowLeft, Users, FileCheck, Award, Clock } from "lucide-react";
+import { ArrowLeft, Users, CheckCircle2, Award, Clock, XCircle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -29,17 +29,10 @@ export default async function SubmissionsPage({
 
     if (!course) return redirect("/instructor");
 
-    // 2. Fetch Submissions for this Course
-    // Logic: Submission -> Question -> Lesson -> Chapter -> Course
-    const submissions = await db.submission.findMany({
+    // 2. Fetch Quiz Results (New Table)
+    const quizResults = await db.quizResult.findMany({
         where: {
-            question: {
-                lesson: {
-                    chapter: {
-                        courseId: courseId
-                    }
-                }
-            }
+            courseId: courseId
         },
         include: {
             user: {
@@ -49,45 +42,45 @@ export default async function SubmissionsPage({
                     avatarUrl: true,
                 }
             },
-            question: {
+            lesson: {
                 select: {
-                    content: true,
-                    correctAnswer: true,
-                    lesson: {
+                    title: true,
+                    chapter: {
                         select: {
-                            title: true,
+                            title: true
                         }
                     }
                 }
             }
         },
         orderBy: {
-            createdAt: 'desc'
+            lastAttemptAt: 'desc'
         }
     });
 
     // 3. Calculate Stats
-    const totalSubmissions = submissions.length;
+    const totalResults = quizResults.length;
+    const passedCount = quizResults.filter(r => r.isPassed).length;
+    const passRate = totalResults > 0 ? Math.round((passedCount / totalResults) * 100) : 0;
 
-    // Unique students count
-    const uniqueStudents = new Set(submissions.map(s => s.userId)).size;
+    // Average Score
+    const avgScore = totalResults > 0
+        ? (quizResults.reduce((acc, curr) => acc + curr.score, 0) / totalResults).toFixed(1)
+        : "0";
 
-    // Average Score (Only for those with scores)
-    const scoredSubmissions = submissions.filter(s => s.score !== null);
-    const avgScore = scoredSubmissions.length > 0
-        ? (scoredSubmissions.reduce((acc, curr) => acc + (curr.score || 0), 0) / scoredSubmissions.length).toFixed(1)
-        : "N/A";
+    // Unique students
+    const uniqueStudents = new Set(quizResults.map(r => r.userId)).size;
 
     return (
         <div className="p-6 max-w-7xl mx-auto bg-[#F9F8F4] min-h-screen">
             {/* Header */}
             <div className="flex flex-col gap-4 mb-8">
-                <Link href={`/instructor/courses/${courseId}`} className="flex items-center text-sm text-stone-500 hover:text-stone-800 transition w-fit">
-                    <ArrowLeft size={16} className="mr-2" /> Quay lại Dashboard
+                <Link href={`/instructor/courses/${courseId}/settings`} className="flex items-center text-sm text-stone-500 hover:text-stone-800 transition w-fit">
+                    <ArrowLeft size={16} className="mr-2" /> Quay lại Cài đặt
                 </Link>
                 <div>
                     <h1 className="text-3xl font-serif font-bold text-stone-800">
-                        Quản lý bài nộp
+                        Kết quả bài tập
                     </h1>
                     <p className="text-stone-500">
                         Khóa học: <span className="font-semibold">{course.title}</span>
@@ -96,24 +89,24 @@ export default async function SubmissionsPage({
             </div>
 
             {/* Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-indigo-50 text-indigo-600 rounded-full">
-                        <FileCheck size={24} />
+                        <Users size={24} />
                     </div>
                     <div>
-                        <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Tổng bài nộp</p>
-                        <p className="text-2xl font-bold text-stone-800">{totalSubmissions}</p>
+                        <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Học viên nộp bài</p>
+                        <p className="text-2xl font-bold text-stone-800">{uniqueStudents}</p>
                     </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full">
-                        <Users size={24} />
+                        <CheckCircle2 size={24} />
                     </div>
                     <div>
-                        <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Học viên tham gia</p>
-                        <p className="text-2xl font-bold text-stone-800">{uniqueStudents}</p>
+                        <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Tỷ lệ đạt (Pass)</p>
+                        <p className="text-2xl font-bold text-stone-800">{passRate}%</p>
                     </div>
                 </div>
 
@@ -123,15 +116,26 @@ export default async function SubmissionsPage({
                     </div>
                     <div>
                         <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Điểm trung bình</p>
-                        <p className="text-2xl font-bold text-stone-800">{avgScore}</p>
+                        <p className="text-2xl font-bold text-stone-800">{avgScore}/100</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm flex items-center gap-4">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+                        <RotateCcw size={24} />
+                    </div>
+                    <div>
+                        <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Tổng lượt làm bài</p>
+                        <p className="text-2xl font-bold text-stone-800">{quizResults.reduce((acc, curr) => acc + curr.attemptCount, 0)}</p>
                     </div>
                 </div>
             </div>
 
             {/* Submissions Table */}
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-stone-100">
-                    <h2 className="font-bold text-lg text-stone-800">Chi tiết bài làm</h2>
+                <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+                    <h2 className="font-bold text-lg text-stone-800">Chi tiết kết quả</h2>
+                    <span className="text-sm text-stone-500">Hiển thị kết quả tốt nhất của mỗi bài học</span>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -140,66 +144,90 @@ export default async function SubmissionsPage({
                             <tr>
                                 <th className="px-6 py-3 font-semibold">Học viên</th>
                                 <th className="px-6 py-3 font-semibold">Bài học</th>
-                                <th className="px-6 py-3 font-semibold">Câu hỏi</th>
-                                <th className="px-6 py-3 font-semibold">Câu trả lời</th>
+                                <th className="px-6 py-3 font-semibold text-center">Điểm số</th>
+                                <th className="px-6 py-3 font-semibold text-center">Câu đúng</th>
                                 <th className="px-6 py-3 font-semibold text-center">Kết quả</th>
-                                <th className="px-6 py-3 font-semibold text-right">Thời gian</th>
+                                <th className="px-6 py-3 font-semibold text-center">Lần thử</th>
+                                <th className="px-6 py-3 font-semibold text-right">Cập nhật</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-100">
-                            {submissions.length === 0 ? (
+                            {quizResults.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-stone-400 italic">
-                                        Chưa có bài nộp nào từ học viên.
+                                    <td colSpan={7} className="px-6 py-8 text-center text-stone-400 italic">
+                                        Chưa có kết quả bài tập nào.
                                     </td>
                                 </tr>
                             ) : (
-                                submissions.map((sub) => (
-                                    <tr key={sub.id} className="hover:bg-stone-50 transition-colors">
+                                quizResults.map((result) => (
+                                    <tr key={result.id} className="hover:bg-stone-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-stone-200">
-                                                    {sub.user.avatarUrl ? (
-                                                        <Image src={sub.user.avatarUrl} alt="Avatar" fill className="object-cover" />
+                                                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-stone-200 border border-stone-100">
+                                                    {result.user.avatarUrl ? (
+                                                        <Image src={result.user.avatarUrl} alt="Avatar" fill className="object-cover" />
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-stone-500">
-                                                            {sub.user.fullName?.[0]?.toUpperCase() || "U"}
+                                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-stone-500 bg-stone-200">
+                                                            {result.user.fullName?.[0]?.toUpperCase() || "U"}
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-stone-800">{sub.user.fullName || "Unknown User"}</div>
-                                                    <div className="text-xs text-stone-500">{sub.user.email}</div>
+                                                    <div className="font-semibold text-stone-800">{result.user.fullName || "Unknown User"}</div>
+                                                    <div className="text-xs text-stone-500">{result.user.email}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 font-medium text-stone-600">
-                                            {sub.question.lesson.title}
-                                        </td>
-                                        <td className="px-6 py-4 text-stone-600 max-w-xs truncate" title={sub.question.content}>
-                                            {sub.question.content}
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium text-stone-700">{result.lesson.title}</div>
+                                            <div className="text-xs text-stone-400 mt-1 flex items-center gap-1">
+                                                <span className="bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
+                                                    {result.lesson.chapter.title}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="font-mono bg-stone-100 px-2 py-1 rounded text-stone-700">
-                                                {sub.answerText || "N/A"}
-                                            </span>
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={`font-bold text-sm ${result.score >= 80 ? "text-green-600" :
+                                                    result.score >= 50 ? "text-amber-600" : "text-red-600"
+                                                    }`}>
+                                                    {result.score}/100
+                                                </span>
+                                                <div className="w-20 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${result.score >= 80 ? "bg-green-500" :
+                                                            result.score >= 50 ? "bg-amber-500" : "bg-red-500"
+                                                            }`}
+                                                        style={{ width: `${result.score}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-stone-600 font-mono text-xs">
+                                            {result.correctAnswers}/{result.totalQuestions}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            {/* Logic check đúng sai đơn giản: Nếu answerText === correctAnswer */}
-                                            {sub.answerText === sub.question.correctAnswer ? (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    Đúng
+                                            {result.isPassed ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+                                                    <CheckCircle2 size={12} /> Đạt
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    Sai
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                                                    <XCircle size={12} /> Chưa đạt
                                                 </span>
                                             )}
                                         </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="inline-flex items-center px-2 py-1 rounded bg-stone-100 text-stone-600 text-xs font-medium">
+                                                {result.attemptCount} lần
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-right text-stone-500 text-xs">
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-end gap-1" title={new Date(result.lastAttemptAt).toLocaleString()}>
                                                 <Clock size={12} />
-                                                {new Date(sub.createdAt).toLocaleDateString("vi-VN")}
+                                                {new Date(result.lastAttemptAt).toLocaleDateString("vi-VN", {
+                                                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                                                })}
                                             </div>
                                         </td>
                                     </tr>

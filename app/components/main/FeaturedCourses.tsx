@@ -1,20 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { getCachedFeaturedCourses } from "@/lib/cache";
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, User, Clock, ArrowRight } from "lucide-react"; // Cần cài: npm install lucide-react
+import { BookOpen, ArrowRight } from "lucide-react";
 
 export default async function FeaturedCourses() {
-    // 1. Fetch dữ liệu (Giữ nguyên logic cũ)
-    const rawCourses = await prisma.course.findMany({
-        where: { status: "PUBLISHED" },
-        take: 4,
-        orderBy: { createdAt: "desc" },
-        include: {
-            instructor: true,
-            organization: true,
-            _count: { select: { chapters: true } }
-        }
-    });
+    // Sử dụng cached query cho performance
+    const rawCourses = await getCachedFeaturedCourses(4);
 
     return (
         <section className="py-24 bg-[#F9F8F4] border-t border-stone-200">

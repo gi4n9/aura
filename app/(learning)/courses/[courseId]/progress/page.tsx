@@ -141,7 +141,7 @@ export default async function CourseProgressPage({
 
 
     return (
-        <div className="min-h-screen bg-[#F9F8F4] p-6 font-sans">
+        <div className="min-h-screen bg-[#F9F8F4] p-6 font-sans pt-[80px]">
             <div className="max-w-4xl mx-auto space-y-8">
 
                 {/* HEADER */}
