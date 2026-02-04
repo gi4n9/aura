@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import NextTopLoader from 'nextjs-toploader';
 import { ClientToaster } from "@/app/components/ClientToaster";
 import { db } from "@/lib/prisma";
+import ChatBot from "@/app/components/chat/ChatBot";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -63,6 +64,7 @@ export default async function RootLayout({
 
         <AuthProvider initialUser={user} initialProfile={userProfile}>
           {children}
+          <ChatBot />
           <ClientToaster />
         </AuthProvider>
       </body>

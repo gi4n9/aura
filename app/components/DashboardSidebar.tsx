@@ -8,7 +8,8 @@ import {
   Video,
   Settings,
   LogOut,
-  UploadCloud
+  UploadCloud,
+  MessageSquare
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
@@ -31,6 +32,7 @@ export default function DashboardSidebar({ role }: { role: Role }) {
     { name: "Thống kê", href: "/instructor", icon: LayoutDashboard },
     { name: "Kho bài giảng", href: "/instructor/courses", icon: Video },
     { name: "Upload Video", href: "/instructor/upload", icon: UploadCloud },
+    { name: "Tin nhắn & Hỗ trợ", href: "/instructor/messages", icon: MessageSquare },
     { name: "Thông tin cá nhân", href: "/instructor/profile", icon: Users }
   ];
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen } from "lucide-react";
+import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 
@@ -78,6 +78,12 @@ export default function Header() {
             <button className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200">
               <Search size={18} />
             </button>
+
+            {user && (
+              <Link href="/messages" className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200 relative" title="Tin nhắn">
+                <MessageCircle size={20} />
+              </Link>
+            )}
 
             {user ? (
               <div className="relative" ref={dropdownRef}>

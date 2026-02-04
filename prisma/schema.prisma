@@ -56,6 +56,11 @@ model Profile {
   chatSessions   ChatSession[]
   videoProgress  VideoProgress[]
   quizResults    QuizResult[]
+
+  // Chat Relations
+  // Chat Relations
+  directMessagesSent       DirectMessage[]
+  conversationParticipations ConversationParticipant[]
   
   // NEW: Study Schedules Config
   studySchedules StudySchedule[]
@@ -373,4 +378,47 @@ model Message {
   tokensUsed Int?
 
   createdAt DateTime @default(now())
+}
+
+// ================= 5. USER CHAT (MESSENGER STYLE) =================
+
+model Conversation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  hasSeenLatest  Boolean      @default(false)
+  
+  @@unique([conversationId, userId])
+}
+
+model DirectMessage {
+  id             String       @id @default(uuid())
+  content        String       @db.Text
+  fileUrl        String?
+  
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId       String
+  sender         Profile      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  deleted        Boolean      @default(false)
+
+  @@index([conversationId])
+  @@index([senderId])
 }

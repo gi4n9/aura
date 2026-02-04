@@ -30,12 +30,11 @@ export async function register(formData: FormData) {
   // Bước này cực quan trọng để sau này check Role (USER, ADMIN, INSTRUCTOR)
   if (data.user) {
     try {
-      await prisma.user.create({
+      await prisma.profile.create({
         data: {
           id: data.user.id, // ID phải khớp với Supabase
           email: email,
-          name: fullName,
-          role: "USER", // Mặc định là User thường
+          fullName: fullName,
           avatarUrl: "", // Avatar rỗng
         },
       });

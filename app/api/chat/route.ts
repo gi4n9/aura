@@ -9,41 +9,49 @@ export async function POST(req: Request) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  // 1. Query Database với các trường cần thiết cho hiển thị
-  const courses = await prisma.playlist.findMany({
+  // 1. Query Database: Lấy danh sách khóa học ĐÃ XUẤT BẢN từ bảng Course (Schema mới)
+  const courses = await prisma.course.findMany({
+    where: {
+      status: "PUBLISHED",
+    },
     select: {
       id: true,
       title: true,
-      channel: true,
       description: true,
-      videos: {
-        orderBy: { stt: "asc" },
-        take: 1, // Chỉ lấy video đầu để làm thumbnail
-        select: { youtubeId: true },
+      thumbnailUrl: true,
+      instructor: {
+        select: {
+          fullName: true,
+        },
       },
+      category: {
+        select: {
+          name: true
+        }
+      }
     },
   });
 
-  console.log(`📚 Tìm thấy ${courses.length} khóa học trong database.`);
+  console.log(`📚 Tìm thấy ${courses.length} khóa học Published trong database.`);
 
   // 2. Format dữ liệu đầu vào cho AI (Context Engineering)
   const contextData = courses
     .map((course) => {
-      // Tạo link ảnh từ video đầu tiên (nếu có)
-      const firstVideo = course.videos[0];
-      const thumbnail = firstVideo
-        ? `https://img.youtube.com/vi/${firstVideo.youtubeId}/mqdefault.jpg`
-        : "Không có hình ảnh";
+      // Thumbnail từ DB hoặc placeholder
+      const thumbnail = course.thumbnailUrl || "https://placehold.co/600x400?text=No+Image";
 
       // Tạo link khóa học
       const fullLink = `${baseUrl}/courses/${course.id}`;
+      const instructorName = course.instructor.fullName || "Đội ngũ Aura";
+      const categoryName = course.category?.name || "Chung";
 
       return `
     ---
     ID: ${course.id}
     Tên: ${course.title}
-    Tác giả: ${course.channel}
-    Mô tả: ${course.description}
+    Giảng viên: ${instructorName}
+    Danh mục: ${categoryName}
+    Mô tả: ${course.description || "Chưa có mô tả"}
     Thumbnail: ${thumbnail}
     URL_SẴN: ${fullLink}
     ---
@@ -68,7 +76,7 @@ export async function POST(req: Request) {
   `;
 
   const result = streamText({
-    model: google("models/gemini-2.5-flash"),
+    model: google("gemini-2.5-flash"),
     messages: await convertToModelMessages(messages),
     system: systemPrompt,
   });

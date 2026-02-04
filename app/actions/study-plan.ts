@@ -28,7 +28,14 @@ export async function getEnrolledCourses() {
           id: true,
           title: true,
           thumbnailUrl: true,
-          category: { select: { name: true } }
+          category: { select: { name: true } },
+          chapters: {
+            select: {
+                lessons: {
+                    select: { duration: true }
+                }
+            }
+          }
         }
       }
     }

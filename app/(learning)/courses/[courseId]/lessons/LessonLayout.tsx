@@ -8,9 +8,14 @@ import {
     Minimize2,
     CheckCircle,
     ArrowLeft,
-    Clock
+    Clock,
+    MoveHorizontal,
+    MessageCircle,
+    Loader2
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getOrCreateConversation } from "@/app/actions/chat";
 import CourseSidebar from "@/app/components/CourseSidebar";
 import VideoPlayer, { VideoPlayerHandle } from "@/app/components/VideoPlayer";
 import QuizPlayer from "../../../../components/courseComponents/QuizPlayer";
@@ -37,6 +42,11 @@ type CourseData = {
     id: string;
     title: string;
     chapters: any[];
+    instructor?: {
+        id: string;
+        fullName: string | null;
+        avatarUrl: string | null;
+    } | null;
 };
 
 export default function LessonLayout({
@@ -55,6 +65,8 @@ export default function LessonLayout({
     // State quản lý hiển thị
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isVideoVisible, setIsVideoVisible] = useState(true);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const router = useRouter();
 
     // State cho resizable quiz panel
     const [quizPanelWidth, setQuizPanelWidth] = useState(400);
@@ -110,6 +122,30 @@ export default function LessonLayout({
         };
     }, [isDragging, handleDragMove, handleDragEnd]);
 
+    // Handle Chat with Instructor
+    const handleChatWithInstructor = async () => {
+        if (!course.instructor?.id) return alert("Không tìm thấy thông tin giảng viên");
+
+        setIsCreatingChat(true);
+        try {
+            const res = await getOrCreateConversation(course.instructor.id);
+            if (res.success && res.conversationId) {
+                // Redirect to messages page with this conversation selected (optional param could be handled later)
+                // Hiện tại cứ redirect sang /messages, user sẽ thấy hội thoại mới nhất nổi lên đầu
+                // Tốt nhất là impl logic selected ở messages page.
+                // Tạm thời redirect sang /messages. User click vào sẽ thấy hội thoại mới đc tạo/update.
+                router.push(`/messages`);
+            } else {
+                alert(res.error || "Không thể tạo cuộc trò chuyện");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Có lỗi xảy ra");
+        } finally {
+            setIsCreatingChat(false);
+        }
+    };
+
     return (
         <div className="flex h-screen w-full bg-[#F9F8F4] overflow-hidden pt-[70px]">
 
@@ -154,6 +190,19 @@ export default function LessonLayout({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Nút Chat (NEW) */}
+                        {course.instructor && (
+                            <button
+                                onClick={handleChatWithInstructor}
+                                disabled={isCreatingChat}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-stone-100 text-stone-600 hover:bg-[#C5A059] hover:text-white transition-colors disabled:opacity-50"
+                                title={`Nhắn tin với giảng viên: ${course.instructor.fullName}`}
+                            >
+                                {isCreatingChat ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
+                                <span className="hidden sm:inline">Hỏi Giảng viên</span>
+                            </button>
+                        )}
+
                         {/* Nút Toggle Video Mode */}
                         <button
                             onClick={() => setIsVideoVisible(!isVideoVisible)}
@@ -208,13 +257,15 @@ export default function LessonLayout({
                     <div
                         onMouseDown={handleDragStart}
                         className={`w-1.5 hover:bg-[#C5A059] cursor-col-resize flex-shrink-0 
-                            transition-colors duration-200 relative group
+                            transition-colors duration-200 relative group z-20
                             ${isVideoVisible ? 'bg-stone-200' : 'hidden'}
                             ${isDragging ? '!bg-[#C5A059]' : ''}`}
                     >
-                        {/* Visual indicator */}
-                        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-1 h-8 bg-[#C5A059] rounded-full" />
+                        {/* Visual indicator icon */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-6 h-6 bg-white border border-stone-200 shadow-sm rounded-full flex items-center justify-center text-stone-500">
+                                <MoveHorizontal size={14} />
+                            </div>
                         </div>
                     </div>
 
@@ -239,11 +290,6 @@ export default function LessonLayout({
 
                         {/* Quiz Content (Scrollable) */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 h-full">
-
-                            {/* 👇 SỬA LỖI Ở ĐÂY: 
-                       - Bỏ 'h-full' khi ở chế độ thường.
-                       - Dùng 'min-h-full' thay vì 'h-full' để nội dung có thể dãn ra.
-                   */}
                             <div className={`transition-all duration-500 ${!isVideoVisible
                                 ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit" // Sửa thành min-h-fit hoặc để tự nhiên
                                 : "w-full pb-10" // Thêm padding-bottom để không bị sát đáy

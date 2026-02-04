@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getEnrolledCourses, createStudyPlan } from "@/app/actions/study-plan";
-import { Calendar, Clock, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, ChevronRight, Loader2, CalendarCheck, Flag } from "lucide-react";
 
 // Types
 type EnrolledCourse = {
@@ -11,6 +11,7 @@ type EnrolledCourse = {
     title: string;
     thumbnailUrl: string | null;
     category: { name: string } | null;
+    totalDuration: number; // seconds
 };
 
 export default function CreatePlanPage() {
@@ -29,9 +30,65 @@ export default function CreatePlanPage() {
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Default Mon,Wed,Fri
 
     useEffect(() => {
-        // Fetch courses on mount
-        getEnrolledCourses().then(setCourses);
+        // Fetch courses on mount and calculate duration
+        getEnrolledCourses().then(data => {
+            const mapped = data.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                thumbnailUrl: c.thumbnailUrl,
+                category: c.category,
+                // Calculate total duration from nested chapters -> lessons
+                totalDuration: c.chapters.reduce((acc: number, ch: any) =>
+                    acc + ch.lessons.reduce((lAcc: number, l: any) => lAcc + (l.duration || 0), 0), 0)
+            }));
+            setCourses(mapped);
+        });
     }, []);
+
+    // LOGIC: Calculate Estimated End Date
+    const estimatedInfo = useMemo(() => {
+        if (selectedCourses.length === 0 || selectedDays.length === 0) return null;
+
+        // 1. Total minutes needed for selected courses
+        const totalSeconds = courses
+            .filter(c => selectedCourses.includes(c.id))
+            .reduce((acc, c) => acc + c.totalDuration, 0);
+
+        // Add buffer: Assume 20% extra time for review/quizzes if duration is pure video
+        // Or if duration is missing/low, assume 15 mins per lesson (we don't have lesson count here easily but totalDuration handles it)
+        // Let's stick to raw duration / 60 for minutes.
+        const totalMinutes = Math.ceil(totalSeconds / 60);
+
+        // 2. Calculate Sessions Needed
+        const sessionsNeeded = Math.ceil(totalMinutes / dailyMinutes);
+        if (sessionsNeeded === 0) return { date: new Date(startDate), sessions: 0 };
+
+        // 3. Find End Date based on Schedule
+        let sessionsCount = 0;
+        let currentDate = new Date(startDate);
+        let safety = 0;
+
+        // Clone start date to avoid mutation issues
+        let iteratorDate = new Date(startDate);
+
+        while (sessionsCount < sessionsNeeded && safety < 3000) { // Max ~8 years safety
+            const day = iteratorDate.getDay(); // 0-6
+            if (selectedDays.includes(day)) {
+                sessionsCount++;
+            }
+
+            if (sessionsCount < sessionsNeeded) {
+                iteratorDate.setDate(iteratorDate.getDate() + 1);
+            }
+            safety++;
+        }
+
+        return {
+            date: iteratorDate,
+            sessions: sessionsNeeded,
+            totalHours: Math.ceil(totalMinutes / 60)
+        };
+    }, [selectedCourses, selectedDays, startDate, dailyMinutes, courses]);
 
     const toggleCourse = (id: string) => {
         if (selectedCourses.includes(id)) {
@@ -199,6 +256,30 @@ export default function CreatePlanPage() {
                         </div>
                     </div>
 
+                    {/* RESULT PREVIEW */}
+                    <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 transition-all">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-white p-3 rounded-full border border-stone-200 text-[#C5A059] shadow-sm">
+                                <Flag size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-stone-800 text-lg">Mục tiêu dự kiến</h3>
+                                {estimatedInfo ? (
+                                    <div className="mt-2 text-sm text-stone-600 space-y-1">
+                                        <p>Bạn sẽ cần khoảng <span className="font-bold text-[#1a1a1a]">{estimatedInfo.sessions} buổi học</span> ({estimatedInfo.totalHours} giờ) để hoàn thành nội dung.</p>
+                                        <p className="text-base pt-1">
+                                            Dự kiến hoàn thành vào: <span className="font-bold text-[#C5A059] text-lg bg-white px-2 py-0.5 rounded border border-[#C5A059]/30 ml-1">{estimatedInfo.date.toLocaleDateString('vi-VN')}</span>
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-sm text-stone-400 italic">
+                                        Vui lòng chọn khóa học và lịch học để xem dự báo.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex justify-between pt-8 border-t border-stone-100">
                         <button
                             onClick={() => setStep(1)}
@@ -219,3 +300,4 @@ export default function CreatePlanPage() {
         </div>
     );
 }
+

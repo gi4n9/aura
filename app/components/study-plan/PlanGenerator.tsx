@@ -6,6 +6,7 @@ import { vi } from "date-fns/locale";
 import { Calendar as CalendarIcon, Save, RefreshCw, Settings, CheckCircle2, BookOpen } from "lucide-react";
 import { saveStudyPlan } from "@/app/actions/study-plan";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // Types
 type Lesson = {
@@ -105,10 +106,10 @@ export default function PlanGenerator({
         setIsSaving(false);
 
         if (res.success) {
-            alert("Đã lưu lộ trình học tập thành công!");
+            toast.success("Đã lưu lộ trình học tập thành công!");
             router.refresh(); // Refresh to show somewhere?
         } else {
-            alert("Lỗi: " + res.error);
+            toast.error("Lỗi: " + res.error);
         }
     };
 
@@ -165,8 +166,25 @@ export default function PlanGenerator({
                                 className="w-full p-2 border border-stone-200 rounded-lg text-sm focus:border-[#C5A059] outline-none"
                             />
                             <p className="text-[10px] text-stone-400 mt-1 italic">
-                                Dự kiến hoàn thành: {generatedPlan.length > 0 ? format(generatedPlan[generatedPlan.length - 1].date, "dd/MM/yyyy") : "--"}
+                                *Số lượng bài học tối đa mỗi buổi
                             </p>
+                        </div>
+
+                        {/* Estimated End Date (Result) */}
+                        <div className="pt-2 border-t border-stone-100">
+                            <label className="block text-xs font-bold uppercase text-stone-500 mb-1">Dự kiến hoàn thành</label>
+                            <div className="w-full p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm font-bold text-[#C5A059] flex items-center justify-between">
+                                <span>
+                                    {generatedPlan.length > 0
+                                        ? format(generatedPlan[generatedPlan.length - 1].date, "dd/MM/yyyy")
+                                        : "--/--/----"}
+                                </span>
+                                <span className="text-xs text-stone-400 font-normal">
+                                    {generatedPlan.length > 0
+                                        ? `(khoảng ${Math.ceil(generatedPlan.length / (selectedDays.length || 1))} tuần)`
+                                        : ""}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
