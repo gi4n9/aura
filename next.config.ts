@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "github.com" },
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "placehold.co" },
+      { protocol: "https", hostname: "jrwcpwidjftufafawaza.supabase.co" }, // Supabase Storage
     ],
   },
 
@@ -85,5 +86,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-

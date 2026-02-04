@@ -6,7 +6,6 @@ import { getMessages, sendMessage } from "@/app/actions/chat";
 import { Search, Send, MoreVertical, Phone, Video, Info, ArrowLeft, Loader2, Check, CheckCheck } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 
 // Types
 type ConversationInfo = {
@@ -52,11 +51,13 @@ export default function MessagesInterface({
     const supabase = createClient();
 
     // Default styling if no className provided
-    const rootClassName = className ?? "flex h-[calc(100vh-80px)] bg-white overflow-hidden rounded-2xl shadow-sm border border-stone-200 mt-4 mx-4 mb-4";
+    const defaultClass = "flex h-[calc(100vh-140px)] min-h-[600px] bg-white overflow-hidden rounded-2xl shadow-sm border border-stone-200 mt-4 mx-4 mb-4";
+    const rootClassName = className ?? defaultClass;
 
     // State
     const [conversations, setConversations] = useState<ConversationInfo[]>(initialConversations);
     const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [newMessage, setNewMessage] = useState("");
@@ -217,7 +218,7 @@ export default function MessagesInterface({
 
         const loadMessages = async () => {
             setLoadingMessages(true);
-            const result = await getMessages(selectedConvId);
+            const result = await getMessages(selectedConvId, { limit: 20 });
             // Ensure messages is always an array
             const msgs = Array.isArray(result.messages) ? result.messages : [];
             setMessages(msgs as Message[]);
@@ -260,16 +261,43 @@ export default function MessagesInterface({
 
     // Load older messages when scrolling to top
     const handleLoadMore = async () => {
-        if (!selectedConvId || !nextCursor || loadingMore) return;
+        if (!nextCursor || loadingMore || !selectedConvId) return;
+
+        // Save current scroll height to restore position later
+        const container = messagesContainerRef.current;
+        const oldScrollHeight = container ? container.scrollHeight : 0;
+        const oldScrollTop = container ? container.scrollTop : 0;
 
         setLoadingMore(true);
         const result = await getMessages(selectedConvId, {
             cursor: nextCursor,
-            direction: 'older'
+            direction: 'older',
+            limit: 20
         });
 
         const olderMsgs = Array.isArray(result.messages) ? result.messages : [];
-        setMessages(prev => [...(olderMsgs as Message[]), ...prev]);
+
+        if (olderMsgs.length > 0) {
+            // Remove duplicates just in case
+            setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const uniqueOlderMsgs = (olderMsgs as Message[]).filter(m => !existingIds.has(m.id));
+                if (uniqueOlderMsgs.length === 0) return prev;
+                return [...uniqueOlderMsgs, ...prev];
+            });
+
+            // Restore scroll position after render
+            // Using requestAnimationFrame/setTimeout to wait for DOM update
+            setTimeout(() => {
+                if (container) {
+                    const newScrollHeight = container.scrollHeight;
+                    // The new content pushes down, so we adjust scrollTop
+                    // to keep the view at the same relative message
+                    container.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+                }
+            }, 0);
+        }
+
         setNextCursor(result.nextCursor ?? null);
         setHasMoreMessages(result.hasMore || false);
         setLoadingMore(false);
@@ -282,8 +310,6 @@ export default function MessagesInterface({
             handleLoadMore();
         }
     };
-
-
     // Handlers
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -293,13 +319,15 @@ export default function MessagesInterface({
         const content = newMessage;
         setNewMessage(""); // Clear input immediately
 
-        // Stop typing indicator when sending
+        // Stop typing indicator (fire-and-forget, non-blocking)
         if (typingTimeout) clearTimeout(typingTimeout);
-        supabase.channel(`typing-${selectedConvId}`).send({
-            type: 'broadcast',
-            event: 'stop-typing',
-            payload: { userId: currentUserId }
-        });
+        try {
+            supabase.channel(`typing-${selectedConvId}`).send({
+                type: 'broadcast',
+                event: 'stop-typing',
+                payload: { userId: currentUserId }
+            }).catch(() => { }); // Ignore errors
+        } catch { }
 
         // Generate temporary ID for optimistic UI
         const tempId = `temp-${Date.now()}`;
@@ -338,8 +366,9 @@ export default function MessagesInterface({
             return [updated, ...newList];
         });
 
-        // Send to server in background
-        const res = await sendMessage(selectedConvId, content) as any;
+
+        // Send to server in background (pass userId to skip auth check)
+        const res = await sendMessage(selectedConvId, content, currentUserId) as any;
 
         if (res.error) {
             // Remove optimistic message on error

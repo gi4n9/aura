@@ -144,28 +144,33 @@ export async function getMessages(
     };
 }
 
-// 3. Gửi tin nhắn
-export async function sendMessage(conversationId: string, content: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Unauthorized" };
+// 3. Gửi tin nhắn - Optimized (userId passed from client to skip auth)
+export async function sendMessage(conversationId: string, content: string, userId?: string) {
+    let senderId = userId;
+    
+    // Only check auth if userId not provided
+    if (!senderId) {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { error: "Unauthorized" };
+        senderId = user.id;
+    }
 
     try {
         const message = await db.directMessage.create({
             data: {
                 content: content,
                 conversationId: conversationId,
-                senderId: user.id,
+                senderId: senderId,
             }
         });
 
-        // Update thời gian cập nhật của conversation để nó nổi lên đầu
-        await db.conversation.update({
+        // Update conversation in background (non-blocking)
+        db.conversation.update({
             where: { id: conversationId },
             data: { updatedAt: new Date() }
-        });
-
-        revalidatePath("/messages");
+        }).catch(() => {});
+        
         return { success: true, message: message };
     } catch (error) {
         console.error("Send Message Error:", error);
