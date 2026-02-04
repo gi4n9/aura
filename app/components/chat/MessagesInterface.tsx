@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { getMessages, sendMessage } from "@/app/actions/chat";
+import { getMessages } from "@/app/actions/chat";
+import { sendMessageEdge, sendMessageFallback } from "@/lib/edge-functions";
 import { Search, Send, MoreVertical, Phone, Video, Info, ArrowLeft, Loader2, Check, CheckCheck } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -310,85 +311,113 @@ export default function MessagesInterface({
             handleLoadMore();
         }
     };
-    // Handlers
-    const handleSendMessage = async (e: React.FormEvent) => {
+    // Handlers - Messenger-style: Instant UI, background server sync
+    const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!newMessage.trim() || !selectedConvId) return;
+        const content = newMessage.trim();
+        if (!content || !selectedConvId) return;
 
-        const content = newMessage;
-        setNewMessage(""); // Clear input immediately
+        const convId = selectedConvId;
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Stop typing indicator (fire-and-forget, non-blocking)
-        if (typingTimeout) clearTimeout(typingTimeout);
-        try {
-            supabase.channel(`typing-${selectedConvId}`).send({
-                type: 'broadcast',
-                event: 'stop-typing',
-                payload: { userId: currentUserId }
-            }).catch(() => { }); // Ignore errors
-        } catch { }
+        // ══════════════════════════════════════════════════════════════
+        // STEP 1: INSTANT UI UPDATE (Messenger pattern)
+        // Message appears IMMEDIATELY - no waiting for anything
+        // ══════════════════════════════════════════════════════════════
 
-        // Generate temporary ID for optimistic UI
-        const tempId = `temp-${Date.now()}`;
+        setNewMessage(""); // Clear input
 
-        // OPTIMISTIC: Add message to UI immediately with 'sending' status
         const optimisticMessage: Message = {
             id: tempId,
-            content: content,
+            content,
             senderId: currentUserId,
             createdAt: new Date(),
-            status: 'sending', // Show as sending
-            sender: {
-                id: currentUserId,
-                fullName: "Bạn",
-                avatarUrl: null
+            status: 'sent', // Skip 'sending' - show as sent immediately (like Messenger)
+            sender: { id: currentUserId, fullName: "Bạn", avatarUrl: null }
+        };
+
+        // Add to messages array (this triggers re-render + scroll)
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        // Update conversation preview
+        setConversations(prev => {
+            const idx = prev.findIndex(c => c.id === convId);
+            if (idx === -1) return prev;
+            const updated = { ...prev[idx] };
+            updated.lastMessage = { content, createdAt: new Date(), isMine: true };
+            updated.updatedAt = new Date();
+            return [updated, ...prev.filter((_, i) => i !== idx)];
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // STEP 2: BACKGROUND SERVER SYNC (Fire-and-forget with retry)
+        // ══════════════════════════════════════════════════════════════
+
+        // Stop typing indicator (next tick, non-blocking)
+        if (typingTimeout) clearTimeout(typingTimeout);
+        queueMicrotask(() => {
+            supabase.channel(`typing-${convId}`).send({
+                type: 'broadcast', event: 'stop-typing',
+                payload: { userId: currentUserId }
+            }).catch(() => { });
+        });
+
+        // Send to server via Edge Function (faster) with Server Action fallback
+        const sendWithRetry = async (retries = 2): Promise<void> => {
+            try {
+                console.log('[Chat] Sending via Edge Function...', { convId, content: content.substring(0, 20) });
+
+                // Try Edge Function first (faster: ~20-50ms)
+                let res = await sendMessageEdge({
+                    conversationId: convId,
+                    content,
+                    senderId: currentUserId,
+                });
+
+                console.log('[Chat] Edge Function response:', res);
+
+                // If Edge Function fails, fallback to Server Action
+                if (res.error && retries > 0) {
+                    console.warn('[Chat] Edge Function failed, using Server Action fallback');
+                    res = await sendMessageFallback(convId, content, currentUserId) as any;
+                    console.log('[Chat] Server Action response:', res);
+                }
+
+                if (res.error) {
+                    throw new Error(res.error);
+                }
+
+                if (res.success && res.message) {
+                    console.log('[Chat] Message sent successfully!', res.message.id);
+                    // Success: Update with real message ID and 'delivered' status
+                    setMessages(prev => prev.map(m =>
+                        m.id === tempId
+                            ? { ...m, id: res.message!.id, createdAt: new Date(res.message!.createdAt), status: 'delivered' as MessageStatus }
+                            : m
+                    ));
+                }
+            } catch (error) {
+                if (retries > 0) {
+                    // Retry after short delay
+                    await new Promise(r => setTimeout(r, 500));
+                    return sendWithRetry(retries - 1);
+                }
+
+                // All retries failed - mark as failed (show error indicator)
+                setMessages(prev => prev.map(m =>
+                    m.id === tempId
+                        ? { ...m, status: 'sending' as MessageStatus }
+                        : m
+                ));
+                console.error('[Chat] Message send failed after retries:', error);
             }
         };
 
-        setMessages(prev => [...prev, optimisticMessage]);
-
-        // Update conversation list immediately
-        setConversations(prev => {
-            const idx = prev.findIndex(c => c.id === selectedConvId);
-            if (idx === -1) return prev;
-
-            const updated = { ...prev[idx] };
-            updated.lastMessage = {
-                content: content,
-                createdAt: new Date(),
-                isMine: true
-            };
-            updated.updatedAt = new Date();
-
-            const newList = [...prev];
-            newList.splice(idx, 1);
-            return [updated, ...newList];
-        });
-
-
-        // Send to server in background (pass userId to skip auth check)
-        const res = await sendMessage(selectedConvId, content, currentUserId) as any;
-
-        if (res.error) {
-            // Remove optimistic message on error
-            setMessages(prev => prev.filter(m => m.id !== tempId));
-            setNewMessage(content); // Restore input
-            alert("Gửi tin nhắn thất bại: " + res.error);
-        } else if (res.success && res.message) {
-            // Update: Replace temp ID with real ID and change status to 'sent'
-            setMessages(prev => prev.map(m =>
-                m.id === tempId
-                    ? {
-                        ...m,
-                        id: res.message.id,
-                        createdAt: new Date(res.message.createdAt),
-                        status: 'sent' as MessageStatus
-                    }
-                    : m
-            ));
-        }
+        // Fire and forget - don't await
+        sendWithRetry();
     };
+
 
     return (
         <div className={rootClassName}>
