@@ -101,6 +101,11 @@ export async function updateCourse(courseId: string, values: Partial<any>) {
   }
 
   try {
+    // Auto update isFree based on price
+    if (values.price !== undefined) {
+       values.isFree = Number(values.price) === 0;
+    }
+
     const course = await prisma.course.update({
       where: {
         id: courseId,

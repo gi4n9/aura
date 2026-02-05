@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Clock, CheckCircle2, PlayCircle, Star, Users, Circle, CalendarRange } from "lucide-react";
 import CourseDescription from "@/app/components/courseComponents/CourseDescription";
+import CourseActionButtons from "@/app/components/courseComponents/CourseActionButtons";
 import { createClient } from "@/utils/supabase/server";
 
 interface PageProps {
@@ -183,18 +184,12 @@ export default async function CoursePage({ params }: PageProps) {
                                         ) : null}
                                     </div>
                                 ) : (
-                                    <>
-                                        <div className="text-3xl font-serif text-stone-900 mb-2 text-center">
-                                            {Number(course.price) === 0 ? "Miễn phí" : new Intl.NumberFormat("vi-VN").format(Number(course.price)) + " đ"}
-                                        </div>
-                                        {/* Enroll Button */}
-                                        <Link
-                                            href={firstLesson ? `/courses/${course.id}/lessons/${firstLesson.id}` : '#'}
-                                            className={`block w-full py-4 bg-[#1a1a1a] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#C5A059] transition-colors shadow-lg ${!firstLesson && "opacity-50 cursor-not-allowed"}`}
-                                        >
-                                            {firstLesson ? "Vào học ngay" : "Chưa có bài học"}
-                                        </Link>
-                                    </>
+                                    <CourseActionButtons
+                                        courseId={course.id}
+                                        price={Number(course.price)}
+                                        isFree={!!course.isFree}
+                                        firstLessonId={firstLesson?.id}
+                                    />
                                 )}
                                 <p className="text-center text-xs text-stone-400 mt-3 font-serif italic">
                                     Truy cập trọn đời • Hoàn tiền trong 30 ngày

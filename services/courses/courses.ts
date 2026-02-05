@@ -98,6 +98,7 @@ export async function createCourseService(data: {
       thumbnailUrl: data.thumbnailUrl || null,
       categoryId: data.categoryId || null,
       price: data.price || 0,
+      isFree: (data.price || 0) === 0,
       status: "DRAFT",
     },
   });

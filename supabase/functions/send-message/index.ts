@@ -74,8 +74,11 @@ serve(async (req: Request) => {
       )
     }
 
-    // Insert message into database (generate UUID since Supabase doesn't auto-generate like Prisma)
+    // Insert message into database
+    // createdAt: uses PostgreSQL default (now()) - ensures correct ordering
+    // updatedAt: must be provided (Prisma @updatedAt has no DB default)
     const messageId = crypto.randomUUID()
+    const now = new Date().toISOString()
     const { data: message, error: insertError } = await supabase
       .from('DirectMessage')
       .insert({
@@ -83,9 +86,9 @@ serve(async (req: Request) => {
         content: content.trim(),
         conversationId: conversationId,
         senderId: senderId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,  // Required - no DB default
         deleted: false,
+        // createdAt: omitted - uses DB default now() for correct ordering
       })
       .select('id, content, senderId, conversationId, createdAt')
       .single()

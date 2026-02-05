@@ -57,16 +57,26 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
         price: course.price ? Number(course.price) : 0,
     };
 
-    // 1.5 Auto-Enroll if Free and not enrolled
-    if (user && serializedCourse.price === 0) {
-        // We can't cache enrollment status easily as it's per-user.
-        const existing = await prisma.enrollment.findUnique({
-            where: { userId_courseId: { userId: user.id, courseId: course.id } }
-        });
-        if (!existing) {
+    // 1.5 Access Control & Auto-Enroll
+    if (!user) {
+        // Require login to view lessons
+        return redirect(`/login?next=/courses/${courseId}/lessons/${lessonsId}`);
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: user.id, courseId: course.id } }
+    });
+
+    if (!enrollment) {
+        // If course is FREE -> Auto Enroll
+        if (serializedCourse.price === 0) {
             await prisma.enrollment.create({
                 data: { userId: user.id, courseId: course.id, progress: 0 }
             });
+            // Continue loading lesson...
+        } else {
+            // If course is PAID and not enrolled -> Redirect to Course Detail Page for purchase
+            return redirect(`/courses/${courseId}`);
         }
     }
 

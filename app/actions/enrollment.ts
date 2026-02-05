@@ -1,61 +1,114 @@
 "use server";
 
-import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { createMomoPayment } from "@/lib/payment/momo";
+
 
 export async function enrollFreeCourse(courseId: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        return { error: "User not logged in" };
-    }
-
-    // Check course existence data
-    const course = await db.course.findUnique({
-        where: { id: courseId },
-        select: { price: true, chapters: { include: { lessons: true } } }
-    });
-
-    if (!course) {
-        return { error: "Course not found" };
-    }
-
-    // Only allow auto-enroll for FREE courses
-    if (Number(course.price) > 0) {
-        return { error: "This course requires payment." };
-    }
-
-    // Create Enrollment if not exists
-    const existing = await db.enrollment.findUnique({
-        where: {
-            userId_courseId: {
-                userId: user.id,
-                courseId: courseId
-            }
+        if (!user) {
+            return { success: false, error: "Bạn cần đăng nhập để đăng ký khóa học." };
         }
-    });
 
-    if (!existing) {
-        await db.enrollment.create({
+        // Check Course
+        const course = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { price: true, isFree: true, chapters: { include: { lessons: true } } }
+        });
+
+        if (!course) return { success: false, error: "Khóa học không tồn tại." };
+
+        const isActuallyFree = Number(course.price) === 0 || course.isFree;
+        if (!isActuallyFree) return { success: false, error: "Đây là khóa học trả phí. Vui lòng thanh toán." };
+
+        // Check & Create Enrollment
+        const existingEnroll = await prisma.enrollment.findUnique({
+            where: { userId_courseId: { userId: user.id, courseId } }
+        });
+
+        if (!existingEnroll) {
+            await prisma.enrollment.create({
+                data: { userId: user.id, courseId, progress: 0 }
+            });
+        }
+
+        revalidatePath(`/courses/${courseId}`);
+
+        const firstLesson = course.chapters[0]?.lessons[0];
+        if (firstLesson) return { success: true, message: "Đăng ký thành công!", redirectUrl: `/courses/${courseId}/lessons/${firstLesson.id}` };
+
+        return { success: true, message: "Đăng ký thành công!", redirectUrl: `/courses/${courseId}` };
+
+    } catch (error) {
+        console.error("Enroll Free Error:", error);
+        return { success: false, error: "Lỗi hệ thống. Vui lòng thử lại sau." };
+    }
+}
+
+export async function purchaseCourse(courseId: string) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) return { success: false, error: "Bạn cần đăng nhập để mua khóa học." };
+
+        const course = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { id: true, price: true, title: true }
+        });
+
+        if (!course) return { success: false, error: "Khóa học không tồn tại." };
+
+        const existingEnroll = await prisma.enrollment.findUnique({
+            where: { userId_courseId: { userId: user.id, courseId } }
+        });
+        if (existingEnroll) return { success: false, error: "Bạn đã sở hữu khóa học này." };
+
+        const purchase = await prisma.purchase.create({
             data: {
                 userId: user.id,
                 courseId: courseId,
-                progress: 0
+                amount: course.price,
+                currency: "VND",
+                provider: "MOMO", 
+                status: "PENDING",
             }
         });
-    }
 
-    // Revalidate course page to update UI (show Progress bar instead of Enroll button)
-    revalidatePath(`/courses/${courseId}`);
-    
-    // Find first lesson to redirect to
-    const firstLesson = course.chapters[0]?.lessons[0];
-    if (firstLesson) {
-        return { success: true, redirectUrl: `/courses/${courseId}/lessons/${firstLesson.id}` };
-    }
+        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
+        const ipnUrl = process.env.MOMO_IPN_URL || "https://momo.vn"; 
 
-    return { success: true, redirectUrl: `/courses/${courseId}` }; 
+        const momoRes = await createMomoPayment({
+            orderId: purchase.id, 
+            amount: Number(course.price),
+            orderInfo: `Thanh toan khoa hoc: ${course.title}`,
+            redirectUrl: `${appBaseUrl}/api/payment/return`, // Use internal handler for DB update on return
+            ipnUrl: ipnUrl,
+            extraData: `${user.id}|${course.id}` 
+        });
+
+        if (momoRes && momoRes.resultCode === 0) {
+            return { 
+                success: true, 
+                message: "Đang chuyển hướng sang MoMo...", 
+                redirectUrl: momoRes.payUrl, 
+                qrCodeUrl: momoRes.qrCodeUrl 
+            };
+        } else {
+             await prisma.purchase.update({
+                where: { id: purchase.id },
+                data: { status: 'FAILED', errorLog: momoRes?.message || "MoMo Init Failed" }
+            });
+            return { success: false, error: momoRes?.message || "Lỗi khởi tạo thanh toán MoMo." };
+        }
+
+    } catch (error) {
+        console.error("Purchase Error:", error);
+        return { success: false, error: "Lỗi thanh toán. Vui lòng thử lại sau." };
+    }
 }

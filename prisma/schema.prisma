@@ -32,6 +32,13 @@ enum PublishStatus {
   PUBLISHED
 }
 
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 // ================= 1. IDENTITY & ACCESS =================
 
 // Profile map 1-1 với Supabase Auth User
@@ -64,6 +71,9 @@ model Profile {
   
   // NEW: Study Schedules Config
   studySchedules StudySchedule[]
+  
+  // Payment History
+  purchases      Purchase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,6 +100,7 @@ model Course {
   description  String?
   thumbnailUrl String?
   price        Decimal      @default(0)
+  isFree       Boolean      @default(true) // Helper flag: true if price == 0
   status       CourseStatus @default(DRAFT)
 
   // Ai sở hữu khóa học này?
@@ -107,6 +118,7 @@ model Course {
   chapters    Chapter[]
   enrollments Enrollment[]
   quizResults QuizResult[]
+  purchases   Purchase[]
   
   // NEW: Relation to Study Schedule
   includedInSchedules StudyScheduleCourse[]
@@ -238,6 +250,32 @@ model Enrollment {
   joinedAt DateTime @default(now())
 
   @@unique([userId, courseId])
+}
+
+// Giao dịch mua bán (Payment History)
+model Purchase {
+  id          String   @id @default(uuid())
+  userId      String
+  user        Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  amount      Decimal  // Số tiền thực trả
+  currency    String   @default("VND") // VND, USD
+  
+  // Payment Gateway Info
+  provider       String   @default("STRIPE") // STRIPE, VNPAY, MOMO
+  transactionId  String?  // Transaction ID từ cổng thanh toán (ví dụ: Stripe Payment Intent ID)
+  status         PurchaseStatus @default(PENDING)
+  
+  errorLog       String?  // Lưu lỗi nếu có
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([courseId])
 }
 
 // Lịch học (Study Plan) - INDIVIDUAL ITEMS
