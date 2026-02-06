@@ -11,15 +11,22 @@ import {
     Clock,
     MoveHorizontal,
     MessageCircle,
-    Loader2
+    Loader2,
+    Sparkles,
+    PlayCircle,
+    Workflow,
+    Brain // Icon for Flashcards
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getOrCreateConversation } from "@/app/actions/chat";
 import CourseSidebar from "@/app/components/CourseSidebar";
 import VideoPlayer, { VideoPlayerHandle } from "@/app/components/VideoPlayer";
 import QuizPlayer from "../../../../components/courseComponents/QuizPlayer";
 import TranscriptTimeline from "@/app/components/TranscriptTimeline";
+import VideoChat from "@/app/components/ai/VideoChat";
+import MindmapView from "@/app/components/ai/MindmapView";
+import FlashcardDeck from "@/app/components/ai/FlashcardDeck";
 
 
 // Định nghĩa lại các Type cần thiết
@@ -34,6 +41,8 @@ type LessonData = {
     youtubeVideoId: string | null;
     transcript: string | null;
     timeline: TimelineItem[] | null;
+    mindMapData: any; // AI generated mindmap structure
+    flashcards: any; // AI generated flashcards
     duration: number | null;
     questions: any[];
 };
@@ -66,10 +75,28 @@ export default function LessonLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isVideoVisible, setIsVideoVisible] = useState(true);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
+
+    // NEW: State cho Tab (Quiz vs AI vs Mindmap vs Flashcards)
+    const [activeTab, setActiveTab] = useState<'quiz' | 'ai' | 'mindmap' | 'flashcards'>('quiz');
+
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // State cho resizable quiz panel
     const [quizPanelWidth, setQuizPanelWidth] = useState(400);
+
+    // Effect: Auto Seek from URL
+    useEffect(() => {
+        const t = searchParams.get('t');
+        if (t && videoPlayerRef.current) {
+            // Need a slight delay to ensure player is ready? 
+            // Better if VideoPlayer exposes onReady prop, but timeout works for now.
+            setTimeout(() => {
+                videoPlayerRef.current?.seekTo(Number(t));
+                videoContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 1000);
+        }
+    }, [searchParams]);
     const [isDragging, setIsDragging] = useState(false);
     const dragStartX = useRef(0);
     const dragStartWidth = useRef(400);
@@ -130,10 +157,6 @@ export default function LessonLayout({
         try {
             const res = await getOrCreateConversation(course.instructor.id);
             if (res.success && res.conversationId) {
-                // Redirect to messages page with this conversation selected (optional param could be handled later)
-                // Hiện tại cứ redirect sang /messages, user sẽ thấy hội thoại mới nhất nổi lên đầu
-                // Tốt nhất là impl logic selected ở messages page.
-                // Tạm thời redirect sang /messages. User click vào sẽ thấy hội thoại mới đc tạo/update.
                 router.push(`/messages`);
             } else {
                 alert(res.error || "Không thể tạo cuộc trò chuyện");
@@ -269,7 +292,7 @@ export default function LessonLayout({
                         </div>
                     </div>
 
-                    {/* --- CỘT PHẢI: BÀI TẬP (QUIZ) --- */}
+                    {/* --- CỘT PHẢI: BÀI TẬP (QUIZ) & AI CHAT & MINDMAP & FLASHCARDS --- */}
                     <div
                         className={`border-l border-stone-200 bg-white flex flex-col transition-all ease-in-out ${!isVideoVisible
                             ? "w-full flex-1 duration-300" // Chế độ tập trung: Full màn hình
@@ -279,30 +302,88 @@ export default function LessonLayout({
                             }`}
                         style={isVideoVisible && isSidebarOpen ? { width: `${quizPanelWidth}px` } : undefined}
                     >
-                        {/* Quiz Header */}
-                        <div className={`p-4 border-b border-stone-200 flex items-center gap-2 flex-shrink-0 ${!isVideoVisible ? "bg-white shadow-sm justify-center" : "bg-stone-50"}`}>
-                            <CheckCircle className="text-[#C5A059]" size={20} />
-                            <div className={!isVideoVisible ? "text-center" : ""}>
-                                <h3 className="font-bold text-stone-800 text-sm">Bài tập thực hành</h3>
-                                {!isVideoVisible && <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Chế độ tập trung</p>}
-                            </div>
+                        {/* Right Panel Tabs */}
+                        <div className="flex border-b border-stone-200 bg-stone-50 overflow-x-auto custom-scrollbar">
+                            <button
+                                onClick={() => setActiveTab('quiz')}
+                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'quiz' ? 'bg-white text-stone-800 border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                            >
+                                <CheckCircle size={16} /> <span className="hidden xl:inline">Bài tập</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('ai')}
+                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'ai' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                            >
+                                <Sparkles size={16} /> <span className="hidden xl:inline">AI Tutor</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('mindmap')}
+                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'mindmap' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                            >
+                                <Workflow size={16} /> <span className="hidden xl:inline">Mindmap</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('flashcards')}
+                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'flashcards' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
+                                    }`}
+                            >
+                                <Brain size={16} /> <span className="hidden xl:inline">Flashcards</span>
+                            </button>
                         </div>
 
-                        {/* Quiz Content (Scrollable) */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 h-full">
-                            <div className={`transition-all duration-500 ${!isVideoVisible
-                                ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit" // Sửa thành min-h-fit hoặc để tự nhiên
-                                : "w-full pb-10" // Thêm padding-bottom để không bị sát đáy
-                                }`}>
-                                <QuizPlayer
+                        {/* Content Area */}
+
+                        {activeTab === 'quiz' && (
+                            // Render Quiz Logic
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 h-full relative">
+                                {!isVideoVisible && <p className="text-center text-xs text-stone-400 font-bold uppercase tracking-widest mb-4">Chế độ tập trung</p>}
+                                <div className={`transition-all duration-500 ${!isVideoVisible
+                                    ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit"
+                                    : "w-full pb-10"
+                                    }`}>
+                                    <QuizPlayer
+                                        lessonId={lesson.id}
+                                        questions={formattedQuestions}
+                                        initialResult={initialResult}
+                                        initialAnswers={userAnswers}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'ai' && (
+                            // Render AI Chat Logic
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-3xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                                <VideoChat
                                     lessonId={lesson.id}
-                                    questions={formattedQuestions}
-                                    initialResult={initialResult}
-                                    initialAnswers={userAnswers}
+                                    onSeek={handleSeekToTime}
                                 />
                             </div>
+                        )}
 
-                        </div>
+                        {activeTab === 'mindmap' && (
+                            // Render Mindmap Logic
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                                <MindmapView
+                                    data={lesson.mindMapData}
+                                    onSeek={handleSeekToTime}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'flashcards' && (
+                            // Render Flashcards Logic
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                                <FlashcardDeck
+                                    cards={lesson.flashcards}
+                                    onSeek={handleSeekToTime}
+                                />
+                            </div>
+                        )}
+
                     </div>
 
                 </div>

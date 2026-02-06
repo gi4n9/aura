@@ -25,6 +25,8 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
             youtubeVideoId: true,
             transcript: true,
             timeline: true,
+            mindMapData: true,
+            flashcards: true,
             duration: true,
             questions: {
                 where: { isArchived: false },

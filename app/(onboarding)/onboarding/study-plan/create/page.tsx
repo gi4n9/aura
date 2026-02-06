@@ -31,17 +31,17 @@ export default function CreatePlanPage() {
 
     useEffect(() => {
         // Fetch courses on mount and calculate duration
-        getEnrolledCourses().then(data => {
-            const mapped = data.map((c: any) => ({
-                id: c.id,
-                title: c.title,
-                thumbnailUrl: c.thumbnailUrl,
-                category: c.category,
-                // Calculate total duration from nested chapters -> lessons
-                totalDuration: c.chapters.reduce((acc: number, ch: any) =>
-                    acc + ch.lessons.reduce((lAcc: number, l: any) => lAcc + (l.duration || 0), 0), 0)
-            }));
-            setCourses(mapped);
+        getEnrolledCourses().then(res => {
+            if (res.success && res.data) {
+                const mapped = res.data.map((c: any) => ({
+                    id: c.id,
+                    title: c.title,
+                    thumbnailUrl: c.thumbnailUrl,
+                    category: null,
+                    totalDuration: c.totalDuration || 0
+                }));
+                setCourses(mapped);
+            }
         });
     }, []);
 

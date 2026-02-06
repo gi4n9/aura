@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef } from "react";
-import { Play, ChevronDown, BarChart3 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Play, ChevronDown, BarChart3, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
+import AIStudyPlannerModal from "./study-plan/AIStudyPlannerModal";
 
-// --- 1. SỬA TYPE DEFINITION Ở ĐÂY ---
+// --- TYPE DEFINITIONS ---
 type LessonItem = {
   id: string;
   title: string;
@@ -33,6 +34,7 @@ export default function CourseSidebar({
 }) {
   const activeRef = useRef<HTMLAnchorElement>(null);
   const pathName = usePathname();
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   useEffect(() => {
     if (activeRef.current) {
@@ -56,13 +58,24 @@ export default function CourseSidebar({
             {totalLessons} Bài
           </span>
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-stone-400 font-serif italic">Tiến độ học tập</p>
-          <Link href={`/courses/${courseId}/progress`} className="text-[10px] font-bold text-stone-500 flex items-center gap-1 hover:text-[#C5A059] border border-stone-200 px-2 py-1 rounded bg-white hover:border-[#C5A059] transition-colors">
-            <BarChart3 size={12} /> Xem kết quả
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            onClick={() => setIsPlanModalOpen(true)}
+            className="flex-1 text-[11px] font-bold text-white bg-[#1a1a1a] hover:bg-[#C5A059] px-2 py-1.5 rounded transition-colors flex items-center justify-center gap-1 shadow-sm"
+          >
+            <Sparkles size={12} /> Lập kế hoạch
+          </button>
+          <Link href={`/courses/${courseId}/progress`} className="flex-1 text-[11px] font-bold text-stone-500 hover:text-[#C5A059] border border-stone-200 px-2 py-1.5 rounded bg-white hover:border-[#C5A059] transition-colors flex items-center justify-center gap-1 text-center">
+            <BarChart3 size={12} /> Tiến độ
           </Link>
         </div>
       </div>
+
+      <AIStudyPlannerModal
+        courseId={courseId}
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+      />
 
       {/* Chapter & Lesson List */}
       <div className="overflow-y-auto flex-1 custom-scrollbar bg-white">
@@ -77,7 +90,7 @@ export default function CourseSidebar({
 
             <div className="p-2 space-y-1">
               {chapter.lessons.map((lesson) => {
-                // --- 2. XỬ LÝ FALLBACK KHI VIDEO ID LÀ NULL ---
+                // --- XỬ LÝ FALLBACK KHI VIDEO ID LÀ NULL ---
                 const videoId = lesson.youtubeVideoId || "";
                 const isActive = pathName?.includes(lesson.id);
 

@@ -1,8 +1,8 @@
 "use server";
 
 import { google } from "googleapis";
-import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
-import { GoogleAIFileManager, FileState } from "@google/generative-ai/server"; // Import thêm FileState
+import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import fs from "fs";
@@ -11,6 +11,8 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import { path as ffprobePath } from "ffprobe-static";
 import { Readable } from "stream";
+import { generateMindmap, generateFlashcards } from "./ai-lesson-content";
+import { processLessonTranscript } from "./video-chat";
 
 // Ép buộc fluent-ffmpeg dùng đúng file .exe
 ffmpeg.setFfmpegPath(ffmpegPath as string);
@@ -241,6 +243,25 @@ export async function processVideoUpload(
         responseMimeType: "application/json",
         responseSchema: videoAnalysisSchema,
       },
+      // Safety settings để tránh lỗi RECITATION khi xử lý video giáo dục
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ],
     });
 
     // --- PROMPT ĐƯỢC THIẾT KẾ RIÊNG ---
@@ -398,6 +419,30 @@ export async function processVideoUpload(
       },
     });
 
+    // =========================================================
+    // BƯỚC 6: TRIGGER AI ENHANCEMENTS (Mindmap, Flashcards, Embeddings)
+    // =========================================================
+    console.log("🚀 Generating Mindmap, Flashcards & Embeddings...");
+
+    try {
+        if (aiData.transcript) {
+            // 1. Mindmap
+            await generateMindmap(lesson.id, aiData.transcript);
+            
+            // 2. Flashcards
+            await generateFlashcards(lesson.id, aiData.transcript);
+            
+            // 3. Embeddings (Naive Chunking for Chat)
+            // Split transcript into chunks with estimated timestamps
+            const chunks = naiveChunkTranscript(aiData.transcript, maxDuration);
+            await processLessonTranscript(lesson.id, chunks);
+
+            console.log("✨ AI Enhancements Generated Successfully!");
+        }
+    } catch (aiError) {
+        console.error("⚠️ AI Enhancements Warning:", aiError);
+    }
+
     return {
       success: true,
       lessonId: lesson.id,
@@ -408,7 +453,7 @@ export async function processVideoUpload(
     return { success: false, error: error.message };
   } finally {
     // =========================================================
-    // BƯỚC 5: DỌN DẸP TÀI NGUYÊN
+    // BƯỚC 7: DỌN DẸP TÀI NGUYÊN
     // =========================================================
     try {
       if (tempFilePath && fs.existsSync(tempFilePath)) {
@@ -428,4 +473,48 @@ export async function processVideoUpload(
       console.error("⚠️ Lỗi dọn dẹp:", cleanupError);
     }
   }
+}
+
+function naiveChunkTranscript(text: string, duration: number) {
+    const minChunkLength = 200; // chars similar to a paragraph
+    // Split roughly by sentences
+    const parts = text.match(/[^.?!]+[.?!]+[\])'"]*|.+/g) || [text]; 
+    
+    const chunks = [];
+    let currentText = "";
+    let startTime = 0;
+    
+    // Estimate chars per second
+    const totalChars = text.length;
+    const charsPerSec = totalChars / (duration || 1);
+
+    for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+
+        if (currentText.length + trimmed.length < minChunkLength) {
+            currentText += (currentText ? " " : "") + trimmed;
+        } else {
+             // Push old chunk
+             const len = currentText.length;
+             const endTime = startTime + (len / charsPerSec);
+             chunks.push({
+                 text: currentText,
+                 start: Math.floor(startTime),
+                 end: Math.floor(endTime)
+             });
+             // Reset
+             currentText = trimmed;
+             startTime = endTime;
+        }
+    }
+    // Last chunk
+    if (currentText) {
+        chunks.push({
+            text: currentText,
+            start: Math.floor(startTime),
+            end: duration
+        });
+    }
+    return chunks;
 }

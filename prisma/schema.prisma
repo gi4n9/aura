@@ -149,6 +149,8 @@ model Lesson {
   duration       Int? // Thời lượng (giây)
   transcript     String? @db.Text // Transcript do AI tạo hoặc upload, dùng cho RAG
   mindMapUrl     String? // Link ảnh/json mindmap lưu trên Supabase Storage
+  mindMapData    Json?   // Cấu trúc cây mindmap do AI generate
+  flashcards     Json?   // Flashcards (Front/Back) do AI generate
 
   // Lưu mảng JSON timeline: [{ "time": 0, "label": "Mở đầu" }, ...]
   timeline Json?
@@ -163,8 +165,9 @@ model Lesson {
   studyPlanItems StudyPlanItem[]
   
   // Video progress tracking
-  videoProgress VideoProgress[]
-  quizResults   QuizResult[]
+  videoProgress   VideoProgress[]
+  quizResults     QuizResult[]
+  videoEmbeddings VideoEmbedding[]
 
   createdAt DateTime @default(now())
 }
@@ -459,4 +462,23 @@ model DirectMessage {
 
   @@index([conversationId])
   @@index([senderId])
+}
+
+// ================= 6. VECTOR SEARCH =================
+model VideoEmbedding {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lessonId  String   @map("lesson_id")
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  content   String   @db.Text
+  startTime Float    @map("start_time")
+  endTime   Float    @map("end_time")
+  
+  // Unsupported type for vector, handle via raw SQL or Supabase client
+  embedding Unsupported("vector(768)")?
+  
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("video_embeddings")
 }
