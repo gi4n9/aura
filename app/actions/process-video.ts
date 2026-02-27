@@ -11,8 +11,6 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import { path as ffprobePath } from "ffprobe-static";
 import { Readable } from "stream";
-import { generateMindmap, generateFlashcards } from "./ai-lesson-content";
-import { processLessonTranscript } from "./video-chat";
 
 // Ép buộc fluent-ffmpeg dùng đúng file .exe
 ffmpeg.setFfmpegPath(ffmpegPath as string);
@@ -94,9 +92,9 @@ const videoAnalysisSchema: Schema = {
             type: SchemaType.INTEGER, // Sử dụng INTEGER thay vì NUMBER
             description: "Thời gian bắt đầu của đoạn tính bằng giây (số nguyên, ví dụ: 0, 60, 120)",
           },
-          label: { 
-            type: SchemaType.STRING, 
-            description: "Tiêu đề ngắn gọn mô tả nội dung đoạn đó (ví dụ: 'Giới thiệu', 'Cài đặt môi trường')" 
+          label: {
+            type: SchemaType.STRING,
+            description: "Tiêu đề ngắn gọn mô tả nội dung đoạn đó (ví dụ: 'Giới thiệu', 'Cài đặt môi trường')"
           },
         },
         required: ["time", "label"],
@@ -362,7 +360,7 @@ export async function processVideoUpload(
     // =========================================================
     const maxDuration = Math.round(durationInSeconds);
     let validatedTimeline = aiData.timeline || [];
-    
+
     // Filter các mốc có time >= duration
     if (Array.isArray(validatedTimeline)) {
       validatedTimeline = validatedTimeline
@@ -375,7 +373,7 @@ export async function processVideoUpload(
           label: String(item.label || '').slice(0, 100), // Limit label length
         }))
         .sort((a: any, b: any) => a.time - b.time); // Sắp xếp theo thời gian
-      
+
       console.log(`📍 Timeline: ${validatedTimeline.length} mốc (sau khi validate)`);
     }
 
@@ -420,28 +418,12 @@ export async function processVideoUpload(
     });
 
     // =========================================================
-    // BƯỚC 6: TRIGGER AI ENHANCEMENTS (Mindmap, Flashcards, Embeddings)
+    // BƯỚC 6: AI ENHANCEMENTS (Mindmap, Flashcards, Embeddings)
+    // => ĐÃ CHUYỂN SANG FRONTEND (AIGeneratorButton)
+    // => Người dùng sẽ tự bấm nút tạo sau khi Upload xong
+    // => Tránh quá tải API & Timeout khi deploy Vercel
     // =========================================================
-    console.log("🚀 Generating Mindmap, Flashcards & Embeddings...");
-
-    try {
-        if (aiData.transcript) {
-            // 1. Mindmap
-            await generateMindmap(lesson.id, aiData.transcript);
-            
-            // 2. Flashcards
-            await generateFlashcards(lesson.id, aiData.transcript);
-            
-            // 3. Embeddings (Naive Chunking for Chat)
-            // Split transcript into chunks with estimated timestamps
-            const chunks = naiveChunkTranscript(aiData.transcript, maxDuration);
-            await processLessonTranscript(lesson.id, chunks);
-
-            console.log("✨ AI Enhancements Generated Successfully!");
-        }
-    } catch (aiError) {
-        console.error("⚠️ AI Enhancements Warning:", aiError);
-    }
+    console.log("✅ Upload & Transcript hoàn tất. AI Enhancements sẽ được tạo bởi người dùng.");
 
     return {
       success: true,
@@ -476,45 +458,45 @@ export async function processVideoUpload(
 }
 
 function naiveChunkTranscript(text: string, duration: number) {
-    const minChunkLength = 200; // chars similar to a paragraph
-    // Split roughly by sentences
-    const parts = text.match(/[^.?!]+[.?!]+[\])'"]*|.+/g) || [text]; 
-    
-    const chunks = [];
-    let currentText = "";
-    let startTime = 0;
-    
-    // Estimate chars per second
-    const totalChars = text.length;
-    const charsPerSec = totalChars / (duration || 1);
+  const minChunkLength = 200; // chars similar to a paragraph
+  // Split roughly by sentences
+  const parts = text.match(/[^.?!]+[.?!]+[\])'"]*|.+/g) || [text];
 
-    for (const part of parts) {
-        const trimmed = part.trim();
-        if (!trimmed) continue;
+  const chunks = [];
+  let currentText = "";
+  let startTime = 0;
 
-        if (currentText.length + trimmed.length < minChunkLength) {
-            currentText += (currentText ? " " : "") + trimmed;
-        } else {
-             // Push old chunk
-             const len = currentText.length;
-             const endTime = startTime + (len / charsPerSec);
-             chunks.push({
-                 text: currentText,
-                 start: Math.floor(startTime),
-                 end: Math.floor(endTime)
-             });
-             // Reset
-             currentText = trimmed;
-             startTime = endTime;
-        }
+  // Estimate chars per second
+  const totalChars = text.length;
+  const charsPerSec = totalChars / (duration || 1);
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    if (currentText.length + trimmed.length < minChunkLength) {
+      currentText += (currentText ? " " : "") + trimmed;
+    } else {
+      // Push old chunk
+      const len = currentText.length;
+      const endTime = startTime + (len / charsPerSec);
+      chunks.push({
+        text: currentText,
+        start: Math.floor(startTime),
+        end: Math.floor(endTime)
+      });
+      // Reset
+      currentText = trimmed;
+      startTime = endTime;
     }
-    // Last chunk
-    if (currentText) {
-        chunks.push({
-            text: currentText,
-            start: Math.floor(startTime),
-            end: duration
-        });
-    }
-    return chunks;
+  }
+  // Last chunk
+  if (currentText) {
+    chunks.push({
+      text: currentText,
+      start: Math.floor(startTime),
+      end: duration
+    });
+  }
+  return chunks;
 }

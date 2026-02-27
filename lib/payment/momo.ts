@@ -59,14 +59,13 @@ export async function createMomoPayment({
         partnerName: "Aura Streaming",
         storeId: "MomoTestStore",
         requestId: requestId,
-        amount: amount,
+        amount: Math.round(Number(amount)),
         orderId: orderId,
         orderInfo: orderInfo,
         redirectUrl: redirectUrl,
         ipnUrl: ipnUrl,
         lang: lang,
         requestType: requestType,
-        autoCapture: true,
         extraData: extraData,
         signature: signature
     };
@@ -79,13 +78,28 @@ export async function createMomoPayment({
             body: JSON.stringify(requestBody)
         });
 
-        const data = await response.json();
-        
-        if (data.resultCode !== 0) {
-            console.error("MoMo Response Error:", data);
+        // 1. Lấy response dưới dạng Text thô thay vì ép sang JSON ngay
+        const responseText = await response.text();
+
+        let data;
+        try {
+            // 2. Cố gắng parse text thành JSON
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            // 3. Nếu crash ở đây, nghĩa là MoMo trả về HTML (hoặc text rác)
+            console.error("❌ LỖI NGHIÊM TRỌNG: MoMo không trả về JSON!");
+            console.error("HTTP Status Code:", response.status);
+            console.error("Nội dung HTML/Text nhận được:", responseText); // In ra để xem MoMo chửi gì
+            throw new Error(`Gateway MoMo trả về định dạng sai (HTTP ${response.status}). Vui lòng xem log server.`);
         }
 
-        return data; 
+        // 4. Đã parse JSON thành công, tiếp tục kiểm tra resultCode
+        if (data.resultCode !== 0) {
+            console.error("⚠️ MoMo từ chối giao dịch. Chi tiết:", JSON.stringify(data, null, 2));
+            console.error("Body đã gửi lên:", JSON.stringify(requestBody, null, 2));
+        }
+
+        return data;
 
     } catch (error) {
         console.error("MoMo API Exception:", error);

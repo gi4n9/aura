@@ -9,7 +9,8 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
 
     const lesson = await prisma.lesson.findUnique({
         where: { id: lessonId },
-        include: { questions: true },
+        include: { questions: true, flashcards: true },
+
     });
 
     if (!lesson) return redirect("/instructor/dashboard");
@@ -20,6 +21,13 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
         options: q.options as string[],
         correctAnswer: (q.correctAnswer as "A" | "B" | "C" | "D") || "A",
         aiExplanation: q.aiExplanation || ""
+    }));
+
+    const formattedFlashcards = lesson.flashcards.map(fc => ({
+        id: fc.id,
+        front: fc.front,
+        back: fc.back,
+        timestamp: fc.timestamp
     }));
 
     return (
@@ -37,6 +45,9 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
                     lessonId={lesson.id}
                     lessonTitle={lesson.title}
                     initialQuestions={formattedQuestions}
+                    initialTranscript={lesson.transcript}
+                    initialMindMap={lesson.mindMapData}
+                    initialFlashcards={formattedFlashcards}
                 />
             </div>
         </div>

@@ -336,3 +336,21 @@ h6 {
 .whitespace-nowrap {
   white-space: nowrap;
 }
+
+/* 3D Transform Utilities cho Flashcards */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}

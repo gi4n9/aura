@@ -8,11 +8,46 @@ import {
     useNodesState,
     useEdgesState,
     Position,
+    Handle,
+    Panel,
     Node,
     Edge
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { Clock } from 'lucide-react';
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { Clock, Network } from 'lucide-react';
+import dagre from 'dagre';
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
+    dagreGraph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 50 });
+
+    nodes.forEach((node) => {
+        dagreGraph.setNode(node.id, { width: 180, height: 60 });
+    });
+
+    edges.forEach((edge) => {
+        dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    const layoutedNodes = nodes.map((node) => {
+        const nodeWithPosition = dagreGraph.node(node.id);
+        const newNode = { ...node };
+
+        newNode.position = {
+            x: nodeWithPosition.x - 90,
+            y: nodeWithPosition.y - 30,
+        };
+        newNode.sourcePosition = 'right' as any;
+        newNode.targetPosition = 'left' as any;
+        return newNode;
+    });
+
+    return { nodes: layoutedNodes, edges };
+};
 
 interface MindmapViewProps {
     data: { nodes: Node[]; edges: Edge[] } | null;
@@ -20,109 +55,52 @@ interface MindmapViewProps {
 }
 
 // Custom Node Component to show Label + Timestamp
-const CustomNode = ({ data }: any) => {
+const CustomNode = ({ data, type }: any) => {
     return (
-        <div className="px-4 py-2 shadow-md rounded-xl bg-white border-2 border-stone-200 min-w-[150px] text-center hover:border-[#C5A059] transition-colors group cursor-pointer">
+        <div className="px-4 py-2 shadow-md rounded-xl bg-white border-2 border-stone-200 min-w-[150px] text-center hover:border-[#C5A059] transition-colors group cursor-pointer relative">
+            {/* Chỉ thêm Handle Target (đầu nhận) nếu không phải là node Root (node gốc) */}
+            {type !== 'input' && (
+                <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-[#C5A059] border-none" />
+            )}
+
             <div className="font-bold text-stone-800 text-sm">{data.label}</div>
-            {data.timestamp !== undefined && (
+
+            {data.timestamp !== undefined && data.timestamp !== null && (
                 <div className="flex items-center justify-center gap-1 text-[10px] text-stone-400 mt-1 font-mono group-hover:text-[#C5A059]">
                     <Clock size={10} />
                     {new Date(data.timestamp * 1000).toISOString().substr(14, 5)}
                 </div>
             )}
+
+            {/* Thêm Handle Source (đầu phát) để kết nối đi */}
+            <Handle type="source" position={Position.Right} className="w-2 h-2 !bg-[#C5A059] border-none" />
         </div>
     );
 };
 
 const nodeTypes = {
-    default: CustomNode,
-    input: CustomNode, // Re-use same style for root
+    custom: CustomNode,
 };
 
 export default function MindmapView({ data, onSeek }: MindmapViewProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-    // Simple Tree Layout Algorithm
-    const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
-        if (!nodes.length) return { nodes: [], edges: [] };
-
-        const nodeWidth = 180;
-        const nodeHeight = 80;
-        const levelHeight = 150; // Vertical spacing
-
-        // Filter nodes by levels (this assumes edges go Parent -> Child)
-        // Find Root (nodes with no incoming edges) - simplified assumption
-        // Actually, let's just use the `traverse` logic from backend or recalculate here.
-
-        // Let's assume the backend sent a flat list. We need to reconstruct hierarchy for layout.
-        // Or simpler: BFS to assign levels and x-positions.
-
-        const hierarchy: Record<string, { level: number, indexInLevel: number, children: string[] }> = {};
-        const levels: Record<number, string[]> = {};
-
-        // Initialize
-        nodes.forEach(n => {
-            hierarchy[n.id] = { level: 0, indexInLevel: 0, children: [] };
-        });
-
-        // Build parent-child
-        edges.forEach(e => {
-            if (hierarchy[e.source]) {
-                hierarchy[e.source].children.push(e.target);
-            }
-        });
-
-        // Find roots (nodes not target of any edge)
-        const targets = new Set(edges.map(e => e.target));
-        const roots = nodes.filter(n => !targets.has(n.id));
-
-        // BFS to assign levels
-        const queue = roots.map(r => ({ ...r, level: 0 }));
-        const visited = new Set<string>();
-
-        while (queue.length > 0) {
-            const node = queue.shift()!;
-            if (visited.has(node.id)) continue;
-            visited.add(node.id);
-
-            const level = hierarchy[node.id]?.level || 0; // Should be set by parent push
-            if (!levels[level]) levels[level] = [];
-            levels[level].push(node.id);
-
-            // Enqueue children
-            const children = hierarchy[node.id].children;
-            children.forEach(childId => {
-                hierarchy[childId].level = level + 1;
-                queue.push({ id: childId, level: level + 1 } as any);
-            });
-        }
-
-        // Assign X, Y positions
-        return {
-            nodes: nodes.map(node => {
-                const level = hierarchy[node.id]?.level || 0;
-                const siblings = levels[level] || [];
-                const index = siblings.indexOf(node.id);
-
-                // Centering logic
-                const totalWidth = siblings.length * nodeWidth;
-                const x = (index * nodeWidth) - (totalWidth / 2);
-                const y = level * levelHeight;
-
-                return { ...node, position: { x, y } };
-            }),
-            edges
-        };
-    };
-
     useEffect(() => {
-        if (data) {
-            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(data.nodes, data.edges);
+        if (data && data.nodes && data.edges) {
+            const mappedNodes = data.nodes.map((n: Node) => ({ ...n, type: 'custom' }));
+            // Ngay lúc mount, tự động format layout bằng Dagre luôn
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(mappedNodes, data.edges);
             setNodes(layoutedNodes);
             setEdges(layoutedEdges);
         }
     }, [data, setNodes, setEdges]);
+
+    const onLayout = useCallback(() => {
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges);
+        setNodes([...layoutedNodes]);
+        setEdges([...layoutedEdges]);
+    }, [nodes, edges]);
 
     const onNodeClick = useCallback((_: any, node: Node) => {
         if (node.data.timestamp) {
@@ -155,6 +133,14 @@ export default function MindmapView({ data, onSeek }: MindmapViewProps) {
             >
                 <Background color="#ccc" gap={20} size={1} />
                 <Controls showInteractive={false} />
+                <Panel position="top-right" className="flex gap-2">
+                    <button
+                        onClick={onLayout}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-stone-600 rounded-lg shadow-sm border border-stone-200 hover:bg-stone-50 hover:text-[#C5A059] transition-all font-medium text-sm"
+                    >
+                        <Network size={16} /> Tự động sắp xếp
+                    </button>
+                </Panel>
             </ReactFlow>
         </div>
     );

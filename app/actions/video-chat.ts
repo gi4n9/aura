@@ -23,7 +23,7 @@ interface VideoSegment {
 // 1. PROCESS TRANSCRIPT & GENERATE EMBEDDINGS
 export async function processLessonTranscript(lessonId: string, segments: TranscriptSegment[]) {
     const supabase = await createClient();
-    
+
     // Check permission (Instructor/Admin only)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: "Unauthorized" };
@@ -32,10 +32,10 @@ export async function processLessonTranscript(lessonId: string, segments: Transc
         // Optimize: Group segments into larger chunks (~30-60s) to have better context
         // This logic can be refined. For now, we take segments as provided if they are reasonable.
         // Assuming segments come from Whisper which are sentence-level.
-        
+
         const chunks: TranscriptSegment[] = [];
         let currentChunk: TranscriptSegment | null = null;
-        
+
         for (const seg of segments) {
             if (!currentChunk) {
                 currentChunk = { ...seg };

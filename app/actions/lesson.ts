@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
-import { revalidatePath } from "next/cache";
 
 export async function createLesson(chapterId: string, title: string) {
   try {
@@ -38,7 +37,7 @@ export async function createLesson(chapterId: string, title: string) {
     // Revalidate the course settings page to update the UI
     // Path might be tentative, but it works for dynamic routes often if generic enough or specific
     // revalidatePath(`/instructor/courses/${chapter.courseId}/settings`);
-    
+
     return { success: true, data: lesson };
   } catch (error) {
     console.error("[CREATE_LESSON]", error);

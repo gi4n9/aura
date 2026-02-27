@@ -63,13 +63,23 @@ export default function FlashcardDeck({ cards, onSeek }: FlashcardDeckProps) {
 
             {/* Card Container */}
             <div
-                className="relative w-full max-w-lg aspect-[3/2] perspective-1000 cursor-pointer group"
+                className="relative w-full max-w-lg aspect-[3/2] cursor-pointer group"
+                style={{ perspective: "1000px" }}
                 onClick={() => setIsFlipped(!isFlipped)}
             >
-                <div className={`relative w-full h-full duration-500 preserve-3d transition-transform ${isFlipped ? "rotate-y-180" : ""}`}>
+                <div
+                    className="relative w-full h-full duration-500 transition-transform"
+                    style={{
+                        transformStyle: "preserve-3d",
+                        transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)"
+                    }}
+                >
 
                     {/* Front */}
-                    <div className="absolute w-full h-full backface-hidden bg-white rounded-2xl shadow-xl border border-stone-200 flex flex-col items-center justify-center p-8 text-center">
+                    <div
+                        className="absolute w-full h-full bg-white rounded-2xl shadow-xl border border-stone-200 flex flex-col items-center justify-center p-8 text-center"
+                        style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
+                    >
                         <span className="text-xs font-bold text-[#C5A059] uppercase tracking-widest mb-4">Question</span>
                         <h3 className="text-xl md:text-2xl font-serif font-bold text-stone-800">
                             {currentCard.front}
@@ -80,7 +90,10 @@ export default function FlashcardDeck({ cards, onSeek }: FlashcardDeckProps) {
                     </div>
 
                     {/* Back */}
-                    <div className="absolute w-full h-full backface-hidden bg-[#2C2C2C] text-white rounded-2xl shadow-xl rotate-y-180 flex flex-col items-center justify-center p-8 text-center overflow-y-auto custom-scrollbar">
+                    <div
+                        className="absolute w-full h-full bg-[#2C2C2C] text-white rounded-2xl shadow-xl flex flex-col items-center justify-center p-8 text-center overflow-y-auto custom-scrollbar"
+                        style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                    >
                         <span className="text-xs font-bold text-[#C5A059] uppercase tracking-widest mb-4">Answer</span>
                         <p className="text-lg md:text-xl font-medium leading-relaxed">
                             {currentCard.back}

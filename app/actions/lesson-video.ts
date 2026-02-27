@@ -5,6 +5,120 @@ import { youtube } from "@/lib/youtube";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
+interface FlashcardPayload {
+  id?: string;
+  front: string;
+  back: string;
+}
+
+interface UpdateLessonPayload {
+  transcript?: string;
+  mindMapData?: any;
+  flashcards?: FlashcardPayload[];
+}
+
+export async function createLesson(chapterId: string, title: string) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const chapter = await db.chapter.findUnique({
+      where: { id: chapterId },
+      select: { courseId: true },
+    });
+
+    if (!chapter) return { success: false, error: "Chapter not found" };
+
+    const lastLesson = await db.lesson.findFirst({
+      where: { chapterId },
+      orderBy: { position: "desc" },
+    });
+
+    const newPosition = lastLesson ? lastLesson.position + 1 : 1;
+
+    const lesson = await db.lesson.create({
+      data: {
+        title,
+        chapterId,
+        position: newPosition,
+      },
+    });
+
+    // Revalidate the course settings page to update the UI
+    // Path might be tentative, but it works for dynamic routes often if generic enough or specific
+    // revalidatePath(`/instructor/courses/${chapter.courseId}/settings`);
+
+    return { success: true, data: lesson };
+  } catch (error) {
+    console.error("[CREATE_LESSON]", error);
+    return { success: false, error: "Internal Error" };
+  }
+}
+
+export async function updateLessonContent(lessonId: string, data: UpdateLessonPayload) {
+  try {
+    // 1. CẬP NHẬT CÁC TRƯỜNG CƠ BẢN (Transcript, Mindmap)
+    const updateData: any = {};
+    if (data.transcript !== undefined) updateData.transcript = data.transcript;
+    if (data.mindMapData !== undefined) updateData.mindMapData = data.mindMapData;
+
+    if (Object.keys(updateData).length > 0) {
+      await db.lesson.update({
+        where: { id: lessonId },
+        data: updateData
+      });
+    }
+
+    // 2. XỬ LÝ ĐỒNG BỘ BẢNG FLASHCARDS (NẾU CÓ DỮ LIỆU)
+    if (data.flashcards) {
+      // Lọc ra danh sách ID hợp lệ (những thẻ cũ đã có trong DB)
+      const validExistingIds = data.flashcards
+        .filter(fc => fc.id && !fc.id.startsWith("fc-new"))
+        .map(fc => fc.id as string);
+
+      // A. XÓA: Những thẻ có trong DB nhưng không có mặt trong danh sách Frontend gửi lên
+      await db.flashcard.deleteMany({
+        where: {
+          lessonId: lessonId,
+          id: { notIn: validExistingIds }
+        }
+      });
+
+      // B. THÊM MỚI & CẬP NHẬT
+      for (const card of data.flashcards) {
+        if (card.id && !card.id.startsWith("fc-new")) {
+          // Cập nhật thẻ cũ
+          await db.flashcard.update({
+            where: { id: card.id },
+            data: { front: card.front, back: card.back }
+          });
+        } else {
+          // Thêm thẻ mới (Bỏ qua id ảo "fc-new-...", DB sẽ tự sinh UUID mới)
+          await db.flashcard.create({
+            data: {
+              lessonId: lessonId,
+              front: card.front,
+              back: card.back
+            }
+          });
+        }
+      }
+    }
+
+    // 3. Xóa cache để giao diện cập nhật ngay lập tức
+    revalidatePath(`/instructor/courses/[courseId]/chapters/[chapterId]/lessons/${lessonId}`, "page");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Update Lesson Content Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function getLessonVideoDetails(lessonId: string) {
   try {
     const supabase = await createClient();

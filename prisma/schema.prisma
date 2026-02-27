@@ -144,32 +144,38 @@ model Lesson {
   chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   position  Int
 
-  // Thông tin Video & AI Metadata
-  youtubeVideoId String? // ID video private trên Youtube
-  duration       Int? // Thời lượng (giây)
-  transcript     String? @db.Text // Transcript do AI tạo hoặc upload, dùng cho RAG
-  mindMapUrl     String? // Link ảnh/json mindmap lưu trên Supabase Storage
-  mindMapData    Json?   // Cấu trúc cây mindmap do AI generate
-  flashcards     Json?   // Flashcards (Front/Back) do AI generate
+  youtubeVideoId String? 
+  duration       Int?    
+  transcript     String? @db.Text 
+  mindMapData    Json?   // GIỮ LẠI: Lưu JSON cho đồ họa Mindmap của React Flow
+  flashcards     Flashcard[]
 
-  // Lưu mảng JSON timeline: [{ "time": 0, "label": "Mở đầu" }, ...]
-  timeline Json?
+  timeline     Json? 
+  translations Json? 
+  questions    Question[]
 
-  // Lưu object JSON các bản dịch: { "en": "English text...", "ja": "Japanese text..." }
-  translations Json?
-
-  // Câu hỏi tương tác trong video
-  questions Question[]
-
-  // Study Plan liên kết tới bài học này
   studyPlanItems StudyPlanItem[]
-  
-  // Video progress tracking
-  videoProgress   VideoProgress[]
-  quizResults     QuizResult[]
+  videoProgress  VideoProgress[]
+  quizResults    QuizResult[]
   videoEmbeddings VideoEmbedding[]
 
   createdAt DateTime @default(now())
+}
+
+// ================= FLASHCARDS (BẢNG ĐỘC LẬP) =================
+model Flashcard {
+  id        String   @id @default(uuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  front     String   @db.Text
+  back      String   @db.Text
+  timestamp Int?     // Thời điểm xuất hiện trong video (giây)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId]) // Đánh index để truy vấn theo bài học cực nhanh
 }
 
 // ================= VIDEO PROGRESS TRACKING =================

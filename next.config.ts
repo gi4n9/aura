@@ -26,7 +26,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "github.com" },
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "placehold.co" },
-      { protocol: "https", hostname: "jrwcpwidjftufafawaza.supabase.co" }, // Supabase Storage
+      // Supabase Storage
+      {
+        protocol: 'https',
+        hostname: 'jeauhbdwsdwovrdovrre.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
   },
 
