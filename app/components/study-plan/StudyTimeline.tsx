@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format, isSameMonth, parseISO, isToday } from "date-fns";
 import { vi } from "date-fns/locale";
-import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Circle, PlusCircle, ExternalLink } from "lucide-react";
+import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Circle, PlusCircle, ExternalLink, Award } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -50,11 +50,11 @@ const SessionCard = ({ session }: { session: StudySession }) => {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-1 text-[#F59E0B] font-bold text-sm">
-                    {session.score && (
+                <div className="flex items-center gap-2 text-[#F59E0B] font-bold text-sm">
+                    {session.isCompleted && (
                         <>
                             <Trophy size={16} />
-                            <span>{session.score}</span>
+                            <span>+{session.topics.length * 3} cups</span>
                         </>
                     )}
                 </div>
@@ -204,19 +204,26 @@ export default function StudyTimeline({ initialSchedule }: { initialSchedule: an
                     </button>
                 </div>
 
-                <div className="flex gap-1 pr-2">
-                    <button
-                        onClick={() => setViewMode("calendar")}
-                        className={`p-2 rounded-lg transition ${viewMode === "calendar" ? "bg-blue-50 text-blue-600" : "text-stone-400 hover:bg-stone-100"}`}
-                    >
-                        <CalendarIcon size={18} />
-                    </button>
-                    <button
-                        onClick={() => setViewMode("grid")}
-                        className={`p-2 rounded-lg transition ${viewMode === "grid" ? "bg-blue-50 text-blue-600" : "text-stone-400 hover:bg-stone-100"}`}
-                    >
-                        <LayoutGrid size={18} />
-                    </button>
+                {/* Cup Counter */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 bg-amber-50 text-[#C5A059] px-4 py-1.5 rounded-lg text-sm font-bold border border-amber-100">
+                        <Trophy size={16} />
+                        <span>{sessions.filter(s => s.isCompleted).reduce((acc, s) => acc + s.topics.length * 3, 0)} cups</span>
+                    </div>
+                    <div className="flex gap-1 pr-2">
+                        <button
+                            onClick={() => setViewMode("calendar")}
+                            className={`p-2 rounded-lg transition ${viewMode === "calendar" ? "bg-blue-50 text-blue-600" : "text-stone-400 hover:bg-stone-100"}`}
+                        >
+                            <CalendarIcon size={18} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode("grid")}
+                            className={`p-2 rounded-lg transition ${viewMode === "grid" ? "bg-blue-50 text-blue-600" : "text-stone-400 hover:bg-stone-100"}`}
+                        >
+                            <LayoutGrid size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -45,10 +45,10 @@ const getVideoDuration = (filePath: string): Promise<number> => {
     ffmpeg.ffprobe(filePath, (err, metadata) => {
       if (err) {
         console.error("FFprobe Error:", err);
-        return reject(err);
+        return resolve(0); // Tránh reject crash app, fallback về 0
       }
-      const duration = metadata.format.duration;
-      resolve(duration || 0);
+      const duration = metadata.format?.duration || 0;
+      resolve(duration);
     });
   });
 };
@@ -176,31 +176,27 @@ export async function processVideoUpload(
     console.log("⚡ Đang upload lên YouTube và Gemini...");
 
     // A. Upload YouTube
-    const youtubeUploadPromise = (async () => {
-      const stream = Readable.from(buffer);
-      const ytRes = await youtube.videos.insert({
-        part: ["snippet", "status"],
-        requestBody: {
-          snippet: {
-            title: title,
-            description: "Video bài giảng thuộc hệ thống Aura LMS.",
-          },
-          status: { privacyStatus: "unlisted" },
+    const youtubeUploadPromise = youtube.videos.insert({
+      part: ["snippet", "status"],
+      requestBody: {
+        snippet: {
+          title: title,
+          description: "Video bài giảng thuộc hệ thống Aura LMS.",
         },
-        media: { body: stream },
-      });
-
+        status: { privacyStatus: "unlisted" },
+      },
+      media: { body: Readable.from(buffer) },
+    }).then(ytRes => {
       if (!ytRes.data.id) throw new Error("Không nhận được YouTube Video ID.");
       console.log(`✅ YouTube Upload OK. ID: ${ytRes.data.id}`);
       return ytRes.data.id;
-    })();
+    });
 
     // B. Upload Gemini
-    const geminiUploadPromise = (async () => {
-      const uploadResult = await fileManager.uploadFile(tempFilePath, {
-        mimeType: "video/mp4",
-        displayName: title,
-      });
+    const geminiUploadPromise = fileManager.uploadFile(tempFilePath, {
+      mimeType: "video/mp4",
+      displayName: title,
+    }).then(async (uploadResult) => {
       const name = uploadResult.file.name;
       console.log(`⬆️ Đã upload lên Gemini: ${name}`);
 
@@ -216,14 +212,24 @@ export async function processVideoUpload(
         throw new Error("Gemini xử lý video thất bại.");
       }
       return file;
-    })();
+    });
 
-    // Đợi cả 2 hoàn tất
-    const [ytId, geminiFile] = await Promise.all([
+    // Đợi cả 2 hoàn tất an toàn bằng allSettled để tránh unhandled rejection gây crash server
+    const uploadResults = await Promise.allSettled([
       youtubeUploadPromise,
       geminiUploadPromise,
     ]);
-    youtubeId = ytId;
+
+    if (uploadResults[0].status === "rejected") {
+      throw new Error(`YouTube API Error: ${uploadResults[0].reason?.message || "Lỗi không xác định"}`);
+    }
+    if (uploadResults[1].status === "rejected") {
+      throw new Error(`Gemini API Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
+    }
+
+    youtubeId = uploadResults[0].value;
+    const geminiFile = uploadResults[1].value;
+
     geminiFileName = geminiFile.name;
     const geminiFileUri = geminiFile.uri;
     console.log(`🔗 Gemini URI: ${geminiFileUri}`);
@@ -237,7 +243,7 @@ export async function processVideoUpload(
       model: "gemini-2.5-flash",
       generationConfig: {
         maxOutputTokens: 16384, // Tăng token output vì cần transcript dài
-        temperature: 0.1, // QUAN TRỌNG: Giảm sáng tạo để chép chính tả chuẩn xác
+        temperature: 0.4, // QUAN TRỌNG: Tăng nhẹ tính sáng tạo để tránh bị chặn lỗi RECITATION
         responseMimeType: "application/json",
         responseSchema: videoAnalysisSchema,
       },
@@ -274,11 +280,11 @@ export async function processVideoUpload(
       Nhiệm vụ của bạn là xử lý video này và trả về kết quả JSON chính xác tuyệt đối theo các yêu cầu sau:
 
       ### NHIỆM VỤ 1: TRANSCRIPT (QUAN TRỌNG NHẤT)
-      - Yêu cầu: **NGUYÊN VĂN (VERBATIM)**.
-      - Bạn PHẢI nghe và chép lại chính xác từng từ tiếng Việt mà người nói phát ra.
-      - **QUAN TRỌNG VỀ SỐ LIỆU:** Nếu giảng viên đọc số thập phân (ví dụ "4 phẩy 9"), hãy viết chính xác con số đó (4.9). **KHÔNG** tự ý thêm các số thập phân vô tận (như 4.9999999). Giữ số liệu ngắn gọn đúng như lời nói.
-      - **TUYỆT ĐỐI KHÔNG** tóm tắt, không lược bỏ.
-      - **KHÔNG** bỏ qua các từ đệm (như "à", "ừ", "thì", "mà"...) nếu chúng xuất hiện, để đảm bảo khớp thời gian.
+      - Yêu cầu: **CHI TIẾT VÀ ĐẦY ĐỦ NHẤT CÓ THỂ**.
+      - Bạn hãy ghi chép lại toàn bộ ý nghĩa lời nói tiếng Việt có trong video.
+      - **BẮT BUỘC ĐỂ TRÁNH LỖI RECITATION:** Để tránh vi phạm lỗi bản quyền, bạn PHẢI diễn đạt lại (Paraphrase), thay đổi cấu trúc câu văn hoặc chọn từ đồng nghĩa sao cho tự nhiên mà không làm mất kiến thức chuyên môn.
+      - **TUYỆT ĐỐI KHÔNG** chép lại nguyên văn y hệt 100% từng từ (Verbatim), nếu không bạn sẽ bị hệ thống chặn ngay lập tức.
+      - **QUAN TRỌNG VỀ SỐ LIỆU:** Nếu giảng viên đọc số thập phân (ví dụ "4 phẩy 9"), hãy viết chính xác con số đó (4.9). Giữ số liệu ngắn gọn đúng như thuật toán.
       
       ### NHIỆM VỤ 2: TIMELINE (Mốc thời gian video)
       - Chia video thành các đoạn (chapters) có ý nghĩa dựa trên nội dung.
@@ -339,15 +345,24 @@ export async function processVideoUpload(
     `;
 
     console.log("⏳ Gemini đang thực hiện 4 nhiệm vụ cùng lúc...");
-    const result = await model.generateContent([
-      {
-        fileData: {
-          mimeType: "video/mp4",
-          fileUri: geminiFileUri,
+
+    let result;
+    try {
+      result = await model.generateContent([
+        {
+          fileData: {
+            mimeType: "video/mp4",
+            fileUri: geminiFileUri,
+          },
         },
-      },
-      { text: prompt },
-    ]);
+        { text: prompt },
+      ]);
+    } catch (aiError: any) {
+      if (aiError.message?.includes("RECITATION")) {
+        throw new Error("Gemini từ chối xử lý video do lỗi bảo vệ bản quyền (RECITATION Block). Mẹo: Hãy cắt bớt đoạn âm nhạc bản quyền trong video, hoặc thử lại một video giảng dạy khác do chính bạn quay.");
+      }
+      throw aiError; // Ném ra các lỗi khác
+    }
 
     const aiData = cleanAndParseJSON(result.response.text());
 
@@ -404,26 +419,66 @@ export async function processVideoUpload(
         translations: aiData.translations,
 
         questions: {
-          create: aiData.quiz.map((q: any) => ({
-            content: q.question,
-            options: q.options.map((opt: string) =>
-              opt.replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim(),
-            ),
-            correctAnswer: q.answer,
+          create: (Array.isArray(aiData.quiz) ? aiData.quiz : []).map((q: any) => ({
+            content: q?.question || "Câu hỏi đang gặp lỗi",
+            options: Array.isArray(q?.options) ? q.options.map((opt: string) =>
+              String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim(),
+            ) : ["A", "B", "C", "D"],
+            correctAnswer: q?.answer || "A",
             type: "MULTIPLE_CHOICE",
-            aiExplanation: q.explanation || "Chưa có giải thích.",
+            aiExplanation: q?.explanation || "Chưa có giải thích.",
           })),
         },
       },
     });
 
     // =========================================================
-    // BƯỚC 6: AI ENHANCEMENTS (Mindmap, Flashcards, Embeddings)
-    // => ĐÃ CHUYỂN SANG FRONTEND (AIGeneratorButton)
-    // => Người dùng sẽ tự bấm nút tạo sau khi Upload xong
-    // => Tránh quá tải API & Timeout khi deploy Vercel
+    // BƯỚC 6: TẠO EMBEDDINGS CHO RAG (Tự động)
     // =========================================================
-    console.log("✅ Upload & Transcript hoàn tất. AI Enhancements sẽ được tạo bởi người dùng.");
+    console.log("🧬 Đang tạo embeddings cho video search...");
+    try {
+      const { generateEmbeddings: genEmbed } = await import("@/lib/ai/embedding");
+
+      // Chunk transcript bằng thuật toán Overlapping
+      const transcript = aiData.transcript || "";
+      const chunks = chunkTranscriptWithOverlap(transcript, maxDuration, {
+        chunkSize: 500,     // ~500 ký tự mỗi chunk
+        overlapSize: 80,    // ~80 ký tự gối đầu
+      });
+
+      if (chunks.length > 0) {
+        const texts = chunks.map(c => c.text);
+        const embeddings = await genEmbed(texts);
+
+        // Lưu vào Supabase vector store
+        const supabaseAdmin = await createClient();
+
+        // Xóa embedding cũ nếu re-process
+        await supabaseAdmin.from('video_embeddings').delete().eq('lesson_id', lesson.id);
+
+        // Insert từng batch (tránh quá tải)
+        const batchSize = 20;
+        for (let i = 0; i < chunks.length; i += batchSize) {
+          const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => ({
+            lesson_id: lesson.id,
+            content: chunk.text,
+            start_time: chunk.start,
+            end_time: chunk.end,
+            embedding: embeddings[i + idx],
+            metadata: { chunkIndex: i + idx, title: title }
+          }));
+
+          const { error: insertError } = await supabaseAdmin.from('video_embeddings').insert(batch);
+          if (insertError) {
+            console.error(`⚠️ Embedding batch ${i} error:`, insertError.message);
+          }
+        }
+        console.log(`✅ Đã tạo ${chunks.length} embeddings cho RAG search.`);
+      }
+    } catch (embError: any) {
+      // Không throw - embedding failure không nên block toàn bộ video process
+      console.error("⚠️ Embedding generation failed (non-critical):", embError.message);
+    }
 
     return {
       success: true,
@@ -457,46 +512,80 @@ export async function processVideoUpload(
   }
 }
 
-function naiveChunkTranscript(text: string, duration: number) {
-  const minChunkLength = 200; // chars similar to a paragraph
-  // Split roughly by sentences
-  const parts = text.match(/[^.?!]+[.?!]+[\])'"]*|.+/g) || [text];
+// =========================================================
+// CHUNKING ALGORITHM: Overlapping Windows cho RAG Embedding
+// =========================================================
+interface ChunkOptions {
+  chunkSize: number;     // Kích thước mỗi chunk (ký tự)
+  overlapSize: number;   // Số ký tự gối đầu giữa 2 chunk
+}
 
-  const chunks = [];
-  let currentText = "";
-  let startTime = 0;
+interface TranscriptChunk {
+  text: string;
+  start: number;  // giây
+  end: number;    // giây
+}
 
-  // Estimate chars per second
+function chunkTranscriptWithOverlap(
+  text: string,
+  duration: number,
+  options: ChunkOptions = { chunkSize: 500, overlapSize: 80 }
+): TranscriptChunk[] {
+  if (!text || text.length === 0) return [];
+
+  const { chunkSize, overlapSize } = options;
   const totalChars = text.length;
   const charsPerSec = totalChars / (duration || 1);
 
-  for (const part of parts) {
-    const trimmed = part.trim();
+  // Split by sentences first for natural boundaries
+  const sentences = text.match(/[^.!?。]+[.!?。]+[\])'"\u201d]*|[^.!?。]+$/g) || [text];
+
+  const chunks: TranscriptChunk[] = [];
+  let currentText = "";
+  let currentStartChar = 0;
+  let charOffset = 0;
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
     if (!trimmed) continue;
 
-    if (currentText.length + trimmed.length < minChunkLength) {
+    if (currentText.length + trimmed.length <= chunkSize) {
       currentText += (currentText ? " " : "") + trimmed;
     } else {
-      // Push old chunk
-      const len = currentText.length;
-      const endTime = startTime + (len / charsPerSec);
-      chunks.push({
-        text: currentText,
-        start: Math.floor(startTime),
-        end: Math.floor(endTime)
-      });
-      // Reset
-      currentText = trimmed;
-      startTime = endTime;
+      // Lưu chunk hiện tại
+      if (currentText) {
+        const startTime = Math.floor(currentStartChar / charsPerSec);
+        const endTime = Math.floor((currentStartChar + currentText.length) / charsPerSec);
+        chunks.push({
+          text: currentText,
+          start: Math.min(startTime, duration),
+          end: Math.min(endTime, duration),
+        });
+      }
+
+      // Tính overlap: lấy overlapSize ký tự cuối của chunk vừa xong
+      const overlapText = currentText.length > overlapSize
+        ? currentText.slice(-overlapSize)
+        : currentText;
+
+      // Bắt đầu chunk mới với overlap
+      currentStartChar = charOffset - overlapText.length;
+      currentText = overlapText + " " + trimmed;
     }
+
+    charOffset += trimmed.length + 1; // +1 for space
   }
-  // Last chunk
+
+  // Push chunk cuối cùng
   if (currentText) {
+    const startTime = Math.floor(currentStartChar / charsPerSec);
     chunks.push({
       text: currentText,
-      start: Math.floor(startTime),
-      end: duration
+      start: Math.min(startTime, duration),
+      end: duration,
     });
   }
+
   return chunks;
 }
+

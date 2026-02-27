@@ -1,5 +1,5 @@
 
-import { Edge, Node } from "@xyflow/react";
+import { Edge, Node } from "reactflow";
 
 // Extended Node with course mapping
 export interface RoadmapNode extends Node {
@@ -30,8 +30,8 @@ const SHARED_NODES: RoadmapNode[] = [
         position: { x: 300, y: 0 },
         type: 'input',
         className: "font-bold bg-[#1a1a1a] text-white border-none shadow-lg px-4 py-2 rounded-lg",
-        data: { 
-            label: '🌐 Internet & HTTP', 
+        data: {
+            label: '🌐 Internet & HTTP',
             courseKeywords: ['internet', 'http', 'web cơ bản'],
             estimatedHours: 4,
             track: 'shared'
@@ -41,8 +41,8 @@ const SHARED_NODES: RoadmapNode[] = [
         id: 'javascript',
         position: { x: 300, y: 100 },
         className: "bg-[#C5A059] text-white font-bold shadow-lg px-4 py-2 rounded-lg",
-        data: { 
-            label: '⚡ JavaScript ES6+', 
+        data: {
+            label: '⚡ JavaScript ES6+',
             courseKeywords: ['javascript', 'es6', 'js cơ bản'],
             estimatedHours: 20,
             track: 'shared'
@@ -52,8 +52,8 @@ const SHARED_NODES: RoadmapNode[] = [
         id: 'typescript',
         position: { x: 300, y: 200 },
         className: "bg-blue-500 text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '📘 TypeScript', 
+        data: {
+            label: '📘 TypeScript',
             courseKeywords: ['typescript', 'ts'],
             estimatedHours: 15,
             track: 'shared'
@@ -63,8 +63,8 @@ const SHARED_NODES: RoadmapNode[] = [
         id: 'git',
         position: { x: 300, y: 300 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Git & Version Control', 
+        data: {
+            label: 'Git & Version Control',
             courseKeywords: ['git', 'github', 'version control'],
             estimatedHours: 5,
             track: 'shared'
@@ -78,8 +78,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'nodejs',
         position: { x: 100, y: 400 },
         className: "bg-green-500 text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '🟢 Node.js Runtime', 
+        data: {
+            label: '🟢 Node.js Runtime',
             courseKeywords: ['nodejs', 'node.js', 'node'],
             estimatedHours: 15,
             track: 'backend'
@@ -89,8 +89,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'express',
         position: { x: 0, y: 500 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Express.js', 
+        data: {
+            label: 'Express.js',
             courseKeywords: ['express', 'expressjs'],
             estimatedHours: 12,
             track: 'backend'
@@ -100,8 +100,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'nestjs',
         position: { x: 200, y: 500 },
         className: "bg-red-500 text-white font-bold px-3 py-2 rounded-lg",
-        data: { 
-            label: 'NestJS Framework', 
+        data: {
+            label: 'NestJS Framework',
             courseKeywords: ['nestjs', 'nest.js'],
             estimatedHours: 20,
             track: 'backend'
@@ -111,8 +111,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'sql',
         position: { x: 50, y: 600 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'SQL & PostgreSQL', 
+        data: {
+            label: 'SQL & PostgreSQL',
             courseKeywords: ['sql', 'postgresql', 'postgres', 'mysql'],
             estimatedHours: 15,
             track: 'backend'
@@ -122,8 +122,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'prisma',
         position: { x: 200, y: 600 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Prisma ORM', 
+        data: {
+            label: 'Prisma ORM',
             courseKeywords: ['prisma', 'orm'],
             estimatedHours: 8,
             track: 'backend'
@@ -133,8 +133,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'rest-api',
         position: { x: 100, y: 700 },
         className: "bg-[#C5A059] text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '🔗 REST API Design', 
+        data: {
+            label: '🔗 REST API Design',
             courseKeywords: ['rest', 'api', 'restful'],
             estimatedHours: 10,
             track: 'backend'
@@ -144,8 +144,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'auth',
         position: { x: 100, y: 800 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Authentication & JWT', 
+        data: {
+            label: 'Authentication & JWT',
             courseKeywords: ['jwt', 'authentication', 'auth', 'oauth'],
             estimatedHours: 8,
             track: 'backend'
@@ -155,8 +155,8 @@ const BACKEND_NODES: RoadmapNode[] = [
         id: 'docker',
         position: { x: 100, y: 900 },
         className: "bg-blue-400 text-white px-3 py-2 rounded-lg",
-        data: { 
-            label: '🐳 Docker', 
+        data: {
+            label: '🐳 Docker',
             courseKeywords: ['docker', 'container'],
             estimatedHours: 10,
             track: 'backend'
@@ -170,8 +170,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'html-css',
         position: { x: 500, y: 400 },
         className: "bg-orange-400 text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '🎨 HTML & CSS', 
+        data: {
+            label: '🎨 HTML & CSS',
             courseKeywords: ['html', 'css', 'web cơ bản'],
             estimatedHours: 15,
             track: 'frontend'
@@ -181,8 +181,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'react',
         position: { x: 500, y: 500 },
         className: "bg-cyan-500 text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '⚛️ React', 
+        data: {
+            label: '⚛️ React',
             courseKeywords: ['react', 'reactjs'],
             estimatedHours: 25,
             track: 'frontend'
@@ -192,8 +192,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'state-management',
         position: { x: 400, y: 600 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'State Management', 
+        data: {
+            label: 'State Management',
             courseKeywords: ['redux', 'zustand', 'state management'],
             estimatedHours: 10,
             track: 'frontend'
@@ -203,8 +203,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'tailwind',
         position: { x: 600, y: 600 },
         className: "bg-teal-500 text-white px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Tailwind CSS', 
+        data: {
+            label: 'Tailwind CSS',
             courseKeywords: ['tailwind', 'tailwindcss'],
             estimatedHours: 8,
             track: 'frontend'
@@ -214,8 +214,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'nextjs',
         position: { x: 500, y: 700 },
         className: "bg-[#1a1a1a] text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '▲ Next.js', 
+        data: {
+            label: '▲ Next.js',
             courseKeywords: ['nextjs', 'next.js'],
             estimatedHours: 25,
             track: 'frontend'
@@ -225,8 +225,8 @@ const FRONTEND_NODES: RoadmapNode[] = [
         id: 'testing-fe',
         position: { x: 500, y: 800 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Testing (Jest/Vitest)', 
+        data: {
+            label: 'Testing (Jest/Vitest)',
             courseKeywords: ['jest', 'vitest', 'testing', 'react testing'],
             estimatedHours: 10,
             isOptional: true,
@@ -241,8 +241,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'python',
         position: { x: 300, y: 400 },
         className: "bg-yellow-400 text-black font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '🐍 Python', 
+        data: {
+            label: '🐍 Python',
             courseKeywords: ['python', 'python cơ bản'],
             estimatedHours: 20,
             track: 'ai'
@@ -252,8 +252,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'math-ml',
         position: { x: 200, y: 500 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Toán cho ML', 
+        data: {
+            label: 'Toán cho ML',
             courseKeywords: ['toán', 'linear algebra', 'calculus', 'statistics'],
             estimatedHours: 25,
             track: 'ai'
@@ -263,8 +263,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'numpy-pandas',
         position: { x: 400, y: 500 },
         className: "bg-white border-stone-200 px-3 py-2 rounded-lg",
-        data: { 
-            label: 'NumPy & Pandas', 
+        data: {
+            label: 'NumPy & Pandas',
             courseKeywords: ['numpy', 'pandas', 'data analysis'],
             estimatedHours: 15,
             track: 'ai'
@@ -274,8 +274,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'ml-basics',
         position: { x: 300, y: 600 },
         className: "bg-[#C5A059] text-white font-bold px-4 py-2 rounded-lg",
-        data: { 
-            label: '🤖 Machine Learning', 
+        data: {
+            label: '🤖 Machine Learning',
             courseKeywords: ['machine learning', 'ml', 'sklearn'],
             estimatedHours: 30,
             track: 'ai'
@@ -285,8 +285,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'deep-learning',
         position: { x: 200, y: 700 },
         className: "bg-purple-500 text-white font-bold px-3 py-2 rounded-lg",
-        data: { 
-            label: 'Deep Learning', 
+        data: {
+            label: 'Deep Learning',
             courseKeywords: ['deep learning', 'neural network', 'tensorflow', 'pytorch'],
             estimatedHours: 40,
             track: 'ai'
@@ -296,8 +296,8 @@ const AI_NODES: RoadmapNode[] = [
         id: 'llm',
         position: { x: 400, y: 700 },
         className: "bg-pink-500 text-white font-bold px-3 py-2 rounded-lg",
-        data: { 
-            label: 'LLMs & GenAI', 
+        data: {
+            label: 'LLMs & GenAI',
             courseKeywords: ['llm', 'gpt', 'langchain', 'genai', 'chatgpt'],
             estimatedHours: 25,
             track: 'ai'
@@ -422,10 +422,10 @@ export function generateMergedRoadmap(interests: string[]): RoadmapData {
 
     // Normalize interests
     const normalizedInterests = interests.map(i => normalizeInterest(i));
-    
+
     // Remove duplicates and invalid
     const validInterests = [...new Set(normalizedInterests)].filter(i => TRACKS[i]);
-    
+
     if (validInterests.length === 0) {
         validInterests.push('fullstack');
     }
@@ -474,7 +474,7 @@ export function generateMergedRoadmap(interests: string[]): RoadmapData {
     const totalHours = mergedNodes.reduce((sum, node) => sum + (node.data.estimatedHours || 0), 0);
 
     // Generate title
-    const title = validInterests.length === 1 
+    const title = validInterests.length === 1
         ? `Lộ trình ${trackNames[0]}`
         : `Lộ trình ${trackNames.join(' + ')}`;
 
@@ -501,19 +501,19 @@ function normalizeInterest(interest: string): string {
         'node': 'backend',
         'express': 'backend',
         'nestjs': 'backend',
-        
+
         'frontend': 'frontend',
         'fe': 'frontend',
         'react': 'frontend',
         'vue': 'frontend',
         'angular': 'frontend',
         'ui': 'frontend',
-        
+
         'fullstack': 'fullstack',
         'full-stack': 'fullstack',
         'nextjs': 'fullstack',
         'next.js': 'fullstack',
-        
+
         'ai': 'ai',
         'ml': 'ai',
         'machine learning': 'ai',
@@ -521,7 +521,7 @@ function normalizeInterest(interest: string): string {
         'python': 'ai',
         'data science': 'ai',
     };
-    
+
     return map[interest.toLowerCase().trim()] || interest.toLowerCase().trim();
 }
 
@@ -541,12 +541,12 @@ export function getRoadmapById(id: string): RoadmapData | null {
         const interests = id.replace('merged-', '').split('-');
         return generateMergedRoadmap(interests);
     }
-    
+
     // Single track
     if (TRACKS[id]) {
         return generateMergedRoadmap([id]);
     }
-    
+
     return null;
 }
 
@@ -585,12 +585,12 @@ export function getRoadmapCourseKeywords(roadmapOrId: RoadmapData | string): str
  */
 export function getNodesByTrack(roadmap: RoadmapData): Record<string, RoadmapNode[]> {
     const grouped: Record<string, RoadmapNode[]> = {};
-    
+
     roadmap.nodes.forEach(node => {
         const track = node.data.track || 'shared';
         if (!grouped[track]) grouped[track] = [];
         grouped[track].push(node);
     });
-    
+
     return grouped;
 }

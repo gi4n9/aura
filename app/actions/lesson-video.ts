@@ -91,19 +91,23 @@ export async function updateLessonContent(lessonId: string, data: UpdateLessonPa
       // B. THÊM MỚI & CẬP NHẬT
       for (const card of data.flashcards) {
         if (card.id && !card.id.startsWith("fc-new")) {
-          // Cập nhật thẻ cũ
-          await db.flashcard.update({
-            where: { id: card.id },
-            data: { front: card.front, back: card.back }
-          });
+          // Bắt lỗi thẻ bị xóa ngoài luồng để không báo RecordNotFound (P2025)
+          const exists = await db.flashcard.findUnique({ where: { id: card.id } });
+          if (exists) {
+            await db.flashcard.update({
+              where: { id: card.id },
+              data: { front: card.front, back: card.back }
+            });
+          } else {
+            // Nếu không tìm thấy thẻ cũ (dù có ID xịn), ta cũng tạo mới để phục hồi
+            await db.flashcard.create({
+              data: { lessonId: lessonId, front: card.front, back: card.back }
+            });
+          }
         } else {
-          // Thêm thẻ mới (Bỏ qua id ảo "fc-new-...", DB sẽ tự sinh UUID mới)
+          // Thêm thẻ mới từ UI
           await db.flashcard.create({
-            data: {
-              lessonId: lessonId,
-              front: card.front,
-              back: card.back
-            }
+            data: { lessonId: lessonId, front: card.front, back: card.back }
           });
         }
       }

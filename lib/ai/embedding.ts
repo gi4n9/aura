@@ -2,7 +2,7 @@ import { google } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
 
 // Google Gemini Embedding Model
-// Using gemini-embedding-001 which is the correct model for Gemini API embeddings
+// gemini-embedding-001 produces an embedding with 3072 dimensions
 const EMBEDDING_MODEL = google.textEmbeddingModel('gemini-embedding-001');
 
 export async function generateEmbedding(text: string): Promise<number[]> {

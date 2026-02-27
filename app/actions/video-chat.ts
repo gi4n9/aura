@@ -1,17 +1,11 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { generateEmbedding, generateEmbeddings } from "@/lib/ai/embedding";
+import { generateEmbedding } from "@/lib/ai/embedding";
 import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 
 // TYPE DEFINITIONS
-interface TranscriptSegment {
-    text: string;
-    start: number;
-    end: number;
-}
-
 interface VideoSegment {
     id: string;
     content: string;
@@ -20,128 +14,277 @@ interface VideoSegment {
     similarity: number;
 }
 
-// 1. PROCESS TRANSCRIPT & GENERATE EMBEDDINGS
-export async function processLessonTranscript(lessonId: string, segments: TranscriptSegment[]) {
+// 1. TẠO EMBEDDING CHO MỘT LESSON (gọi từ instructor panel)
+export async function processLessonEmbeddings(lessonId: string) {
     const supabase = await createClient();
 
-    // Check permission (Instructor/Admin only)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: "Unauthorized" };
 
     try {
-        // Optimize: Group segments into larger chunks (~30-60s) to have better context
-        // This logic can be refined. For now, we take segments as provided if they are reasonable.
-        // Assuming segments come from Whisper which are sentence-level.
+        const { db } = await import("@/lib/prisma");
+        const lesson = await db.lesson.findUnique({
+            where: { id: lessonId },
+            select: { transcript: true, duration: true }
+        });
 
-        const chunks: TranscriptSegment[] = [];
-        let currentChunk: TranscriptSegment | null = null;
-
-        for (const seg of segments) {
-            if (!currentChunk) {
-                currentChunk = { ...seg };
-            } else {
-                // Combine if total duration < 60s
-                if (seg.end - currentChunk.start < 60) {
-                    currentChunk.text += " " + seg.text;
-                    currentChunk.end = seg.end;
-                } else {
-                    chunks.push(currentChunk);
-                    currentChunk = { ...seg };
-                }
-            }
+        if (!lesson || !lesson.transcript) {
+            return { success: false, error: "Không tìm thấy Transcript của bài học này." };
         }
-        if (currentChunk) chunks.push(currentChunk);
 
-        // Generate embeddings
+        const { generateEmbeddings } = await import("@/lib/ai/embedding");
+
+        // Chunk transcript with overlap
+        const chunks = chunkText(lesson.transcript, lesson.duration || 60);
+
+        if (chunks.length === 0) {
+            return { success: false, error: "Transcript rỗng, không thể tạo embedding." };
+        }
+
         const texts = chunks.map(c => c.text);
         const embeddings = await generateEmbeddings(texts);
 
-        // Delete old embeddings for this lesson (to allow re-processing)
+        // Xóa embedding cũ
         await supabase.from('video_embeddings').delete().eq('lesson_id', lessonId);
 
-        // Prepare data for insertion
-        const rows = chunks.map((chunk, i) => ({
-            lesson_id: lessonId,
-            content: chunk.text,
-            start_time: chunk.start,
-            end_time: chunk.end,
-            embedding: embeddings[i]
-        }));
+        // Insert theo batch
+        const batchSize = 20;
+        for (let i = 0; i < chunks.length; i += batchSize) {
+            const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => ({
+                lesson_id: lessonId,
+                content: chunk.text,
+                start_time: chunk.start,
+                end_time: chunk.end,
+                embedding: embeddings[i + idx],
+            }));
 
-        // Insert into Supabase
-        const { error } = await supabase.from('video_embeddings').insert(rows);
-
-        if (error) {
-            console.error("Supabase vector insert error:", error);
-            throw new Error(error.message);
+            const { error } = await supabase.from('video_embeddings').insert(batch);
+            if (error) {
+                console.error(`Embedding batch ${i} error:`, error.message);
+            }
         }
 
-        // Update lesson to mark transcript as processed (optional flag in DB?)
-        // For now just return success
-        return { success: true, count: rows.length };
+        return { success: true, count: chunks.length };
 
     } catch (error: any) {
-        console.error("Process Video Error:", error);
+        console.error("Process Embedding Error:", error);
         return { success: false, error: error.message };
     }
 }
 
-// 2. CHAT WITH VIDEO (RAG)
+// 2. CHAT WITH VIDEO (RAG Pipeline)
 export async function chatWithVideo(lessonId: string, query: string) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Generate query embedding
-    const queryEmbedding = await generateEmbedding(query);
-
-    // 2. Search relevant segments using RPC
-    const { data: segments, error } = await supabase.rpc('match_video_segments', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.5, // Minimum similarity
-        match_count: 5,       // Top 5 chunks
-        filter_lesson_id: lessonId
-    });
-
-    if (error) {
-        console.error("Vector search error:", error);
-        throw new Error("Failed to search video content");
+    if (!user) {
+        return new Response("Unauthorized", { status: 401 });
     }
 
-    const matchedSegments = segments as VideoSegment[];
+    try {
+        // Bước 1: Tạo embedding cho câu hỏi
+        const queryEmbedding = await generateEmbedding(query);
 
-    // 3. Construct Context for LLM
-    const contextText = matchedSegments
-        .map(s => `[Time: ${formatTime(s.start_time)} - ${formatTime(s.end_time)}]: ${s.content}`)
-        .join("\n\n");
+        if (!queryEmbedding || queryEmbedding.length === 0) {
+            return new Response(
+                "Xin lỗi, tôi không thể xử lý câu hỏi lúc này. Vui lòng thử lại.",
+                { status: 200, headers: { 'Content-Type': 'text/plain' } }
+            );
+        }
 
-    const systemPrompt = `
-You are an AI teaching assistant for a video lesson.
-Answer the user's question based ONLY on the provided Context from the video transcript.
-If the answer is not in the context, say "I don't have enough information in this video to answer that."
+        // Bước 2: Vector Search - Tìm đoạn transcript liên quan nhất
+        const { data: segments, error } = await supabase.rpc('match_video_segments', {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.35,  // Hạ threshold để có nhiều kết quả hơn
+            match_count: 6,          // Lấy 6 đoạn liên quan nhất
+            filter_lesson_id: lessonId
+        });
 
-IMPORTANT:
-- Cite the timestamps in your answer like this: [MM:SS] (e.g., "At [05:20], the instructor explains...").
-- Be concise and helpful.
-- Format your response in Markdown.
+        if (error) {
+            console.error("Vector search error:", error);
+            // Fallback: trả lời dù không tìm được context
+            return streamFallbackResponse(query);
+        }
 
-Context:
-${contextText}
-    `;
+        const matchedSegments = (segments as VideoSegment[]) || [];
 
-    // 4. Stream Response
-    const result = streamText({
-        model: google('gemini-2.5-flash'), // Fast & efficient
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: query }
-        ],
-    });
+        // Bước 3: Xây dựng Context cho AI
+        let contextText = "";
+        if (matchedSegments.length > 0) {
+            contextText = matchedSegments
+                .map(s => `[Thời điểm ${formatTime(s.start_time)} - ${formatTime(s.end_time)}]: ${s.content}`)
+                .join("\n\n");
+        }
 
-    return result.toTextStreamResponse();
+        const systemPrompt = `
+Bạn là trợ giảng AI thông minh cho nền tảng học trực tuyến Aura LMS.
+
+**VAI TRÒ:**
+- Bạn giúp học viên hiểu bài giảng video bằng cách trả lời câu hỏi dựa trên nội dung transcript.
+- Bạn trả lời bằng tiếng Việt, rõ ràng, dễ hiểu.
+
+**QUY TẮC QUAN TRỌNG:**
+1. Trả lời DỰA TRÊN ngữ cảnh (Context) được cung cấp bên dưới.
+2. Nếu câu hỏi nằm ngoài Context, hãy nói: "📌 Thông tin này không có trong bài giảng hiện tại. Bạn có thể xem thêm tài liệu bổ sung hoặc hỏi giảng viên."
+3. **LUÔN trích dẫn mốc thời gian** dạng [MM:SS] khi đề cập đến nội dung (ví dụ: "Tại [05:20], giảng viên giải thích...").
+4. Format câu trả lời bằng Markdown với bullet points, code blocks khi cần.
+5. Ngắn gọn nhưng đầy đủ. Không lặp lại câu hỏi.
+6. **BẮT BUỘC CUỐI CÙNG:** Luôn thêm mục "💡 **Gợi ý câu hỏi tiếp theo:**" và liệt kê ra 3 câu hỏi ngắn gọn mà người dùng có thể muốn hỏi tiếp theo dựa trên kiến thức bạn vừa cung cấp hoặc các phần khác của video. (Format dạng list với dấu sao *).
+
+${contextText ? `**NGỮ CẢNH TỪ VIDEO:**\n${contextText}` : "**LƯU Ý:** Không tìm thấy nội dung liên quan trong video. Hãy trả lời chung dựa trên kiến thức của bạn nhưng lưu ý rằng câu trả lời không dựa trên bài giảng."}
+        `.trim();
+
+        // Bước 4: Stream response từ Gemini và Lưu vào DB
+        const result = streamText({
+            model: google('gemini-2.5-flash'),
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: query }
+            ],
+            onFinish: async ({ text }) => {
+                try {
+                    const { db } = await import("@/lib/prisma");
+
+                    // 1. Tìm hoặc tạo ChatSession cho lessonId này
+                    let session = await db.chatSession.findFirst({
+                        where: { userId: user.id, lessonId: lessonId }
+                    });
+
+                    if (!session) {
+                        session = await db.chatSession.create({
+                            data: {
+                                userId: user.id,
+                                lessonId: lessonId,
+                                title: query.substring(0, 50) + (query.length > 50 ? "..." : "")
+                            }
+                        });
+                    }
+
+                    // 2. Lưu tin nhắn User
+                    await db.message.create({
+                        data: {
+                            sessionId: session.id,
+                            role: 'user',
+                            content: query
+                        }
+                    });
+
+                    // 3. Lưu tin nhắn Assistant (AI)
+                    await db.message.create({
+                        data: {
+                            sessionId: session.id,
+                            role: 'assistant',
+                            content: text
+                        }
+                    });
+
+                } catch (saveError) {
+                    console.error("Vấn đề lưu lịch sử chat vào DB:", saveError);
+                }
+            }
+        });
+
+        return result.toTextStreamResponse();
+
+    } catch (error: any) {
+        console.error("Chat with video error:", error);
+        return new Response(
+            `Xin lỗi, có lỗi xảy ra: ${error.message}. Vui lòng thử lại.`,
+            { status: 200, headers: { 'Content-Type': 'text/plain' } }
+        );
+    }
 }
 
-// Helper: Format seconds to MM:SS
+// 3. KIỂM TRA XEM LESSON ĐÃ CÓ EMBEDDING CHƯA
+export async function checkLessonEmbeddings(lessonId: string) {
+    const supabase = await createClient();
+
+    const { count, error } = await supabase
+        .from('video_embeddings')
+        .select('id', { count: 'exact', head: true })
+        .eq('lesson_id', lessonId);
+
+    return {
+        hasEmbeddings: (count || 0) > 0,
+        count: count || 0,
+        error: error?.message
+    };
+}
+
+// ===== HELPER FUNCTIONS =====
+
 function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function streamFallbackResponse(query: string) {
+    const result = streamText({
+        model: google('gemini-2.5-flash'),
+        messages: [
+            {
+                role: "system",
+                content: "Bạn là trợ giảng AI. Bài giảng này chưa được phân tích embedding. Hãy trả lời câu hỏi dựa trên kiến thức chung nhưng lưu ý rằng bạn không có context cụ thể từ video. Trả lời bằng tiếng Việt."
+            },
+            { role: "user", content: query }
+        ],
+    });
+    return result.toTextStreamResponse();
+}
+
+// Chunk text with overlapping windows
+function chunkText(text: string, duration: number): { text: string; start: number; end: number }[] {
+    if (!text || text.length === 0) return [];
+
+    const chunkSize = 500;
+    const overlapSize = 80;
+    const totalChars = text.length;
+    const charsPerSec = totalChars / (duration || 1);
+
+    const sentences = text.match(/[^.!?。]+[.!?。]+[\])'"]*|[^.!?。]+$/g) || [text];
+
+    const chunks: { text: string; start: number; end: number }[] = [];
+    let currentText = "";
+    let currentStartChar = 0;
+    let charOffset = 0;
+
+    for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        if (!trimmed) continue;
+
+        if (currentText.length + trimmed.length <= chunkSize) {
+            currentText += (currentText ? " " : "") + trimmed;
+        } else {
+            if (currentText) {
+                const startTime = Math.floor(currentStartChar / charsPerSec);
+                const endTime = Math.floor((currentStartChar + currentText.length) / charsPerSec);
+                chunks.push({
+                    text: currentText,
+                    start: Math.min(startTime, duration),
+                    end: Math.min(endTime, duration),
+                });
+            }
+
+            const overlapText = currentText.length > overlapSize
+                ? currentText.slice(-overlapSize)
+                : currentText;
+
+            currentStartChar = charOffset - overlapText.length;
+            currentText = overlapText + " " + trimmed;
+        }
+
+        charOffset += trimmed.length + 1;
+    }
+
+    if (currentText) {
+        const startTime = Math.floor(currentStartChar / charsPerSec);
+        chunks.push({
+            text: currentText,
+            start: Math.min(startTime, duration),
+            end: duration,
+        });
+    }
+
+    return chunks;
 }

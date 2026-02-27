@@ -1,15 +1,33 @@
 import { chatWithVideo } from "@/app/actions/video-chat";
 
 export async function POST(req: Request) {
-  const { messages, lessonId } = await req.json();
-  const lastMessage = messages[messages.length - 1];
-  
-  if (!lessonId) {
-      return new Response("Missing lessonId", { status: 400 });
-  }
+  try {
+    const body = await req.json();
 
-  // Delegate to the server action logic
-  // Note: Server Actions are usually for mutations called from client directly,
-  // but here we are wrapping it in an API route for useChat compatibility.
-  return chatWithVideo(lessonId, lastMessage.content);
+    // Support cả 2 format: { messages, lessonId } (từ useChat) hoặc { query, lessonId }
+    const lessonId = body.lessonId;
+    const query = body.query || body.messages?.[body.messages.length - 1]?.content;
+
+    if (!lessonId) {
+      return new Response(JSON.stringify({ error: "Missing lessonId" }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!query) {
+      return new Response(JSON.stringify({ error: "Missing query" }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return chatWithVideo(lessonId, query);
+  } catch (error: any) {
+    console.error("Video Chat API Error:", error);
+    return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }

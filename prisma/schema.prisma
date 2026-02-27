@@ -302,6 +302,7 @@ model StudyPlanItem {
 
   scheduledAt DateTime // Thời gian user dự kiến học
   isCompleted Boolean  @default(false)
+  completedAt DateTime? // Thời điểm hoàn thành bài học (dùng tính thống kê tuần/tháng)
 
   // Dùng để hiển thị trên UI Calendar
   note String?
@@ -403,8 +404,9 @@ model ChatSession {
   userId String
   user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Context: Chat này về khóa học nào? (Optional)
+  // Context: Chat này về khóa học/bài học nào? (Optional)
   courseId String? // Nếu null thì là chat general, nếu có thì AI load context khóa học đó
+  lessonId String? // Lịch sử đoạn chat cụ thể gắn liền với bài học nào
 
   title    String? // Tên đoạn hội thoại (Auto generate bởi AI)
   messages Message[]
@@ -481,7 +483,7 @@ model VideoEmbedding {
   endTime   Float    @map("end_time")
   
   // Unsupported type for vector, handle via raw SQL or Supabase client
-  embedding Unsupported("vector(768)")?
+  embedding Unsupported("vector(3072)")?
   
   metadata  Json?
   createdAt DateTime @default(now()) @map("created_at")

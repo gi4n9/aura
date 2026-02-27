@@ -14,18 +14,28 @@ export default async function OnboardingPage() {
     }
 
     // Check if user has an active study schedule
-    // This is the true indicator that they have completed the FULL onboarding process
     const schedule = await db.studySchedule.findFirst({
         where: { userId: user.id, isActive: true },
         include: {
             items: {
-                where: { isCompleted: true }
+                orderBy: { scheduledAt: 'asc' },
+                include: {
+                    lesson: {
+                        select: {
+                            id: true,
+                            title: true,
+                            chapter: {
+                                select: {
+                                    course: { select: { id: true, title: true, thumbnailUrl: true } }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     });
 
-    // If no active schedule, always show Wizard to let them finish setup
-    // even if they have selected interests before.
     if (!schedule) {
         return <OnboardingWizard />;
     }
@@ -33,7 +43,12 @@ export default async function OnboardingPage() {
     // Fetch Profile & Learning Path
     const profile = await db.profile.findUnique({
         where: { id: user.id },
-        select: { learningPath: true }
+        select: {
+            fullName: true,
+            learningPath: true,
+            interests: true,
+            avatarUrl: true,
+        }
     });
 
     const learningPath = profile?.learningPath as any;
@@ -45,32 +60,31 @@ export default async function OnboardingPage() {
     const roadmap = getRoadmapById(learningPath.roadmapId);
 
     if (!roadmap) {
-        // Fallback if roadmap data is missing/invalid
         return <OnboardingWizard />;
     }
 
     // Calculate Dashboard Stats
-    const totalItemsCount = await db.studyPlanItem.count({
-        where: { studyScheduleId: schedule.id }
-    });
-
-    const completedItemsCount = schedule.items.length; // items only includes completed ones due to filter above
+    const totalItems = schedule.items.length;
+    const completedItems = schedule.items.filter((i: any) => i.isCompleted).length;
 
     // Find next scheduled lesson
-    const nextItem = await db.studyPlanItem.findFirst({
-        where: {
-            studyScheduleId: schedule.id,
-            isCompleted: false
-        },
-        orderBy: { scheduledAt: 'asc' },
+    const nextItem = schedule.items.find((i: any) => !i.isCompleted);
+
+    // Get enrolled courses (max 4 for preview)
+    const enrollments = await db.enrollment.findMany({
+        where: { userId: user.id },
+        take: 4,
+        orderBy: { joinedAt: 'desc' },
         include: {
-            lesson: {
+            course: {
                 select: {
                     id: true,
                     title: true,
-                    chapter: {
+                    thumbnailUrl: true,
+                    instructor: { select: { fullName: true } },
+                    chapters: {
                         select: {
-                            course: { select: { title: true } }
+                            lessons: { select: { id: true } }
                         }
                     }
                 }
@@ -78,17 +92,46 @@ export default async function OnboardingPage() {
         }
     });
 
+    const totalEnrollments = await db.enrollment.count({ where: { userId: user.id } });
+
+    // Calculate cups (3 cups per completed lesson)
+    const totalCups = completedItems * 3;
+
+    // Study hours this week
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    const thisWeekCompleted = schedule.items.filter((i: any) => {
+        if (!i.isCompleted || !i.completedAt) return false;
+        return new Date(i.completedAt) >= weekStart;
+    }).length;
+
     return (
         <LearningDashboard
+            userName={profile?.fullName || "Người dùng"}
             roadmapTitle={roadmap.title}
             totalHours={roadmap.totalEstimatedHours}
-            completedItems={completedItemsCount}
-            totalItems={totalItemsCount || 1}
+            completedItems={completedItems}
+            totalItems={totalItems || 1}
+            totalCups={totalCups}
+            weeklyCompletedLessons={thisWeekCompleted}
             nextLesson={nextItem ? {
                 id: nextItem.lesson.id,
                 title: nextItem.lesson.title,
-                courseTitle: nextItem.lesson.chapter.course.title
+                courseTitle: nextItem.lesson.chapter.course.title,
+                courseId: nextItem.lesson.chapter.course.id
             } : null}
+            courses={enrollments.map(e => ({
+                id: e.course.id,
+                title: e.course.title,
+                thumbnailUrl: e.course.thumbnailUrl,
+                instructorName: e.course.instructor?.fullName || "Aura",
+                totalLessons: e.course.chapters.reduce((a: number, c: any) => a + c.lessons.length, 0),
+                progress: e.progress,
+            }))}
+            totalCoursesCount={totalEnrollments}
+            interests={profile?.interests || []}
         />
     );
 }

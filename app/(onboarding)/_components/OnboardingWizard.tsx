@@ -10,7 +10,7 @@ import {
     type RoadmapWithCourses
 } from "@/app/actions/onboarding";
 import {
-    ArrowRight, ArrowLeft, Check, Loader2, Map, Calendar,
+    ArrowRight, ArrowLeft, Check, Loader2, Map as MapIcon, Calendar,
     BookOpen, Clock, Sparkles, Code, Brain,
     Server, Globe, ChevronDown, ChevronUp, X
 } from "lucide-react";
@@ -115,6 +115,28 @@ export default function OnboardingWizard() {
         }));
     };
 
+    const getEstimatedEndDate = () => {
+        if (!roadmapData || scheduleConfig.daysOfWeek.length === 0 || selectedCourses.length === 0) return null;
+
+        const totalHours = roadmapData.roadmap.totalEstimatedHours || 50;
+        const hoursPerWeek = (scheduleConfig.dailyMinutes / 60) * scheduleConfig.daysOfWeek.length;
+
+        if (hoursPerWeek === 0) return null;
+
+        const weeksNeeded = totalHours / hoursPerWeek;
+        const daysNeeded = Math.ceil(weeksNeeded * 7);
+
+        const endDate = new Date(scheduleConfig.startDate);
+        endDate.setDate(endDate.getDate() + daysNeeded);
+        return endDate;
+    };
+
+    const uniqueSelectedCourses = roadmapData ? Array.from(new globalThis.Map(
+        roadmapData.matchedCourses
+            .filter(c => selectedCourses.includes(c.id))
+            .map(c => [c.id, c])
+    ).values()) as any[] : [];
+
     return (
         <div className="min-h-screen bg-[#F9F8F4] py-12 px-4">
             <div className="max-w-4xl mx-auto">
@@ -201,7 +223,7 @@ export default function OnboardingWizard() {
                     {step === 2 && roadmapData && (
                         <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                             <div className="bg-[#1a1a1a] text-white p-6 rounded-2xl flex items-center gap-4">
-                                <div className="w-14 h-14 bg-[#C5A059] rounded-xl flex items-center justify-center shrink-0"><Map size={28} /></div>
+                                <div className="w-14 h-14 bg-[#C5A059] rounded-xl flex items-center justify-center shrink-0"><MapIcon size={28} /></div>
                                 <div className="flex-1">
                                     <h2 className="text-xl font-bold">{roadmapData.roadmap.title}</h2>
                                     <p className="text-stone-400 text-sm">{roadmapData.roadmap.description}</p>
@@ -262,8 +284,38 @@ export default function OnboardingWizard() {
                             <div className="bg-white p-6 rounded-2xl border border-stone-200">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-bold text-stone-800 flex items-center gap-2"><BookOpen size={18} className="text-[#C5A059]" /> Khóa học đã chọn</h3>
-                                    <span className="text-sm font-bold text-[#C5A059]">{selectedCourses.length} khóa</span>
+                                    <span className="text-sm font-bold text-[#C5A059]">{uniqueSelectedCourses.length} khóa</span>
                                 </div>
+                                <div className="space-y-3 mb-4 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {uniqueSelectedCourses.map(course => (
+                                        <div key={course.id} className="flex gap-3 items-center p-3 rounded-xl bg-stone-50 border border-stone-100">
+                                            <div className="w-12 h-12 bg-stone-200 rounded-lg overflow-hidden shrink-0 relative">
+                                                {course.thumbnailUrl ? (
+                                                    <Image src={course.thumbnailUrl} alt={course.title} fill className="object-cover" />
+                                                ) : (
+                                                    <BookOpen className="m-auto mt-3 text-stone-400" size={20} />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-sm text-stone-800 truncate">{course.title}</h4>
+                                                <p className="text-xs text-stone-500">{course.category?.name || "Chung"}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {getEstimatedEndDate() && (
+                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-3 mt-4">
+                                        <div className="w-8 h-8 rounded-full bg-[#C5A059] text-white flex items-center justify-center shrink-0 mt-0.5">
+                                            <Calendar size={16} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-stone-800">Dự kiến hoàn thành lộ trình</p>
+                                            <p className="text-xs text-stone-600 mt-1">
+                                                Khoảng <span className="font-bold text-[#C5A059]">{getEstimatedEndDate()?.toLocaleDateString('vi-VN')}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="bg-white p-6 rounded-2xl border border-stone-200">
                                 <label className="font-bold text-stone-800 mb-3 flex items-center gap-2"><Calendar size={18} className="text-[#C5A059]" /> Ngày bắt đầu</label>

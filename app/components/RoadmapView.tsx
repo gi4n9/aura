@@ -1,54 +1,11 @@
 "use client";
 
-import { ReactFlow, Background, Controls, MiniMap, Node, Edge, useNodesState, useEdgesState, Handle, Position } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
 import { motion } from 'framer-motion';
-import { CheckCircle, Circle, Lock } from 'lucide-react';
-
-// Custom Node Component
-const RoadmapNode = ({ data }: { data: any }) => {
-    const isCompleted = data.isCompleted;
-    const isLocked = data.isLocked;
-    const isHighlight = data.isHighlight;
-
-    return (
-        <div className={`
-            px-4 py-3 rounded-xl border-2 shadow-sm transition-all min-w-[140px] text-center
-            ${isCompleted
-                ? "bg-green-50 border-green-300 text-green-700"
-                : isLocked
-                    ? "bg-stone-100/50 border-stone-200 text-stone-400"
-                    : isHighlight
-                        ? "bg-[#C5A059] border-[#C5A059] text-white font-bold shadow-lg"
-                        : "bg-white border-stone-200 text-stone-800 hover:border-[#C5A059] hover:shadow-md"
-            }
-        `}>
-            <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-stone-300" />
-
-            <div className="flex items-center justify-center gap-2">
-                {isCompleted && <CheckCircle size={16} className="text-green-500" />}
-                {isLocked && <Lock size={14} />}
-                <span className="text-sm font-medium">{data.label}</span>
-            </div>
-
-            {data.estimatedHours && (
-                <div className="text-[10px] mt-1 opacity-70">
-                    ~{data.estimatedHours}h
-                </div>
-            )}
-
-            <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-stone-300" />
-        </div>
-    );
-};
-
-const nodeTypes = {
-    roadmapNode: RoadmapNode,
-};
+import { CheckCircle2, Clock, Check, Rocket, GraduationCap } from 'lucide-react';
 
 type RoadmapViewProps = {
-    initialNodes: Node[];
-    initialEdges: Edge[];
+    initialNodes: any[];
+    initialEdges: any[];
     title: string;
     description?: string;
     completedNodeIds?: string[];
@@ -63,95 +20,172 @@ export default function RoadmapView({
     completedNodeIds = [],
     onNodeClick
 }: RoadmapViewProps) {
-    // Safety check
-    if (!initialNodes || !initialEdges) {
+    if (!initialNodes || initialNodes.length === 0) {
         return (
-            <div className="w-full h-[400px] bg-stone-50 rounded-2xl border border-dashed border-stone-300 flex items-center justify-center">
-                <p className="text-stone-400">Không có dữ liệu roadmap</p>
+            <div className="w-full py-12 bg-stone-50 rounded-2xl border border-dashed border-stone-300 flex items-center justify-center">
+                <p className="text-stone-400 font-medium">Không có dữ liệu lộ trình</p>
             </div>
         );
     }
 
-    // Process nodes to add completion status
-    const processedNodes = initialNodes.map(node => ({
-        ...node,
-        type: 'roadmapNode',
-        data: {
-            ...node.data,
-            isCompleted: completedNodeIds.includes(node.id),
-            isHighlight: node.className?.includes('C5A059') || node.className?.includes('highlight'),
-        }
-    }));
+    // Group nodes by Y position to create logical sequential stages
+    const nodesByLevel = initialNodes.reduce((acc, node) => {
+        const y = node.position?.y || 0;
+        if (!acc[y]) acc[y] = [];
+        acc[y].push(node);
+        return acc;
+    }, {} as Record<number, any[]>);
 
-    const [nodes, , onNodesChange] = useNodesState(processedNodes);
-    const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+    const sortedLevels = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
+    const totalNodes = initialNodes.length;
+    const completedCount = initialNodes.filter(n => completedNodeIds.includes(n.id)).length;
+    const progress = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
 
     return (
-        <div className="w-full h-[600px] bg-[#FAFAF9] rounded-2xl border border-stone-200 overflow-hidden relative">
-            {/* Header Overlay */}
-            <div className="absolute top-4 left-4 z-10">
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/90 backdrop-blur-md p-4 rounded-xl border border-stone-200 shadow-sm max-w-xs"
-                >
-                    <h1 className="font-serif font-bold text-xl text-stone-900">{title}</h1>
-                    {description && (
-                        <p className="text-xs text-stone-500 mt-1 line-clamp-2">{description}</p>
-                    )}
-                </motion.div>
-            </div>
+        <div className="w-full bg-[#FAFAF9] rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+            {/* Header Area */}
+            <div className="bg-white border-b border-stone-200 p-8 md:p-12">
+                <div className="max-w-3xl mx-auto flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-[#C5A059] text-xs font-bold uppercase tracking-wider rounded-full mb-4">
+                            <Rocket size={14} />
+                            Lộ trình học tập
+                        </div>
+                        <h2 className="font-serif font-bold text-3xl md:text-4xl text-stone-900 mb-3 leading-tight">{title}</h2>
+                        {description && <p className="text-stone-500 text-lg">{description}</p>}
+                    </div>
 
-            {/* Legend */}
-            <div className="absolute bottom-4 left-4 z-10">
-                <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-lg border border-stone-200 shadow-sm flex items-center gap-4 text-xs">
-                    <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full bg-[#C5A059]" />
-                        <span className="text-stone-600">Quan trọng</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <CheckCircle size={12} className="text-green-500" />
-                        <span className="text-stone-600">Hoàn thành</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full bg-stone-200" />
-                        <span className="text-stone-600">Chưa học</span>
+                    {/* Progress Circle */}
+                    <div className="flex-shrink-0 bg-stone-50 p-6 rounded-2xl border border-stone-100 flex flex-col items-center justify-center min-w-[140px]">
+                        <div className="text-3xl font-bold text-[#C5A059] mb-1">{progress}%</div>
+                        <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">Hoàn thành</div>
                     </div>
                 </div>
             </div>
 
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                nodeTypes={nodeTypes}
-                onNodeClick={(_, node) => onNodeClick?.(node.id)}
-                fitView
-                fitViewOptions={{ padding: 0.3 }}
-                attributionPosition="bottom-right"
-                className="bg-[#FAFAF9]"
-                defaultEdgeOptions={{
-                    style: { stroke: '#d4d4d4', strokeWidth: 2 },
-                    animated: false
-                }}
-            >
-                <Background color="#E7E5E4" gap={24} size={1} />
-                <Controls
-                    className="bg-white border-stone-200 shadow-sm rounded-lg overflow-hidden"
-                    showInteractive={false}
-                />
-                <MiniMap
-                    className="border border-stone-200 shadow-sm rounded-lg overflow-hidden"
-                    maskColor="rgba(249, 248, 244, 0.8)"
-                    nodeColor={(node) => {
-                        if (completedNodeIds.includes(node.id)) return '#22c55e';
-                        if (node.className?.includes('C5A059')) return '#C5A059';
-                        return '#e5e5e5';
-                    }}
-                    style={{ width: 150, height: 100 }}
-                />
-            </ReactFlow>
+            {/* Timeline Area (Syllabus style) */}
+            <div className="p-8 md:p-12">
+                <div className="max-w-3xl mx-auto relative">
+                    {/* Vertical Connecting Line */}
+                    <div className="absolute left-[23px] top-[10px] bottom-[10px] w-1 bg-stone-200 rounded-full hidden sm:block" />
+
+                    {sortedLevels.map((y, index) => {
+                        const levelNodes = nodesByLevel[y];
+                        const isCompletedLevel = levelNodes.every((n: any) => completedNodeIds.includes(n.id));
+                        const isStartedLevel = levelNodes.some((n: any) => completedNodeIds.includes(n.id));
+
+                        return (
+                            <div key={y} className="relative sm:pl-16 mb-12 last:mb-0">
+                                {/* Step Circle Indicator */}
+                                <div className={`hidden sm:flex absolute left-0 top-1 w-12 h-12 rounded-full border-4 items-center justify-center z-10 transition-colors shadow-sm
+                                    ${isCompletedLevel
+                                        ? 'bg-[#22c55e] border-green-100 text-white'
+                                        : isStartedLevel
+                                            ? 'bg-[#C5A059] border-amber-100 text-white'
+                                            : 'bg-white border-stone-200 text-stone-300'
+                                    }
+                                `}>
+                                    {isCompletedLevel ? (
+                                        <Check strokeWidth={3} size={20} />
+                                    ) : (
+                                        <span className={`font-bold text-lg ${isStartedLevel ? 'text-white' : 'text-stone-400'}`}>{index + 1}</span>
+                                    )}
+                                </div>
+
+                                {/* Content Tag */}
+                                <div className="mb-4 pt-2 flex flex-wrap items-center gap-3">
+                                    <h3 className="font-bold text-stone-800 text-lg flex items-center gap-2">
+                                        <span className="sm:hidden text-[#C5A059]">B{index + 1}.</span> Giai đoạn {index + 1}
+                                    </h3>
+                                    <div className="h-px bg-stone-200 flex-1 min-w-[100px] hidden sm:block"></div>
+                                </div>
+
+                                {/* Cards Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                                    {levelNodes.map((node: any) => (
+                                        <TimelineCard
+                                            key={node.id}
+                                            node={node}
+                                            isCompleted={completedNodeIds.includes(node.id)}
+                                            onClick={() => onNodeClick && onNodeClick(node.id)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    })}
+
+                    {/* End Goal Cup */}
+                    <div className="relative sm:pl-16 mt-8 hidden sm:block">
+                        <div className="absolute left-0 top-0 w-12 h-12 rounded-full border-4 bg-stone-50 border-stone-200 text-stone-300 flex items-center justify-center z-10">
+                            <GraduationCap size={20} />
+                        </div>
+                        <div className="pt-3">
+                            <h3 className="font-bold text-stone-400 text-lg uppercase tracking-wide">Sẵn sàng làm việc</h3>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
     );
 }
+
+const TimelineCard = ({ node, isCompleted, onClick }: { node: any, isCompleted: boolean, onClick: () => void }) => {
+
+    // Determine vibrant colors based on track
+    const track = node.data?.track || 'shared';
+    let trackStyles = 'bg-stone-100 text-stone-600';
+    let borderHover = 'hover:border-stone-400 hover:shadow-stone-200/50';
+
+    if (track === 'backend') {
+        trackStyles = 'bg-emerald-100 text-emerald-700';
+        borderHover = 'hover:border-emerald-400 hover:shadow-emerald-200/50';
+    } else if (track === 'frontend') {
+        trackStyles = 'bg-indigo-100 text-indigo-700';
+        borderHover = 'hover:border-indigo-400 hover:shadow-indigo-200/50';
+    } else if (track === 'ai') {
+        trackStyles = 'bg-rose-100 text-rose-700';
+        borderHover = 'hover:border-rose-400 hover:shadow-rose-200/50';
+    } else {
+        trackStyles = 'bg-amber-100 text-amber-700';
+        borderHover = 'hover:border-[#C5A059] hover:shadow-[#C5A059]/30';
+    }
+
+    return (
+        <motion.div
+            whileHover={{ y: -4, scale: 1.01 }}
+            onClick={onClick}
+            className={`
+                relative p-5 rounded-2xl border-2 transition-all duration-300 shadow-sm flex flex-col h-full cursor-pointer
+                ${isCompleted
+                    ? "bg-green-50/50 border-green-200 hover:border-green-400"
+                    : `bg-white border-stone-100 ${borderHover}`
+                }
+            `}
+        >
+            <div className="flex items-start justify-between mb-3">
+                <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${trackStyles}`}>
+                    {track}
+                </div>
+
+                {isCompleted && (
+                    <div className="text-green-500 bg-green-100 rounded-full p-1 animate-in zoom-in duration-300">
+                        <CheckCircle2 size={16} />
+                    </div>
+                )}
+            </div>
+
+            <h4 className={`font-bold text-[17px] mb-2 leading-tight ${isCompleted ? 'text-green-900' : 'text-stone-800'}`}>
+                {node.data?.label || node.id}
+            </h4>
+
+            {node.data?.estimatedHours && (
+                <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium mt-auto pt-3 border-t border-stone-100/80">
+                    <Clock size={14} className={isCompleted ? 'text-green-400' : 'text-stone-400'} />
+                    <span>Khoảng <strong>{node.data.estimatedHours}h</strong> học</span>
+                </div>
+            )}
+        </motion.div>
+    );
+};
