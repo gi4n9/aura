@@ -75,8 +75,6 @@ export default function LessonLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isVideoVisible, setIsVideoVisible] = useState(true);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
-
-    // NEW: State cho Tab (Quiz vs AI vs Mindmap vs Flashcards)
     const [activeTab, setActiveTab] = useState<'quiz' | 'ai' | 'mindmap' | 'flashcards'>('quiz');
 
     const router = useRouter();

@@ -17,6 +17,11 @@ import { DefaultChatTransport } from "ai";
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState(""); // Quản lý input thủ công
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 2. Sử dụng hook useChat với cấu hình Transport
   const { messages, sendMessage, status } = useChat({
@@ -48,37 +53,23 @@ export default function ChatBot() {
   // Kiểm tra trạng thái để disable nút
   const isBusy = status !== 'ready';
 
-  return (
-    <>
-      {/* Nút mở Chat (Floating Button) */}
-      <motion.button
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#1a1a1a] text-[#C5A059] rounded-full shadow-2xl border border-[#C5A059]/50 flex items-center justify-center hover:scale-110 transition-transform group"
-        onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ rotate: 10 }}
-        whileTap={{ scale: 0.9 }}
-      >
-        {isOpen ? (
-          <X size={24} />
-        ) : (
-          <div className="relative">
-             <MessageSquare size={24} />
-             <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A059] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C5A059]"></span>
-              </span>
-          </div>
-        )}
-      </motion.button>
-
+  return isMounted ? (
+    <motion.div
+      className="fixed z-50 flex flex-col items-end gap-4"
+      style={{ bottom: "1.5rem", right: "1.5rem", touchAction: "none" }}
+      drag
+      dragMomentum={false}
+    >
       {/* Cửa sổ Chat */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95, originX: 1, originY: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-[90vw] md:w-[400px] h-[500px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col font-sans"
+            className="w-[90vw] md:w-[400px] h-[500px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col font-sans mb-2"
+            onPointerDown={(e) => e.stopPropagation()} // Chặn sự kiện drag khi click vào bảng chat
           >
             {/* Header */}
             <div className="bg-[#1a1a1a] p-4 flex items-center gap-3 border-b border-[#C5A059]/30">
@@ -103,80 +94,79 @@ export default function ChatBot() {
                   Hãy bắt đầu trò chuyện với Aura AI...
                 </div>
               )}
-              
+
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                      msg.role === "user"
-                        ? "bg-[#1a1a1a] text-white rounded-tr-none"
-                        : "bg-white text-stone-700 border border-stone-200 rounded-tl-none"
-                    }`}
+                    className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === "user"
+                      ? "bg-[#1a1a1a] text-white rounded-tr-none"
+                      : "bg-white text-stone-700 border border-stone-200 rounded-tl-none"
+                      }`}
                   >
                     {/* 4. Render Message Parts (Text) */}
                     {msg.parts.map((part, index) =>
                       part.type === 'text' ? (
                         <ReactMarkdown
-                            key={index}
-                            components={{
-                              // 1. XỬ LÝ LINK (Thẻ a)
-                              a: ({ node, href, children, ...props }) => {
-                                if (!href) return null;
-                                
-                                // Kiểm tra xem link có phải nội bộ không
-                                const isInternal = href.startsWith('/') || href.includes(process.env.NEXT_PUBLIC_APP_URL || 'localhost');
+                          key={index}
+                          components={{
+                            // 1. XỬ LÝ LINK (Thẻ a)
+                            a: ({ node, href, children, ...props }) => {
+                              if (!href) return null;
 
-                                const className = "text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1";
+                              // Kiểm tra xem link có phải nội bộ không
+                              const isInternal = href.startsWith('/') || href.includes(process.env.NEXT_PUBLIC_APP_URL || 'localhost');
 
-                                if (isInternal) {
-                                  return (
-                                    <Link href={href} className={className}>
-                                      {children} <LinkIcon size={14} />
-                                    </Link>
-                                  );
-                                }
+                              const className = "text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-1";
 
+                              if (isInternal) {
                                 return (
-                                  <a href={href} target="_blank" rel="noopener noreferrer" className={className} {...props}>
-                                    {children} ↗
-                                  </a>
+                                  <Link href={href} className={className}>
+                                    {children} <LinkIcon size={14} />
+                                  </Link>
                                 );
-                              },
+                              }
 
-                              // 2. XỬ LÝ ẢNH (Thẻ img) - ĐÂY LÀ PHẦN BẠN ĐANG THIẾU
-                              img: ({ node, src, alt, ...props }) => {
-                                  return (
-                                      <span className="block my-3 rounded-xl overflow-hidden border border-stone-200 shadow-sm bg-white">
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img 
-                                              src={src} 
-                                              alt={alt || "Ảnh minh họa"} 
-                                              className="w-full h-auto object-cover max-h-[200px]"
-                                              loading="lazy"
-                                          />
-                                      </span>
-                                  );
-                              },
+                              return (
+                                <a href={href} target="_blank" rel="noopener noreferrer" className={className} {...props}>
+                                  {children} ↗
+                                </a>
+                              );
+                            },
 
-                              // 3. Các thẻ khác
-                              ul: ({ node, ...props }) => <ul {...props} className="list-disc ml-5 my-2 space-y-1" />,
-                              ol: ({ node, ...props }) => <ol {...props} className="list-decimal ml-5 my-2 space-y-1" />,
-                              li: ({ node, ...props }) => <li {...props} className="pl-1" />,
-                              strong: ({ node, ...props }) => <span {...props} className="font-bold text-[#C5A059]" />,
-                              p: ({ node, ...props }) => <p {...props} className="mb-2 last:mb-0" />, // Tạo khoảng cách giữa các đoạn
-                            }}
-                          >
-                            {part.text}
-                          </ReactMarkdown>
+                            // 2. XỬ LÝ ẢNH (Thẻ img) - ĐÂY LÀ PHẦN BẠN ĐANG THIẾU
+                            img: ({ node, src, alt, ...props }) => {
+                              return (
+                                <span className="block my-3 rounded-xl overflow-hidden border border-stone-200 shadow-sm bg-white">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={src}
+                                    alt={alt || "Ảnh minh họa"}
+                                    className="w-full h-auto object-cover max-h-[200px]"
+                                    loading="lazy"
+                                  />
+                                </span>
+                              );
+                            },
+
+                            // 3. Các thẻ khác
+                            ul: ({ node, ...props }) => <ul {...props} className="list-disc ml-5 my-2 space-y-1" />,
+                            ol: ({ node, ...props }) => <ol {...props} className="list-decimal ml-5 my-2 space-y-1" />,
+                            li: ({ node, ...props }) => <li {...props} className="pl-1" />,
+                            strong: ({ node, ...props }) => <span {...props} className="font-bold text-[#C5A059]" />,
+                            p: ({ node, ...props }) => <p {...props} className="mb-2 last:mb-0" />, // Tạo khoảng cách giữa các đoạn
+                          }}
+                        >
+                          {part.text}
+                        </ReactMarkdown>
                       ) : null
                     )}
                   </div>
                 </div>
               ))}
-              
+
               {/* Typing Indicator khi đang stream */}
               {isBusy && (
                 <div className="flex justify-start">
@@ -213,6 +203,26 @@ export default function ChatBot() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
-  );
+
+      {/* Nút mở Chat (Floating Button) */}
+      <motion.button
+        className="w-14 h-14 bg-[#1a1a1a] text-[#C5A059] rounded-full shadow-2xl border border-[#C5A059]/50 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0"
+        onClick={() => setIsOpen(!isOpen)}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isOpen ? (
+          <X size={24} />
+        ) : (
+          <div className="relative">
+            <MessageSquare size={24} />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A059] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C5A059]"></span>
+            </span>
+          </div>
+        )}
+      </motion.button>
+    </motion.div>
+  ) : null;
 }

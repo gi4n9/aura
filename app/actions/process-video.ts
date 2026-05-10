@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import { prisma } from "@/lib/prisma";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import fs from "fs";
 import path from "path";
@@ -451,7 +452,7 @@ export async function processVideoUpload(
         const embeddings = await genEmbed(texts);
 
         // Lưu vào Supabase vector store
-        const supabaseAdmin = await createClient();
+        const supabaseAdmin = await createAdminClient();
 
         // Xóa embedding cũ nếu re-process
         await supabaseAdmin.from('video_embeddings').delete().eq('lesson_id', lesson.id);

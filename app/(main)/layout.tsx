@@ -1,6 +1,5 @@
 import Header from "@/app/components/layout/Header";
 import Footer from "@/app/components/layout/Footer";
-import ChatBot from "../components/chat/ChatBot";
 
 export default function MainLayout({
     children,
@@ -15,7 +14,6 @@ export default function MainLayout({
             <main className="flex-1">
                 {children}
             </main>
-            <ChatBot />
         </div>
     );
 }
