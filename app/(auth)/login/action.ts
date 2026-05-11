@@ -6,7 +6,6 @@ import { createClient } from "@/utils/supabase/server";
 
 import { prisma } from "@/lib/prisma";
 
-import { redirect } from "next/navigation";
 
 // --- SIGNUP ---
 export async function signup(formData: FormData) {
@@ -20,7 +19,6 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      // Quan trọng: Gửi data này để Trigger bên SQL lấy ra lưu vào bảng User
       data: {
         full_name: name,
       },
@@ -68,18 +66,22 @@ export async function login(formData: FormData) {
       redirectUrl = "/instructor";
     }
   } catch (e) {
-    console.error("Error fetching user role:", e);
+    console.error("Lỗi khi lấy thông tin Role của giảng viên/admin:", e);
   }
 
-  revalidatePath("/", "layout");
-  redirect(redirectUrl);
+  revalidatePath('/', 'layout')
+
+  return {
+    success: true,
+    redirectUrl: redirectUrl
+  }
 }
 
 // --- SIGNOUT ---
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath("/", "layout");
-  const { redirect } = await import("next/navigation");
-  redirect("/login");
+
+  revalidatePath('/', 'layout');
+
+  return { success: true };
 }

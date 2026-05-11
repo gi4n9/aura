@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { es } from "date-fns/locale";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Paths không cần auth check
@@ -12,7 +13,6 @@ const PUBLIC_PATHS = [
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Early return cho public paths (không cần Supabase)
   if (PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
     return NextResponse.next();
   }
@@ -44,8 +44,22 @@ export default async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh auth token (quan trọng!)
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error) {
+      if (error.message !== "Auth session missing!") {
+        console.warn("⚠️ Lỗi Auth thực tế:", error.message);
+      }
+    } else {
+      user = data.user;
+    }
+  } catch (error: any) {
+    console.error(" Lỗi nghiêm trọng từ Supabase Auth:", error.message)
+  }
+
 
   // --- ROLE-BASED REDIRECT LOGIC ---
   // Chỉ check role khi ở root path "/" và đã đăng nhập
@@ -75,13 +89,6 @@ export default async function proxy(request: NextRequest) {
 // Cấu hình matcher tối ưu
 export const config = {
   matcher: [
-    /*
-     * Match tất cả request paths ngoại trừ:
-     * - _next/static, _next/image (static files)
-     * - favicon.ico, public files
-     * - models (3D models)
-     * - fonts
-     */
     "/((?!_next/static|_next/image|favicon.ico|models|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|glb|gltf|woff|woff2|ttf|eot)$).*)",
   ],
 };

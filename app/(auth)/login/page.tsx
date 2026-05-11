@@ -9,10 +9,10 @@ import { ArrowLeft, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [localError, setLocalError] = useState<string | null>(searchParams.get("error"));
   const [localMessage, setLocalMessage] = useState<string | null>(searchParams.get("message"));
 
@@ -26,19 +26,15 @@ function LoginForm() {
       if (result?.error) {
         setLocalError(result.error);
       } else if (result?.success) {
-        if (result.message) {
-           setLocalMessage(result.message);
-        } else {
-           router.push("/"); 
-           router.refresh();
-        }
+        router.push(result.redirectUrl || "/")
+        router.refresh();
       }
     });
   };
 
   return (
     <div className="bg-white p-8 md:p-10 rounded-xl shadow-xl w-full max-w-md border border-stone-200 relative">
-      
+
       {/* Nút quay về trang chủ */}
       <Link href="/" className="absolute top-6 left-6 text-stone-400 hover:text-[#C5A059] transition-colors">
         <ArrowLeft size={20} />
@@ -47,7 +43,7 @@ function LoginForm() {
       <div className="text-center mb-10 mt-4">
         {/* Logo nhỏ */}
         <div className="w-10 h-10 bg-[#C5A059] rounded-full flex items-center justify-center text-white font-serif font-bold text-xl shadow-sm mx-auto mb-4">
-            α
+          α
         </div>
         <h2 className="text-4xl font-serif font-bold text-[#1a1a1a] mb-2">Welcome Back</h2>
         <p className="text-stone-500 text-sm font-medium tracking-wide">Continue your learning journey</p>
@@ -109,7 +105,7 @@ function LoginForm() {
           >
             {isPending ? "Processing..." : "Sign In"}
           </button>
-          
+
           <div className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-stone-200"></div>
             <span className="flex-shrink mx-4 text-stone-400 text-xs uppercase tracking-widest">Or</span>
@@ -135,10 +131,10 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#F9F8F4] px-4 selection:bg-[#C5A059] selection:text-white">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#C5A059] opacity-5 rounded-full blur-[100px]"></div>
-         <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-[#1a1a1a] opacity-5 rounded-full blur-[100px]"></div>
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#C5A059] opacity-5 rounded-full blur-[100px]"></div>
+        <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-[#1a1a1a] opacity-5 rounded-full blur-[100px]"></div>
       </div>
-      
+
       <Suspense fallback={<div className="text-[#C5A059] font-serif animate-pulse">Loading Aura...</div>}>
         <LoginForm />
       </Suspense>

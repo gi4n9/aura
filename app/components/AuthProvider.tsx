@@ -75,12 +75,18 @@ export const AuthProvider = ({
     }
   }, [user?.id, fetchProfile]);
 
+  useEffect(() => {
+    setUser(initialUser);
+    userIdRef.current = initialUser?.id ?? null;
+  }, [initialUser]);
+
   // Cập nhật profile khi initialProfile thay đổi (từ server)
   useEffect(() => {
     if (initialProfile) {
       setProfile(initialProfile);
     }
   }, [initialProfile]);
+
 
   // Auth state listener
   useEffect(() => {
