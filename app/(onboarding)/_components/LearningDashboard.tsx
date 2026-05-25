@@ -140,14 +140,14 @@ export default function LearningDashboard({
                 </motion.div>
             </div>
 
-            {/* SECOND ROW: Study Plan Progress + Cups + Quick Links */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* SECOND ROW: Study Plan Progress + Calendar */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Study Plan Progress */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="lg:col-span-2 bg-white rounded-2xl border border-stone-200 p-6 shadow-sm"
+                    className="lg:col-span-2 bg-white rounded-2xl border border-stone-200 p-6 shadow-sm flex flex-col justify-center"
                 >
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-stone-800 flex items-center gap-2">
@@ -182,21 +182,7 @@ export default function LearningDashboard({
                     </div>
                 </motion.div>
 
-                {/* Quick Nav: Roadmap */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                >
-                    <Link href="/onboarding/roadmap" className="block bg-white rounded-2xl border border-stone-200 p-6 shadow-sm hover:border-[#C5A059] hover:shadow-md transition-all h-full group">
-                        <div className="w-12 h-12 bg-amber-50 text-[#C5A059] rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <Map size={24} />
-                        </div>
-                        <h4 className="font-bold text-stone-800 mb-1">Roadmap</h4>
-                        <p className="text-xs text-stone-500">Lộ trình {roadmapTitle}</p>
-                        <p className="text-xs text-stone-400 mt-2">~{totalHours}h tổng thời gian</p>
-                    </Link>
-                </motion.div>
+
 
                 {/* Quick Nav: Calendar */}
                 <motion.div

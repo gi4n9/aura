@@ -39,6 +39,13 @@ enum PurchaseStatus {
   REFUNDED
 }
 
+enum RoadmapNodeStatus {
+  LOCKED
+  UNLOCKED
+  COMPLETED
+  SKIPPED
+}
+
 // ================= 1. IDENTITY & ACCESS =================
 
 // Profile map 1-1 với Supabase Auth User
@@ -59,6 +66,7 @@ model Profile {
   coursesCreated Course[]        @relation("InstructorCourses")
   enrollments    Enrollment[]
   studyPlans     StudyPlanItem[]
+  roadmap        UserRoadmap?
   submissions    Submission[]
   chatSessions   ChatSession[]
   videoProgress  VideoProgress[]
@@ -122,6 +130,11 @@ model Course {
   
   // NEW: Relation to Study Schedule
   includedInSchedules StudyScheduleCourse[]
+  
+  // NEW: Roadmap Relations
+  prerequisitesFor CoursePrerequisite[] @relation("PrerequisiteToCourse")
+  prerequisites    CoursePrerequisite[] @relation("CourseToPrerequisite")
+  roadmapNodes     UserRoadmapNode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -267,8 +280,12 @@ model Purchase {
   userId      String
   user        Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String?
+  course      Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Bundle Fields
+  isBundle        Boolean  @default(false)
+  bundleCourseIds String[] @default([])
 
   amount      Decimal  // Số tiền thực trả
   currency    String   @default("VND") // VND, USD
@@ -489,4 +506,48 @@ model VideoEmbedding {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("video_embeddings")
+}
+
+// ================= 7. DYNAMIC ROADMAP =================
+
+model CoursePrerequisite {
+  courseId         String
+  prerequisiteId   String
+
+  course           Course @relation("CourseToPrerequisite", fields: [courseId], references: [id], onDelete: Cascade)
+  prerequisite     Course @relation("PrerequisiteToCourse", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, prerequisiteId])
+}
+
+model UserRoadmap {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  progressPercentage Int      @default(0)
+  totalCourses       Int      @default(0)
+  totalEstimatedHours Int     @default(0)
+
+  nodes              UserRoadmapNode[]
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model UserRoadmapNode {
+  id             String      @id @default(uuid())
+  roadmapId      String
+  roadmap        UserRoadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  
+  courseId       String
+  course         Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  stageLevel     Int         // 1, 2, 3...
+  status         RoadmapNodeStatus @default(LOCKED)
+  
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([roadmapId, courseId])
 }

@@ -58,28 +58,88 @@ export async function GET(req: Request) {
 
         // 2. Process
         if (resultCode === '0') {
-             const [userId, courseId] = (extraData || "").split("|");
+             const extraParts = (extraData || "").split("|");
 
-             if (userId && courseId) {
-                // Update DB (Idempotent - an toàn khi chạy nhiều lần trùng với IPN)
-                await prisma.$transaction([
-                    prisma.purchase.update({
-                        where: { id: orderId! },
-                        data: { 
-                            status: 'COMPLETED', 
-                            transactionId: transId!, 
-                            provider: 'MOMO' 
-                        }
-                    }),
-                    prisma.enrollment.upsert({
-                        where: { userId_courseId: { userId, courseId } },
-                        update: {},
-                        create: { userId, courseId, progress: 0 }
-                    })
-                ]);
+             if (extraParts[0] === "BUNDLE") {
+                 const userId = extraParts[1];
+                 if (userId) {
+                     // Check and update Purchase and enrollments
+                     const purchase = await prisma.purchase.findUnique({ where: { id: orderId! } });
+                     
+                     if (purchase && purchase.isBundle && purchase.bundleCourseIds) {
+                         await prisma.purchase.update({
+                             where: { id: orderId! },
+                             data: { status: 'COMPLETED', transactionId: transId!, provider: 'MOMO' }
+                         });
 
-                // Redirect về trang khóa học
-                return NextResponse.redirect(new URL(`/courses/${courseId}?payment=success`, req.url));
+                         const enrollmentsData = purchase.bundleCourseIds.map(cId => ({
+                             userId,
+                             courseId: cId,
+                             progress: 0
+                         }));
+                         
+                         await prisma.enrollment.createMany({
+                             data: enrollmentsData,
+                             skipDuplicates: true
+                         });
+                         
+                         // Đọc cấu hình tạm thời từ Profile
+                         const profile = await prisma.profile.findUnique({
+                             where: { id: userId },
+                             select: { learningPath: true }
+                         });
+                         
+                         if (profile?.learningPath) {
+                             const config = profile.learningPath as any;
+                             
+                             // Gọi hàm tạo lịch học
+                             const { enrollAndCreateStudyPlan } = await import('@/app/actions/onboarding');
+                             
+                             await enrollAndCreateStudyPlan({
+                                 courseIds: config.courseIds,
+                                 roadmapId: config.roadmapId,
+                                 daysOfWeek: config.daysOfWeek,
+                                 dailyMinutes: config.dailyMinutes,
+                                 startDate: new Date(config.startDate),
+                                 overrideUserId: userId
+                             });
+                             
+                             // Xóa cấu hình tạm thời
+                             const { Prisma } = await import('@prisma/client');
+                             await prisma.profile.update({
+                                 where: { id: userId },
+                                 data: { learningPath: Prisma.DbNull }
+                             });
+                         }
+                     }
+                     // Chuyển thẳng về Dashboard vì lịch học đã được tạo
+                     return NextResponse.redirect(new URL(`/onboarding?payment=success`, req.url));
+                 }
+             } else {
+                 const userId = extraParts[0];
+                 const courseId = extraParts[1];
+
+                 if (userId && courseId) {
+                    // Update DB (Idempotent - an toàn khi chạy nhiều lần trùng với IPN)
+                    await prisma.$transaction([
+                        prisma.purchase.update({
+                            where: { id: orderId! },
+                            data: { 
+                                status: 'COMPLETED', 
+                                transactionId: transId!, 
+                                provider: 'MOMO' 
+                            }
+                        }),
+                        prisma.enrollment.upsert({
+                            where: { userId_courseId: { userId, courseId } },
+                            update: {},
+                            create: { userId, courseId, progress: 0 }
+                        })
+                    ]);
+
+                    // Redirect về trang khóa học
+                    return NextResponse.redirect(new URL(`/courses/${courseId}?payment=success`, req.url));
+                 }
              }
         }
 

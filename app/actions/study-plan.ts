@@ -257,3 +257,62 @@ export async function saveStudyPlan(
         return { success: false, error: error.message };
     }
 }
+
+export async function getRoadmapCoursesForStudyPlan() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Unauthorized", data: [] };
+
+    try {
+        const roadmap = await db.userRoadmap.findUnique({
+            where: { userId: user.id },
+            include: {
+                nodes: {
+                    include: {
+                        course: {
+                            include: {
+                                category: true,
+                                chapters: {
+                                    include: {
+                                        lessons: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!roadmap) return { success: false, error: "No roadmap found", data: [] };
+
+        // Lấy danh sách khóa học user đã đăng ký
+        const enrollments = await db.enrollment.findMany({
+            where: { userId: user.id, courseId: { in: roadmap.nodes.map(n => n.courseId) } },
+            select: { courseId: true }
+        });
+        const enrolledCourseIds = new Set(enrollments.map(e => e.courseId));
+
+        const courses = roadmap.nodes.map(n => {
+            const c = n.course;
+            const totalDuration = c.chapters.reduce((acc, ch) => 
+                acc + ch.lessons.reduce((sum, l) => sum + (l.duration || 0), 0), 0
+            );
+            return {
+                id: c.id,
+                title: c.title,
+                thumbnailUrl: c.thumbnailUrl,
+                category: c.category,
+                totalDuration,
+                price: Number(c.price),
+                isFree: c.isFree || Number(c.price) === 0,
+                isOwned: enrolledCourseIds.has(c.id)
+            };
+        });
+
+        return { success: true, data: courses, roadmapId: roadmap.id };
+    } catch (error: any) {
+        console.error("Get Roadmap Courses Error:", error);
+        return { success: false, error: error.message, data: [] };
+    }
+}

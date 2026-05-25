@@ -1,7 +1,6 @@
 import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { getRoadmapById } from "@/services/roadmap-data";
 import OnboardingWizard from "../_components/OnboardingWizard";
 import LearningDashboard from "../_components/LearningDashboard";
 
@@ -13,7 +12,27 @@ export default async function OnboardingPage() {
         redirect("/login");
     }
 
-    // Check if user has an active study schedule
+    // 1. Kiểm tra xem user đã tạo lộ trình cá nhân hóa chưa
+    const roadmap = await db.userRoadmap.findUnique({
+        where: { userId: user.id }
+    });
+
+    // Nếu chưa có roadmap, hiển thị Wizard để setup
+    if (!roadmap) {
+        return <OnboardingWizard />;
+    }
+
+    // 2. Fetch thông tin Profile
+    const profile = await db.profile.findUnique({
+        where: { id: user.id },
+        select: {
+            fullName: true,
+            interests: true,
+            avatarUrl: true,
+        }
+    });
+
+    // 3. Lấy thông tin Lịch học (Study Schedule) nếu có
     const schedule = await db.studySchedule.findFirst({
         where: { userId: user.id, isActive: true },
         include: {
@@ -36,41 +55,7 @@ export default async function OnboardingPage() {
         }
     });
 
-    if (!schedule) {
-        return <OnboardingWizard />;
-    }
-
-    // Fetch Profile & Learning Path
-    const profile = await db.profile.findUnique({
-        where: { id: user.id },
-        select: {
-            fullName: true,
-            learningPath: true,
-            interests: true,
-            avatarUrl: true,
-        }
-    });
-
-    const learningPath = profile?.learningPath as any;
-
-    if (!learningPath?.roadmapId) {
-        return <OnboardingWizard />;
-    }
-
-    const roadmap = getRoadmapById(learningPath.roadmapId);
-
-    if (!roadmap) {
-        return <OnboardingWizard />;
-    }
-
-    // Calculate Dashboard Stats
-    const totalItems = schedule.items.length;
-    const completedItems = schedule.items.filter((i: any) => i.isCompleted).length;
-
-    // Find next scheduled lesson
-    const nextItem = schedule.items.find((i: any) => !i.isCompleted);
-
-    // Get enrolled courses (max 4 for preview)
+    // 4. Lấy danh sách khóa học đã đăng ký
     const enrollments = await db.enrollment.findMany({
         where: { userId: user.id },
         take: 4,
@@ -94,15 +79,18 @@ export default async function OnboardingPage() {
 
     const totalEnrollments = await db.enrollment.count({ where: { userId: user.id } });
 
-    // Calculate cups (3 cups per completed lesson)
+    // Tính toán thống kê từ schedule
+    const scheduleItems = schedule?.items || [];
+    const totalItems = scheduleItems.length || 1; // tránh chia 0
+    const completedItems = scheduleItems.filter((i: any) => i.isCompleted).length;
+    const nextItem = scheduleItems.find((i: any) => !i.isCompleted);
     const totalCups = completedItems * 3;
 
-    // Study hours this week
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
 
-    const thisWeekCompleted = schedule.items.filter((i: any) => {
+    const thisWeekCompleted = scheduleItems.filter((i: any) => {
         if (!i.isCompleted || !i.completedAt) return false;
         return new Date(i.completedAt) >= weekStart;
     }).length;
@@ -110,10 +98,10 @@ export default async function OnboardingPage() {
     return (
         <LearningDashboard
             userName={profile?.fullName || "Người dùng"}
-            roadmapTitle={roadmap.title}
-            totalHours={roadmap.totalEstimatedHours}
+            roadmapTitle="Lộ trình Cá nhân hóa"
+            totalHours={roadmap.totalEstimatedHours || 0}
             completedItems={completedItems}
-            totalItems={totalItems || 1}
+            totalItems={totalItems}
             totalCups={totalCups}
             weeklyCompletedLessons={thisWeekCompleted}
             nextLesson={nextItem ? {

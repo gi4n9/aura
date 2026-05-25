@@ -112,3 +112,83 @@ export async function purchaseCourse(courseId: string) {
         return { success: false, error: "Lỗi thanh toán. Vui lòng thử lại sau." };
     }
 }
+
+export async function purchaseBundle(data: {
+    paidCourseIds: string[];
+    studyPlanConfig?: any;
+}) {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) return { success: false, error: "Bạn cần đăng nhập để mua khóa học." };
+
+        // Lấy thông tin các khóa học
+        const courses = await prisma.course.findMany({
+            where: { id: { in: data.paidCourseIds } },
+            select: { id: true, price: true, title: true }
+        });
+
+        if (courses.length === 0) return { success: false, error: "Khóa học không tồn tại." };
+
+        // Tính tổng tiền
+        const totalAmount = courses.reduce((sum, c) => sum + Number(c.price), 0);
+        
+        if (totalAmount <= 0) return { success: false, error: "Các khóa học này miễn phí, không cần thanh toán." };
+
+        // Lưu config study plan tạm thời vào Profile.learningPath
+        if (data.studyPlanConfig) {
+            await prisma.profile.update({
+                where: { id: user.id },
+                data: { learningPath: data.studyPlanConfig }
+            });
+        }
+
+        // Tạo bản ghi Purchase Bundle
+        const purchase = await prisma.purchase.create({
+            data: {
+                userId: user.id,
+                amount: totalAmount,
+                currency: "VND",
+                provider: "MOMO",
+                status: "PENDING",
+                isBundle: true,
+                bundleCourseIds: courses.map(c => c.id)
+            }
+        });
+
+        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
+        const ipnUrl = process.env.MOMO_IPN_URL || "https://momo.vn";
+
+        const orderInfo = `Thanh toán gộp ${courses.length} khóa học: ${courses.map(c => c.title).join(", ")}`.substring(0, 200);
+
+        const momoRes = await createMomoPayment({
+            orderId: purchase.id,
+            amount: totalAmount,
+            orderInfo: orderInfo,
+            redirectUrl: `${appBaseUrl}/api/payment/return`,
+            ipnUrl: ipnUrl,
+            extraData: `BUNDLE|${user.id}`
+        });
+
+        if (momoRes && momoRes.resultCode === 0) {
+            return {
+                success: true,
+                message: "Đang chuyển hướng sang MoMo...",
+                redirectUrl: momoRes.payUrl,
+                qrCodeUrl: momoRes.qrCodeUrl
+            };
+        } else {
+            await prisma.purchase.update({
+                where: { id: purchase.id },
+                data: { status: 'FAILED', errorLog: momoRes?.message || "MoMo Init Failed" }
+            });
+            return { success: false, error: momoRes?.message || "Lỗi khởi tạo thanh toán MoMo." };
+        }
+
+    } catch (error) {
+        console.error("Purchase Bundle Error:", error);
+        return { success: false, error: "Lỗi thanh toán. Vui lòng thử lại sau." };
+    }
+}
+

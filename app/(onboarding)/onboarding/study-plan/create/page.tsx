@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getEnrolledCourses, createStudyPlan } from "@/app/actions/study-plan";
+import { getRoadmapCoursesForStudyPlan } from "@/app/actions/study-plan";
+import { enrollAndCreateStudyPlan } from "@/app/actions/onboarding";
+import { purchaseBundle } from "@/app/actions/enrollment";
 import { Calendar, Clock, CheckCircle2, ChevronRight, Loader2, CalendarCheck, Flag } from "lucide-react";
 
 // Types
@@ -12,6 +14,9 @@ type EnrolledCourse = {
     thumbnailUrl: string | null;
     category: { name: string } | null;
     totalDuration: number; // seconds
+    price: number;
+    isFree: boolean;
+    isOwned: boolean;
 };
 
 export default function CreatePlanPage() {
@@ -21,6 +26,11 @@ export default function CreatePlanPage() {
 
     // Data
     const [courses, setCourses] = useState<EnrolledCourse[]>([]);
+    const [roadmapId, setRoadmapId] = useState<string | null>(null);
+
+    // Modal State
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paidCoursesToBuy, setPaidCoursesToBuy] = useState<EnrolledCourse[]>([]);
 
     // Form State
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -30,17 +40,23 @@ export default function CreatePlanPage() {
     const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Default Mon,Wed,Fri
 
     useEffect(() => {
-        // Fetch courses on mount and calculate duration
-        getEnrolledCourses().then(res => {
+        // Fetch roadmap courses on mount
+        getRoadmapCoursesForStudyPlan().then(res => {
             if (res.success && res.data) {
                 const mapped = res.data.map((c: any) => ({
                     id: c.id,
                     title: c.title,
                     thumbnailUrl: c.thumbnailUrl,
-                    category: null,
-                    totalDuration: c.totalDuration || 0
+                    category: c.category,
+                    totalDuration: c.totalDuration || 0,
+                    price: c.price,
+                    isFree: c.isFree,
+                    isOwned: c.isOwned
                 }));
                 setCourses(mapped);
+                setRoadmapId(res.roadmapId || null);
+                // Auto-select all courses from roadmap
+                setSelectedCourses(mapped.map((c: any) => c.id));
             }
         });
     }, []);
@@ -108,20 +124,74 @@ export default function CreatePlanPage() {
 
     const handleCreate = async () => {
         if (selectedCourses.length === 0) return alert("Vui lòng chọn ít nhất 1 khóa học!");
+        if (!roadmapId) return alert("Không tìm thấy dữ liệu lộ trình.");
 
+        // Lọc ra các khóa học có phí chưa sở hữu
+        const selectedPaidCourses = courses.filter(
+            c => selectedCourses.includes(c.id) && !c.isFree && !c.isOwned
+        );
+
+        if (selectedPaidCourses.length > 0) {
+            setPaidCoursesToBuy(selectedPaidCourses);
+            setShowPaymentModal(true);
+            return;
+        }
+
+        // Nếu tất cả là khóa miễn phí hoặc đã mua
+        await proceedWithFreeOrOwnedOnly();
+    };
+
+    const proceedWithFreeOrOwnedOnly = async (ignorePaid = false) => {
         setLoading(true);
-        const res = await createStudyPlan({
-            name: planName,
-            courseIds: selectedCourses,
+        setShowPaymentModal(false);
+
+        let finalCourseIds = selectedCourses;
+        if (ignorePaid) {
+            // Lọc bỏ các khóa trả phí chưa mua ra khỏi danh sách tạo lịch
+            finalCourseIds = selectedCourses.filter(id => {
+                const c = courses.find(course => course.id === id);
+                return c && (c.isFree || c.isOwned);
+            });
+
+            if (finalCourseIds.length === 0) {
+                alert("Bạn không còn khóa học nào để lên lịch.");
+                setLoading(false);
+                return;
+            }
+        }
+
+        const res = await enrollAndCreateStudyPlan({
+            roadmapId: roadmapId!,
+            courseIds: finalCourseIds,
             daysOfWeek: selectedDays,
             dailyMinutes: dailyMinutes,
             startDate: new Date(startDate)
         });
 
         if (res.success) {
-            router.push("/onboarding/study-plan");
+            router.push("/onboarding");
         } else {
             alert("Có lỗi xảy ra: " + (res.error || "Unknown"));
+            setLoading(false);
+        }
+    };
+
+    const handleCheckoutBundle = async () => {
+        setLoading(true);
+        const res = await purchaseBundle({
+            paidCourseIds: paidCoursesToBuy.map(c => c.id),
+            studyPlanConfig: {
+                roadmapId: roadmapId!,
+                courseIds: selectedCourses,
+                daysOfWeek: selectedDays,
+                dailyMinutes: dailyMinutes,
+                startDate: new Date(startDate)
+            }
+        });
+        if (res.success && res.redirectUrl) {
+            router.push(res.redirectUrl);
+        } else {
+            alert("Lỗi thanh toán: " + (res.error || "Vui lòng thử lại"));
             setLoading(false);
         }
     };
@@ -144,7 +214,7 @@ export default function CreatePlanPage() {
 
                     {courses.length === 0 ? (
                         <div className="p-8 border border-dashed border-stone-300 rounded-xl text-center text-stone-500">
-                            Bạn chưa đăng ký khóa học nào. Hãy đăng ký khóa học trước nhé!
+                            Không tìm thấy khóa học nào trong lộ trình của bạn. Hãy thiết lập lại lộ trình nhé!
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,6 +236,21 @@ export default function CreatePlanPage() {
                                     <div>
                                         <h4 className="font-bold text-stone-800">{course.title}</h4>
                                         <p className="text-xs text-stone-500 mt-1">{course.category?.name || "Chung"}</p>
+                                        <div className="mt-2">
+                                            {course.isOwned ? (
+                                                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md uppercase tracking-wide">
+                                                    Đã sở hữu
+                                                </span>
+                                            ) : course.isFree ? (
+                                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md uppercase tracking-wide">
+                                                    Miễn phí
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-md tracking-wide">
+                                                    {course.price.toLocaleString("vi-VN")} đ
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -294,6 +379,59 @@ export default function CreatePlanPage() {
                         >
                             {loading ? <Loader2 className="animate-spin" /> : "Tạo Lộ Trình Ngay ✨"}
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* PAYMENT MODAL */}
+            {showPaymentModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-stone-100 bg-stone-50/50">
+                            <h3 className="font-bold text-xl text-stone-800">Thanh toán khóa học</h3>
+                            <p className="text-sm text-stone-500 mt-1">
+                                Bạn đã chọn {paidCoursesToBuy.length} khóa học trả phí.
+                            </p>
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto">
+                            <div className="space-y-3 mb-6">
+                                {paidCoursesToBuy.map(c => (
+                                    <div key={c.id} className="flex justify-between items-center text-sm">
+                                        <span className="font-medium text-stone-700 truncate pr-4">{c.title}</span>
+                                        <span className="font-bold text-stone-900 shrink-0">{c.price.toLocaleString("vi-VN")} đ</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center pt-4 border-t border-stone-100">
+                                <span className="font-bold text-stone-600">Tổng cộng</span>
+                                <span className="text-2xl font-bold text-[#C5A059]">
+                                    {paidCoursesToBuy.reduce((sum, c) => sum + c.price, 0).toLocaleString("vi-VN")} đ
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-stone-50 border-t border-stone-100 space-y-3">
+                            <button
+                                onClick={handleCheckoutBundle}
+                                disabled={loading}
+                                className="w-full bg-[#1a1a1a] text-white py-3.5 rounded-xl font-bold hover:bg-stone-800 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {loading ? <Loader2 className="animate-spin" /> : "Thanh toán ngay bằng MoMo"}
+                            </button>
+                            <button
+                                onClick={() => proceedWithFreeOrOwnedOnly(true)}
+                                disabled={loading}
+                                className="w-full bg-white text-stone-600 border border-stone-200 py-3.5 rounded-xl font-bold hover:bg-stone-100 transition disabled:opacity-70"
+                            >
+                                Bỏ qua khóa trả phí, tạo lộ trình khóa miễn phí
+                            </button>
+                            <button
+                                onClick={() => setShowPaymentModal(false)}
+                                disabled={loading}
+                                className="w-full text-stone-400 font-medium py-2 hover:text-stone-600 transition"
+                            >
+                                Đóng
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

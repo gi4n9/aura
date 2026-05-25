@@ -31,8 +31,10 @@ export interface RoadmapWithCourses {
     coursesByNode: Record<string, MatchedCourse[]>; // Group courses by node
 }
 
+import { generateRoadmap } from "@/app/actions/roadmap";
+
 // ===== STEP 1: Save interests & Generate Roadmap =====
-export async function saveOnboardingInterests(interests: string[]) {
+export async function generateAndAssignRoadmap(interests: string[]) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -45,33 +47,39 @@ export async function saveOnboardingInterests(interests: string[]) {
     }
 
     try {
-        // Generate merged roadmap from ALL interests
-        const roadmapData = generateMergedRoadmap(interests);
-
         // Update Profile
         await db.profile.update({
             where: { id: user.id },
-            data: {
-                interests: interests,
-                learningPath: {
-                    roadmapId: roadmapData.id,
-                    selectedInterests: interests,
-                    selectedAt: new Date().toISOString(),
-                    totalEstimatedHours: roadmapData.totalEstimatedHours
-                }
-            } as any
+            data: { interests }
         });
 
-        revalidatePath("/");
-        return { 
-            success: true, 
-            roadmapId: roadmapData.id,
-            roadmapTitle: roadmapData.title,
-            totalHours: roadmapData.totalEstimatedHours
-        };
-    } catch (error) {
+        // Use the new Prisma-based roadmap generator
+        const roadmap = await generateRoadmap(user.id, interests);
+
+        if (!roadmap) {
+            return { success: false, error: "Không tìm thấy khóa học nào phù hợp với sở thích này." };
+        }
+
+        revalidatePath("/roadmap");
+        return { success: true };
+    } catch (error: any) {
         console.error("Onboarding Error:", error);
-        return { success: false, error: "Failed to save profile" };
+        return { success: false, error: error.message || "Failed to generate roadmap" };
+    }
+}
+
+// ===== GET CATEGORIES =====
+export async function getOnboardingCategories() {
+    try {
+        const categories = await db.category.findMany({
+            where: { parentId: null },
+            include: { children: true },
+            orderBy: { name: 'asc' }
+        });
+        return categories;
+    } catch (error) {
+        console.error("Failed to fetch categories:", error);
+        return [];
     }
 }
 
@@ -173,17 +181,21 @@ export async function enrollAndCreateStudyPlan(data: {
     daysOfWeek: number[];
     dailyMinutes: number;
     startDate: Date;
+    overrideUserId?: string;
 }) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return { success: false, error: "Unauthorized" };
+    let userId = data.overrideUserId;
+    if (!userId) {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: "Unauthorized" };
+        userId = user.id;
+    }
 
     try {
         // 1. Auto-enroll in free courses
         const enrollmentPromises = data.courseIds.map(async (courseId) => {
             const existing = await db.enrollment.findUnique({
-                where: { userId_courseId: { userId: user.id, courseId } }
+                where: { userId_courseId: { userId: userId!, courseId } }
             });
 
             if (!existing) {
@@ -195,7 +207,7 @@ export async function enrollAndCreateStudyPlan(data: {
                 const isFree = !course?.price || Number(course.price) === 0;
                 if (isFree) {
                     await db.enrollment.create({
-                        data: { userId: user.id, courseId, progress: 0 }
+                        data: { userId: userId!, courseId, progress: 0 }
                     });
                 }
             }
@@ -204,7 +216,7 @@ export async function enrollAndCreateStudyPlan(data: {
 
         // 2. Deactivate old study plans
         await db.studySchedule.updateMany({
-            where: { userId: user.id, isActive: true },
+            where: { userId: userId!, isActive: true },
             data: { isActive: false }
         });
 
@@ -212,7 +224,7 @@ export async function enrollAndCreateStudyPlan(data: {
         const roadmap = getRoadmapById(data.roadmapId);
         const schedule = await db.studySchedule.create({
             data: {
-                userId: user.id,
+                userId: userId!,
                 name: roadmap?.title || "Lộ trình học tập",
                 availableDays: data.daysOfWeek,
                 dailyLearningMinutes: data.dailyMinutes,
@@ -288,7 +300,7 @@ export async function enrollAndCreateStudyPlan(data: {
                     }
 
                     planItems.push({
-                        userId: user.id,
+                        userId: userId!,
                         lessonId: lesson.lessonId,
                         studyScheduleId: schedule.id,
                         scheduledAt: new Date(currentDate),

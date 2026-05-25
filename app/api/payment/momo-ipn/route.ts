@@ -58,30 +58,87 @@ export async function POST(req: Request) {
         }
 
         if (resultCode === 0) {
-            const [userId, courseId] = (extraData || "").split("|");
+            const extraParts = (extraData || "").split("|");
+            
+            if (extraParts[0] === "BUNDLE") {
+                const userId = extraParts[1];
+                console.log(`Bundle Payment Success for User ${userId}`);
+                
+                // Cập nhật trạng thái Purchase
+                const updatedPurchase = await prisma.purchase.update({
+                    where: { id: orderId },
+                    data: { 
+                        status: 'COMPLETED',
+                        transactionId: String(transId),
+                        provider: 'MOMO'
+                    }
+                });
 
-            if (userId && courseId) {
-                console.log(`Payment Success for User ${userId}, Course ${courseId}`);
+                if (updatedPurchase && updatedPurchase.isBundle && updatedPurchase.bundleCourseIds) {
+                    const enrollmentsData = updatedPurchase.bundleCourseIds.map(cId => ({
+                        userId,
+                        courseId: cId,
+                        progress: 0
+                    }));
+                    
+                    await prisma.enrollment.createMany({
+                        data: enrollmentsData,
+                        skipDuplicates: true
+                    });
+                }
 
-                await prisma.$transaction([
-                    prisma.purchase.update({
-                        where: { id: orderId },
-                        data: { 
-                            status: 'COMPLETED',
-                            transactionId: String(transId),
-                            provider: 'MOMO'
-                        }
-                    }),
-                    prisma.enrollment.upsert({
-                        where: { userId_courseId: { userId, courseId } },
-                        update: {}, 
-                        create: {
-                            userId,
-                            courseId,
-                            progress: 0
-                        }
-                    })
-                ]);
+                // Đọc cấu hình tạm thời từ Profile
+                const profile = await prisma.profile.findUnique({
+                    where: { id: userId },
+                    select: { learningPath: true }
+                });
+                
+                if (profile?.learningPath) {
+                    const config = profile.learningPath as any;
+                    
+                    const { enrollAndCreateStudyPlan } = await import('@/app/actions/onboarding');
+                    
+                    await enrollAndCreateStudyPlan({
+                        courseIds: config.courseIds,
+                        roadmapId: config.roadmapId,
+                        daysOfWeek: config.daysOfWeek,
+                        dailyMinutes: config.dailyMinutes,
+                        startDate: new Date(config.startDate),
+                        overrideUserId: userId
+                    });
+                    
+                    await prisma.profile.update({
+                        where: { id: userId },
+                        data: { learningPath: null }
+                    });
+                }
+            } else {
+                const userId = extraParts[0];
+                const courseId = extraParts[1];
+
+                if (userId && courseId) {
+                    console.log(`Payment Success for User ${userId}, Course ${courseId}`);
+
+                    await prisma.$transaction([
+                        prisma.purchase.update({
+                            where: { id: orderId },
+                            data: { 
+                                status: 'COMPLETED',
+                                transactionId: String(transId),
+                                provider: 'MOMO'
+                            }
+                        }),
+                        prisma.enrollment.upsert({
+                            where: { userId_courseId: { userId, courseId } },
+                            update: {}, 
+                            create: {
+                                userId,
+                                courseId,
+                                progress: 0
+                            }
+                        })
+                    ]);
+                }
             }
         } else {
              await prisma.purchase.update({
