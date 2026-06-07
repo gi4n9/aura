@@ -1,59 +1,77 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { ArrowDown } from "lucide-react";
-import { Suspense } from "react";
-const Hero3D = dynamic(() => import("./Hero3D"), {
-  ssr: false,
-  loading: () => <div className="absolute inset-0 bg-[#F9F8F4]" />, // Placeholder background while 3D loads
-});
+import { ArrowRight, PlayCircle, Sparkles, TrendingUp } from "lucide-react";
 
 export default function HeroSection() {
   return (
-    // Ensure the parent container has relative positioning and explicit height
-    <section className="relative h-screen flex items-center justify-center overflow-hidden bg-nobel-cream">
-
-      {/* 2. 3D BACKGROUND LAYER */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Suspense fallback={<div className="w-full h-full bg-[#F9F8F4]" />}>
-          <Hero3D />
-        </Suspense>
-      </div>
-
-      {/* 3. GRADIENT OVERLAY */}
-      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(249,248,244,0.92)_0%,rgba(249,248,244,0.6)_50%,rgba(249,248,244,0.3)_100%)]" />
-
-      {/* 4. MAIN CONTENT */}
-      <div className="relative z-10 container mx-auto px-6 text-center">
-
-        {/* Badge */}
-        <div className="inline-block mb-4 px-3 py-1 border border-nobel-gold text-nobel-gold text-xs tracking-[0.2em] uppercase font-bold rounded-full backdrop-blur-sm bg-white/30 animate-fade-in">
-          Aura • Learning Platform
+    <section className="min-h-[870px] flex items-center justify-center relative overflow-hidden px-4 md:px-10 bg-nobel-cream pt-16">
+      {/* Background Glow */}
+      <div className="absolute inset-0 z-0 bg-[#C5A059]/10 pointer-events-none opacity-50 blur-3xl rounded-full translate-x-1/4 -translate-y-1/4 mix-blend-multiply"></div>
+      
+      <div className="max-w-[1280px] w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
+        
+        {/* Left Content */}
+        <div className="md:col-span-6 flex flex-col items-start gap-8 z-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/40 backdrop-blur-md border border-[#C5A059]/30 rounded-full shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse"></span>
+            <span className="text-[12px] font-bold text-stone-900 uppercase tracking-wider">AI-Powered Education</span>
+          </div>
+          
+          <h2 className="font-serif text-[40px] md:text-[56px] lg:text-[64px] font-bold text-stone-900 leading-[1.1] tracking-tight">
+            Illuminate Your <br/>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#C5A059] to-[#e9c176] font-bold">Intelligence</span>
+          </h2>
+          
+          <p className="text-lg text-stone-600 max-w-lg leading-relaxed">
+            Experience a premium, personalized learning journey. Our AI-driven roadmaps adapt to your unique pace, bridging the gap between traditional prestige and future-forward efficiency.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
+            <button className="px-8 py-4 bg-[#C5A059] text-white rounded-[4px] text-xs font-bold uppercase tracking-widest hover:scale-[0.98] transition-transform shadow-lg shadow-[#C5A059]/20 flex items-center justify-center gap-2">
+              Start Journey
+              <ArrowRight size={18} />
+            </button>
+            <button className="px-8 py-4 bg-white/50 backdrop-blur-md border border-[#C5A059]/50 text-stone-900 rounded-[4px] text-xs font-bold uppercase tracking-widest hover:bg-white/80 transition-colors flex items-center justify-center gap-2">
+              <PlayCircle size={18} />
+              View Demo
+            </button>
+          </div>
         </div>
 
-        {/* Title */}
-        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium leading-tight mb-8 text-nobel-dark drop-shadow-sm">
-          Aura Learning <br />
-          <span className="italic font-normal text-stone-500 text-3xl md:text-5xl block mt-4">
-            AI for Modern Education
-          </span>
-        </h1>
+        {/* Right Content - 3D Card */}
+        <div className="md:col-span-6 relative mt-12 md:mt-0 flex justify-center h-[500px] lg:h-[600px]" style={{ perspective: "1000px" }}>
+          
+          {/* Hero Image Card */}
+          <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-white/40 backdrop-blur-md border border-stone-200/50 shadow-2xl transform rotate-y-12 hover:rotate-y-0 transition-transform duration-700 ease-out flex items-center justify-center" style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-12deg)' }}>
+            <img 
+              alt="Abstract 3D geometric shapes glowing in gold and white" 
+              className="w-full h-full object-cover" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJbzmQAjj_T7Mtmsv3Lv0TUt8PuzaV6502Cm_v9R3v5HFPstHDfdiUkZAjQRWS12EkBCSNw2A5QL1epE4aVEFsy0tJp4TA4JGZrLwy96ij6kOcqZ57GFGw6Ls4bb9K5EuHiuOHFV2rQcKaPtvnogEa0qgBLG-Q-l5GDgBQA1aMU2sUTBPb52kQG2UW4k7I9yYHWAG1NOtdwoI9stMsRu2gdAZuobCBxoY6pVwkXRySvVcYqg1Yg78L9fdTZzNYRr8KyFGLm7luSWd5"
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#C5A059]/20 to-transparent z-10 mix-blend-overlay pointer-events-none"></div>
+          </div>
 
-        {/* Description */}
-        <p className="max-w-2xl mx-auto text-lg md:text-xl text-stone-600 font-light leading-relaxed mb-12 font-sans">
-          Hệ thống học tập thông minh, tích hợp AI để cá nhân hóa lộ trình và tối ưu hóa trải nghiệm giáo dục của bạn.
-        </p>
-
-        {/* Buttons */}
-        <div className="flex justify-center gap-6">
-          <button className="px-8 py-3 bg-nobel-dark text-black rounded-full font-medium tracking-wide hover:bg-stone-800 hover:text-white transition-all shadow-lg hover:shadow-xl">
-            Bắt đầu ngay
-          </button>
-          <button className="group flex flex-col items-center justify-center gap-2 text-sm font-medium text-stone-500 hover:text-nobel-dark transition-colors">
-            <span className="p-3 border border-stone-300 rounded-full group-hover:border-nobel-dark transition-colors bg-white/50 group-hover:bg-white">
-              <ArrowDown size={20} />
-            </span>
-          </button>
+          {/* Floating elements */}
+          <div className="absolute -left-12 top-1/4 bg-white/70 backdrop-blur-md border border-stone-100 p-4 rounded-xl shadow-xl animate-[bounce_6s_ease-in-out_infinite] z-20 hidden lg:flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#C5A059]/20 flex items-center justify-center text-[#C5A059]">
+              <TrendingUp size={20} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">Progress</p>
+              <p className="font-serif text-2xl font-bold text-stone-900">+42%</p>
+            </div>
+          </div>
+          
+          <div className="absolute -right-8 bottom-1/4 bg-white/70 backdrop-blur-md border border-stone-100 p-4 rounded-xl shadow-xl animate-[bounce_5s_ease-in-out_infinite_reverse] z-20 hidden lg:flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[#C5A059]">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">AI Insight</p>
+              <p className="text-sm text-stone-900 font-semibold">Path Optimized</p>
+            </div>
+          </div>
+          
         </div>
       </div>
     </section>

@@ -107,9 +107,10 @@ export async function POST(req: Request) {
                         overrideUserId: userId
                     });
                     
+                    const { Prisma } = await import('@prisma/client');
                     await prisma.profile.update({
                         where: { id: userId },
-                        data: { learningPath: null }
+                        data: { learningPath: Prisma.DbNull }
                     });
                 }
             } else {

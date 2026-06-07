@@ -6,11 +6,15 @@ import { useAuth } from "../AuthProvider";
 import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
+import LoginModal from "../auth/LoginModal";
+import RegisterModal from "../auth/RegisterModal";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile } = useAuth();
@@ -141,12 +145,12 @@ export default function Header() {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link href="/login" className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-200 transition-all">
+                <button onClick={() => setIsLoginModalOpen(true)} className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-200 transition-all focus:outline-none">
                   Đăng nhập
-                </Link>
-                <Link href="/register" className="px-5 py-2 bg-stone-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-stone-600 hover:shadow-md transition-all">
+                </button>
+                <button onClick={() => setIsRegisterModalOpen(true)} className="px-5 py-2 bg-stone-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-stone-600 hover:shadow-md transition-all focus:outline-none">
                   Đăng ký
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -195,7 +199,12 @@ export default function Header() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {/* Login/Register Links... */}
+                    <button onClick={() => { setIsLoginModalOpen(true); setIsMenuOpen(false); }} className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-stone-50 transition-colors flex items-center justify-center">
+                      Đăng nhập
+                    </button>
+                    <button onClick={() => { setIsRegisterModalOpen(true); setIsMenuOpen(false); }} className="w-full py-3 bg-stone-700 text-white rounded-lg font-bold uppercase text-[10px] tracking-wider hover:bg-stone-600 transition-colors flex items-center justify-center">
+                      Đăng ký
+                    </button>
                   </div>
                 )}
               </div>
@@ -203,6 +212,22 @@ export default function Header() {
           </div>
         )}
       </AnimatePresence>
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+        onSwitchToRegister={() => {
+          setIsLoginModalOpen(false);
+          setIsRegisterModalOpen(true);
+        }}
+      />
+      <RegisterModal 
+        isOpen={isRegisterModalOpen} 
+        onClose={() => setIsRegisterModalOpen(false)} 
+        onSwitchToLogin={() => {
+          setIsRegisterModalOpen(false);
+          setIsLoginModalOpen(true);
+        }}
+      />
     </>
   );
 }

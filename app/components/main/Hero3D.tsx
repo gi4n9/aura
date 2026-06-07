@@ -26,9 +26,9 @@ const MacroscopicWave = () => {
   const ref = useRef<THREE.Mesh>(null);
   useFrame((state) => {
     if (ref.current) {
-       const t = state.clock.getElapsedTime();
-       ref.current.rotation.x = Math.sin(t * 0.2) * 0.2;
-       ref.current.rotation.y = t * 0.1;
+      const t = state.clock.getElapsedTime();
+      ref.current.rotation.x = Math.sin(t * 0.2) * 0.2;
+      ref.current.rotation.y = t * 0.1;
     }
   });
   return (
@@ -49,8 +49,8 @@ export default function Hero3D() {
           <MacroscopicWave />
         </Float>
         <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-           <QuantumParticle position={[-3, 1, -2]} color="#9333EA" scale={0.5} />
-           <QuantumParticle position={[3, -1, -3]} color="#C5A059" scale={0.6} />
+          <QuantumParticle position={[-3, 1, -2]} color="#9333EA" scale={0.5} />
+          <QuantumParticle position={[3, -1, -3]} color="#C5A059" scale={0.6} />
         </Float>
         <Environment preset="city" />
         <Stars radius={100} depth={50} count={1000} factor={4} saturation={0} fade speed={1} />

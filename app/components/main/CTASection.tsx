@@ -1,37 +1,37 @@
+import { Award } from "lucide-react";
+
 export default function CTASection() {
-    return (
-        <section className="py-24 bg-white">
-            <div className="max-w-5xl mx-auto px-6 lg:px-8">
-                <div className="relative rounded-2xl overflow-hidden bg-nobel-dark py-16 px-8 md:py-20 md:px-16 text-center border border-stone-800 shadow-2xl">
-
-                    {/* Background Glow */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-nobel-gold opacity-10 blur-[100px] rounded-full pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-900 opacity-10 blur-[100px] rounded-full pointer-events-none" />
-
-                    <div className="relative z-10">
-                        <h2 className="font-serif text-3xl md:text-5xl text-stone-800 mb-6">
-                            Start your journey <span className="italic text-nobel-gold">today</span>
-                        </h2>
-                        <p className="text-stone-400 max-w-xl mx-auto mb-10 text-lg font-light">
-                            Tham gia cùng hơn 10,000 học viên. Đăng ký ngay để nhận ưu đãi đặc biệt và truy cập kho tàng kiến thức.
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-                            <input
-                                type="email"
-                                placeholder="Email của bạn"
-                                className="flex-1 px-6 py-4 rounded-full bg-stone-800 border border-stone-700 text-white placeholder-stone-500 focus:outline-none focus:border-nobel-gold transition-colors text-sm"
-                            />
-                            <button className="px-8 py-4 rounded-full bg-nobel-gold text-nobel-dark font-bold uppercase text-xs tracking-widest hover:bg-white transition-colors shadow-lg">
-                                Đăng ký ngay
-                            </button>
-                        </div>
-                        <p className="text-[10px] text-stone-500 mt-6 uppercase tracking-widest">
-                            ✓ Free Trial &nbsp; ✓ No Credit Card
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
+  return (
+    <section className="py-32 px-4 md:px-10 relative overflow-hidden bg-[#1a1a1a]">
+      {/* Atmospheric glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-[#C5A059]/10 blur-[100px] rounded-full pointer-events-none z-0"></div>
+      
+      <div className="max-w-4xl mx-auto relative z-10 text-center flex flex-col items-center">
+        <div className="text-[#C5A059] mb-6">
+          <Award size={56} strokeWidth={1.5} />
+        </div>
+        
+        <h2 className="font-serif text-[40px] md:text-[56px] font-bold text-white mb-6 leading-tight tracking-tight">
+          Begin Your Pursuit of Excellence
+        </h2>
+        
+        <p className="text-lg text-stone-300 max-w-2xl mb-12 leading-relaxed">
+          Join an exclusive cohort of dedicated learners. Access our premium AI-driven platform and transform your educational trajectory today.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
+          <button className="px-10 py-5 bg-[#C5A059] text-stone-900 rounded-[4px] text-[12px] font-bold tracking-widest uppercase hover:scale-[0.98] transition-transform shadow-[0_0_30px_rgba(197,160,89,0.3)]">
+            Enroll Now
+          </button>
+          <button className="px-10 py-5 bg-[#1a1a1a]/80 backdrop-blur-md border border-[#C5A059]/50 text-white rounded-[4px] text-[12px] font-bold tracking-widest uppercase hover:bg-white/10 transition-colors">
+            View Pricing Tiers
+          </button>
+        </div>
+        
+        <p className="mt-8 text-[14px] text-stone-500">
+          Secure checkout. 14-day intellectual satisfaction guarantee.
+        </p>
+      </div>
+    </section>
+  );
 }
