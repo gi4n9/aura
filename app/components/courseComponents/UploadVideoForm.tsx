@@ -25,6 +25,7 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
 
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
+    const [progress, setProgress] = useState(0);
 
     // Hàm sanitize tên file (giữ nguyên như cũ)
     function sanitizeFileName(str: string) {
@@ -59,18 +60,56 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             const cleanName = sanitizeFileName(file.name);
             const fileName = `${Date.now()}-${cleanName}`;
 
-            // 1. Upload Supabase
-            const { error } = await supabase.storage.from("videos").upload(fileName, file);
-            if (error) throw error;
+            // 1. Lấy session để xác thực
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+            }
 
-            const { data: { publicUrl } } = supabase.storage.from("videos").getPublicUrl(fileName);
+            // 2. Chia nhỏ file (Chunking) & Upload
+            const CHUNK_SIZE = 45 * 1024 * 1024; // 45MB mỗi chunk
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let chunksUploaded = 0;
+
+            setStatus(`Đang chuẩn bị băm file thành ${totalChunks} phần...`);
+
+            const uploadChunk = async (chunkIndex: number) => {
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunkBlob = file.slice(start, end);
+                const chunkName = `${fileName}_part_${chunkIndex}`;
+
+                const { error } = await supabase.storage.from("videos").upload(chunkName, chunkBlob, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+                if (error) {
+                    throw new Error(`Lỗi tải lên phần ${chunkIndex + 1}: ${error.message}`);
+                }
+
+                chunksUploaded++;
+                const percentage = ((chunksUploaded / totalChunks) * 100).toFixed(2);
+                setProgress(Number(percentage));
+                setStatus(`Đang tải lên... ${percentage}% (${chunksUploaded}/${totalChunks})`);
+            };
+
+            // Upload theo batch song song (Tối đa 3 chunk một lúc để vắt kiệt băng thông nhưng không gây nghẽn)
+            const CONCURRENCY = 3;
+            for (let i = 0; i < totalChunks; i += CONCURRENCY) {
+                const batch = [];
+                for (let j = 0; j < CONCURRENCY && i + j < totalChunks; j++) {
+                    batch.push(uploadChunk(i + j));
+                }
+                await Promise.all(batch);
+            }
 
             setStatus("Đang xử lý YouTube & AI...");
 
-            // 2. Gọi Server Action với selectedPlaylistId
+            // 3. Gọi Server Action để lắp ghép và xử lý
             const result = await processVideoUpload(
-                publicUrl,
-                fileName,
+                fileName,        // Gửi tên file gốc
+                totalChunks,     // Gửi số lượng chunk
                 file.name.replace(".mp4", ""),
                 selectedChapterId
             );
@@ -88,6 +127,7 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             setStatus(`Lỗi: ${err.message}`);
         } finally {
             setLoading(false);
+            setProgress(0);
         }
     };
 
@@ -165,7 +205,18 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             ) : (
                 <div className="flex flex-col items-center py-6 text-[#C5A059]">
                     <Loader2 className="animate-spin mb-2" size={32} />
-                    <p className="font-medium animate-pulse">{status}</p>
+                    <p className="font-medium animate-pulse mb-3">{status}</p>
+                    
+                    {progress > 0 && progress < 100 && (
+                        <div className="w-full max-w-xs bg-stone-200 rounded-full h-2.5 mb-2 overflow-hidden shadow-inner">
+                            <div 
+                                className="bg-[#C5A059] h-2.5 rounded-full transition-all duration-300 ease-out relative overflow-hidden" 
+                                style={{ width: `${progress}%` }}
+                            >
+                                <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] -translate-x-full" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}></div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -12,6 +12,14 @@ export default async function RoadmapPage() {
 
     if (!user) redirect("/login");
 
+    const existingStudyPlan = await db.studyPlanItem.findFirst({
+        where: { userId: user.id }
+    });
+
+    if (existingStudyPlan) {
+        redirect("/onboarding/study-plan");
+    }
+
     const profile = await db.profile.findUnique({
         where: { id: user.id },
         select: { interests: true }

@@ -135,8 +135,8 @@ const videoAnalysisSchema: Schema = {
 };
 
 export async function processVideoUpload(
-  videoUrl: string,
-  filePathSupabase: string,
+  baseFileName: string,
+  totalChunks: number,
   title: string,
   chapterId: string,
 ) {
@@ -148,24 +148,42 @@ export async function processVideoUpload(
     console.log(`🚀 [START] Bắt đầu xử lý (Prompt Engineering Mode): ${title}`);
 
     // =========================================================
-    // BƯỚC 1: TẢI VIDEO TỪ SUPABASE VỀ SERVER TRUNG GIAN
+    // BƯỚC 1: TẢI TỪNG PHẦN TỪ SUPABASE VÀ GHÉP NỐI
     // =========================================================
-    const response = await fetch(videoUrl);
-    if (!response.ok) throw new Error("Không thể tải video từ Supabase.");
-
-    const blob = await response.blob();
-    const buffer = Buffer.from(await blob.arrayBuffer());
-
     // Tạo thư mục tạm
     const tempDir = path.join(process.cwd(), "tmp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
     tempFilePath = path.join(
       tempDir,
-      `${Date.now()}_${path.basename(filePathSupabase)}`,
+      `${Date.now()}_${path.basename(baseFileName)}`,
     );
-    fs.writeFileSync(tempFilePath, buffer);
-    console.log("💾 Đã lưu file tạm thành công.");
+
+    // Đảm bảo file không tồn tại trước khi ghi nối tiếp
+    if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+    }
+
+    const supabase = await createClient();
+    console.log(`📥 Đang tải và ghép ${totalChunks} phần từ Supabase...`);
+
+    for (let i = 0; i < totalChunks; i++) {
+        const chunkName = `${baseFileName}_part_${i}`;
+        const { data, error } = await supabase.storage.from("videos").download(chunkName);
+        
+        if (error || !data) {
+            throw new Error(`Lỗi khi tải phần ${i}: ${error?.message}`);
+        }
+
+        const arrayBuffer = await data.arrayBuffer();
+        const bufferChunk = Buffer.from(arrayBuffer);
+        
+        // Ghi nối tiếp (append) vào file tạm
+        fs.appendFileSync(tempFilePath, bufferChunk);
+        console.log(`✅ Đã ghép phần ${i + 1}/${totalChunks}`);
+    }
+
+    console.log("💾 Đã lưu và ghép file tạm thành công.");
     console.log("⏱️ Đang tính toán thời lượng video (ffmpeg)...");
 
     const durationInSeconds = await getVideoDuration(tempFilePath);
@@ -186,7 +204,7 @@ export async function processVideoUpload(
         },
         status: { privacyStatus: "unlisted" },
       },
-      media: { body: Readable.from(buffer) },
+      media: { body: fs.createReadStream(tempFilePath) }, // Sử dụng Stream thay vì Buffer để tránh tràn RAM
     }).then(ytRes => {
       if (!ytRes.data.id) throw new Error("Không nhận được YouTube Video ID.");
       console.log(`✅ YouTube Upload OK. ID: ${ytRes.data.id}`);
@@ -502,10 +520,14 @@ export async function processVideoUpload(
         await fileManager.deleteFile(geminiFileName);
         console.log("🧹 Đã xóa file trên Gemini.");
       }
-      if (filePathSupabase) {
+      if (baseFileName && totalChunks > 0) {
         const supabase = await createClient();
-        await supabase.storage.from("videos").remove([filePathSupabase]);
-        console.log("🧹 Đã xóa file trên Supabase.");
+        const filesToDelete = [];
+        for (let i = 0; i < totalChunks; i++) {
+            filesToDelete.push(`${baseFileName}_part_${i}`);
+        }
+        await supabase.storage.from("videos").remove(filesToDelete);
+        console.log("🧹 Đã xóa toàn bộ các chunk tạm trên Supabase.");
       }
     } catch (cleanupError) {
       console.error("⚠️ Lỗi dọn dẹp:", cleanupError);
