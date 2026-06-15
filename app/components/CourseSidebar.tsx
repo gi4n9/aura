@@ -15,6 +15,9 @@ type LessonItem = {
   youtubeVideoId: string | null;
   position: number;
   duration: number | null;
+  _count?: {
+    questions: number;
+  };
 };
 
 type ChapterItem = {
@@ -23,14 +26,20 @@ type ChapterItem = {
   lessons: LessonItem[];
 };
 
+import LessonProgressBar from "./courseComponents/LessonProgressBar";
+
 export default function CourseSidebar({
   courseId,
   chapters,
   currentVideoId,
+  allVideoProgress = [],
+  allQuizResults = [],
 }: {
   courseId: string;
   chapters: ChapterItem[];
   currentVideoId: string;
+  allVideoProgress?: any[];
+  allQuizResults?: any[];
 }) {
   const activeRef = useRef<HTMLAnchorElement>(null);
   const pathName = usePathname();
@@ -48,7 +57,7 @@ export default function CourseSidebar({
   const totalLessons = chapters.reduce((acc, ch) => acc + ch.lessons.length, 0);
 
   return (
-    <div className="flex flex-col w-full h-[600px] lg:h-auto lg:aspect-[7/9] bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm flex-shrink-0">
+    <div className="flex flex-col w-full h-full bg-white flex-shrink-0">
 
       {/* Sidebar Header */}
       <div className="p-5 border-b border-stone-100 bg-[#F9F8F4]">
@@ -77,84 +86,111 @@ export default function CourseSidebar({
         onClose={() => setIsPlanModalOpen(false)}
       />
 
-      {/* Chapter & Lesson List */}
-      <div className="overflow-y-auto flex-1 custom-scrollbar bg-white">
+      {/* Chapters List */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
         {chapters.map((chapter) => (
-          <div key={chapter.id} className="border-b border-stone-50 last:border-0">
-            <div className="px-4 py-3 bg-stone-50/50 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-stone-500 line-clamp-1">
-                {chapter.title}
-              </h4>
-              <ChevronDown size={14} className="text-stone-300" />
+          <div key={chapter.id} className="bg-stone-50 rounded-xl overflow-hidden border border-stone-200">
+            {/* Chapter Header */}
+            <div className="p-4 bg-white border-b border-stone-100 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold tracking-widest uppercase text-stone-400 mb-1 block">
+                  Chapter {chapter.lessons[0]?.position ? Math.ceil(chapter.lessons[0].position / 10) : 1}
+                </span>
+                <h3 className="font-serif font-bold text-[#1a1a1a] text-sm leading-tight">
+                  {chapter.title}
+                </h3>
+              </div>
+              <ChevronDown size={16} className="text-stone-400" />
             </div>
 
-            <div className="p-2 space-y-1">
+            {/* Lessons */}
+            <div className="divide-y divide-stone-100">
               {chapter.lessons.map((lesson) => {
-                // --- XỬ LÝ FALLBACK KHI VIDEO ID LÀ NULL ---
-                const videoId = lesson.youtubeVideoId || "";
-                const isActive = pathName?.includes(lesson.id);
+                const isActive = lesson.id === currentVideoId;
+                
+                // --- Tiết xuất Progress Data ---
+                const vp = allVideoProgress.find((p: any) => p.lessonId === lesson.id);
+                const videoPercentage = vp ? vp.percentage : 0;
+                
+                const hasQuiz = (lesson._count?.questions || 0) > 0;
+                const qr = allQuizResults.find((q: any) => q.lessonId === lesson.id);
+                const isQuizPassed = qr ? qr.isPassed : false;
 
                 return (
                   <Link
                     key={lesson.id}
                     href={`/courses/${courseId}/lessons/${lesson.id}`}
                     ref={isActive ? activeRef : null}
-                    className={`flex gap-3 p-3 rounded-lg transition-all cursor-pointer group border ${isActive
-                      ? "bg-[#F9F8F4] border-[#C5A059]/30 shadow-sm"
-                      : "bg-transparent border-transparent hover:bg-stone-50"
+                    className={`block p-4 group transition-all duration-300 relative ${isActive
+                        ? "bg-[#F9F8F4]"
+                        : "hover:bg-white"
                       }`}
                   >
-                    {/* Thumbnail Area */}
-                    <div className="relative w-24 h-14 flex-shrink-0 rounded overflow-hidden bg-stone-200 border border-stone-100">
-                      {/* Chỉ render ảnh nếu có videoId */}
-                      {videoId ? (
-                        <Image
-                          src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                          alt={lesson.title}
-                          fill
-                          className={`object-cover transition-opacity ${isActive ? 'opacity-80' : 'opacity-100'}`}
-                          unoptimized={true}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-stone-300 flex items-center justify-center">
-                          <Play size={16} className="text-stone-400" />
-                        </div>
-                      )}
-
-                      {isActive ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]/40">
-                          <div className="flex gap-0.5 items-end h-3">
-                            <div className="w-1 bg-[#C5A059] animate-[bounce_1s_infinite] h-2"></div>
-                            <div className="w-1 bg-[#C5A059] animate-[bounce_1.2s_infinite] h-3"></div>
-                            <div className="w-1 bg-[#C5A059] animate-[bounce_0.8s_infinite] h-1.5"></div>
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#C5A059]"></div>
+                    )}
+                    
+                    <div className="flex gap-4">
+                      {/* Thumbnail/Icon */}
+                      <div className="relative w-24 aspect-video rounded-lg overflow-hidden bg-stone-200 flex-shrink-0 border border-stone-200 shadow-sm">
+                        {lesson.youtubeVideoId ? (
+                          <Image
+                            src={`https://img.youtube.com/vi/${lesson.youtubeVideoId}/mqdefault.jpg`}
+                            alt={lesson.title}
+                            fill
+                            unoptimized
+                            className={`object-cover transition-transform duration-700 ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-stone-100">
+                            <Play size={16} className="text-stone-400" />
                           </div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                          <Play size={16} className="text-white opacity-0 group-hover:opacity-100 fill-white" />
-                        </div>
-                      )}
-                    </div>
+                        )}
 
-                    {/* Info Area */}
-                    <div className="flex flex-col justify-center min-w-0">
-                      <div className="flex items-start gap-2">
-                        <span className={`text-[10px] font-bold mt-0.5 flex-shrink-0 ${isActive ? 'text-[#C5A059]' : 'text-stone-300'}`}>
-                          {String(lesson.position).padStart(2, '0')}
-                        </span>
-                        <h4
-                          className={`text-sm font-medium line-clamp-2 leading-snug ${isActive ? "text-[#1a1a1a]" : "text-stone-600 group-hover:text-[#1a1a1a]"
-                            }`}
-                        >
-                          {lesson.title}
-                        </h4>
+                        {isActive ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a]/40">
+                            <div className="flex gap-0.5 items-end h-3">
+                              <div className="w-1 bg-[#C5A059] animate-[bounce_1s_infinite] h-2"></div>
+                              <div className="w-1 bg-[#C5A059] animate-[bounce_1.2s_infinite] h-3"></div>
+                              <div className="w-1 bg-[#C5A059] animate-[bounce_0.8s_infinite] h-1.5"></div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                            <Play size={16} className="text-white opacity-0 group-hover:opacity-100 fill-white" />
+                          </div>
+                        )}
                       </div>
 
-                      {isActive && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#C5A059] mt-1.5 ml-5 flex items-center gap-1 animate-pulse">
-                          Now Playing
-                        </span>
-                      )}
+                      {/* Info Area */}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-start gap-2">
+                          <span className={`text-[10px] font-bold mt-0.5 flex-shrink-0 ${isActive ? 'text-[#C5A059]' : 'text-stone-300'}`}>
+                            {String(lesson.position).padStart(2, '0')}
+                          </span>
+                          <h4
+                            className={`text-sm font-medium line-clamp-2 leading-snug ${isActive ? "text-[#1a1a1a]" : "text-stone-600 group-hover:text-[#1a1a1a]"
+                              }`}
+                          >
+                            {lesson.title}
+                          </h4>
+                        </div>
+
+                        {isActive && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[#C5A059] mt-1.5 flex items-center gap-1 animate-pulse">
+                            Now Playing
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* DUAL PROGRESS BAR */}
+                    <div className="mt-3">
+                      <LessonProgressBar 
+                        videoPercentage={videoPercentage} 
+                        hasQuiz={hasQuiz} 
+                        isQuizPassed={isQuizPassed} 
+                      />
                     </div>
                   </Link>
                 );

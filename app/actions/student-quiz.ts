@@ -87,42 +87,52 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       });
     }
 
-    // 3.5 Update Enrollment Progress
+    // 3.5 Update QuizResult & Course Progress
     if (lessonInfo) {
         const courseId = lessonInfo.chapter.courseId;
-        
-        // Count Total Questions in Course
-        const totalCourseQuestions = await prisma.question.count({
-             where: { 
-                 isArchived: false,
-                 lesson: { chapter: { courseId } } 
-             }
-        });
+        const totalQuestions = questions.length;
+        const score = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
+        const isPassed = score >= 80; // Pass nếu đúng từ 80% trở lên (hoặc tuỳ chọn)
 
-        // Count Answered Questions (Unique) by User
-        // Note: We just created new submissions, so they are included here.
-        const userSubmissions = await prisma.submission.findMany({
-             where: {
-                 userId: user.id,
-                 question: { lesson: { chapter: { courseId } } }
-             },
-             select: { questionId: true },
-             distinct: ['questionId']
-        });
-
-        const newProgress = totalCourseQuestions > 0 
-           ? Math.round((userSubmissions.length / totalCourseQuestions) * 100)
-           : 0;
-
-        // Update Enrollment
-        // Enrollment record is guaranteed to exist by step 1.5
+        // Lưu QuizResult
         try {
-            await prisma.enrollment.update({
-                where: { userId_courseId: { userId: user.id, courseId } },
-                data: { progress: newProgress }
+            await prisma.quizResult.upsert({
+                where: {
+                    userId_lessonId: { userId: user.id, lessonId }
+                },
+                update: {
+                    score,
+                    totalQuestions,
+                    correctAnswers: correctCount,
+                    isPassed,
+                    attemptCount: { increment: 1 },
+                    lastAttemptAt: new Date()
+                },
+                create: {
+                    userId: user.id,
+                    lessonId,
+                    courseId,
+                    score,
+                    totalQuestions,
+                    correctAnswers: correctCount,
+                    isPassed,
+                    attemptCount: 1
+                }
             });
         } catch (e) {
-            console.error("Failed to update progress", e);
+            console.error("Failed to upsert QuizResult", e);
+        }
+
+        // Cập nhật lại tiến độ tổng khóa học sau khi nộp bài
+        try {
+            const { recalculateCourseProgress } = await import('@/lib/progress');
+            await recalculateCourseProgress(user.id, courseId);
+            
+            // Revalidate để UI cập nhật lại thanh progress
+            const { revalidatePath } = await import('next/cache');
+            revalidatePath(`/courses/${courseId}`, 'layout');
+        } catch (e) {
+            console.error("Failed to update course progress from quiz", e);
         }
 
         // 3.6 Update Study Plan Item

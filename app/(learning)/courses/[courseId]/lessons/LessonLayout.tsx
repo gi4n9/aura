@@ -64,12 +64,16 @@ export default function LessonLayout({
     formattedQuestions,
     initialResult,
     userAnswers,
+    allVideoProgress = [],
+    allQuizResults = [],
 }: {
     course: CourseData;
     lesson: LessonData;
     formattedQuestions: any[];
     initialResult?: any;
     userAnswers?: Record<string, string>;
+    allVideoProgress?: any[];
+    allQuizResults?: any[];
 }) {
     // State quản lý hiển thị
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -187,6 +191,8 @@ export default function LessonLayout({
                         courseId={course.id}
                         chapters={course.chapters}
                         currentVideoId={lesson.youtubeVideoId || ""}
+                        allVideoProgress={allVideoProgress}
+                        allQuizResults={allQuizResults}
                     />
                 </div>
             </div>
@@ -347,6 +353,7 @@ export default function LessonLayout({
                                         questions={formattedQuestions}
                                         initialResult={initialResult}
                                         initialAnswers={userAnswers}
+                                        onSeek={handleSeekToTime}
                                     />
                                 </div>
                             </div>

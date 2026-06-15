@@ -47,6 +47,25 @@ export async function saveVideoProgress(
       },
     });
 
+    // --- NEW: Cập nhật Tiến độ toàn Khóa học (Enrollment Progress) ---
+    try {
+      const lessonInfo = await db.lesson.findUnique({
+        where: { id: lessonId },
+        select: { chapter: { select: { courseId: true } } }
+      });
+
+      if (lessonInfo) {
+        const { recalculateCourseProgress } = await import('@/lib/progress');
+        await recalculateCourseProgress(user.id, lessonInfo.chapter.courseId);
+        
+        // Revalidate để UI cập nhật lại thanh progress
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath(`/courses/${lessonInfo.chapter.courseId}`, 'layout');
+      }
+    } catch (e) {
+      console.error("Failed to update course progress from video", e);
+    }
+
     return { success: true, progress };
   } catch (error) {
     console.error("Error saving video progress:", error);

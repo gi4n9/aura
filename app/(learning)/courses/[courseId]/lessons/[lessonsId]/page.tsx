@@ -37,6 +37,7 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                     options: true,
                     correctAnswer: true,
                     aiExplanation: true,
+                    timestamp: true,
                 }
             }
         }
@@ -133,10 +134,33 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
         id: q.id,
         content: q.content,
         options: q.options as string[],
-        userAnswer: userAnswers[q.id] || null
+        userAnswer: userAnswers[q.id] || null,
+        timestamp: q.timestamp
     }));
 
-    // 4. Serialize lesson với proper types
+    // 4. Fetch all user progress for this course to display in Sidebar
+    let allVideoProgress: any[] = [];
+    let allQuizResults: any[] = [];
+
+    if (user) {
+        allVideoProgress = await prisma.videoProgress.findMany({
+            where: {
+                userId: user.id,
+                lesson: { chapter: { courseId: course.id } }
+            },
+            select: { lessonId: true, percentage: true }
+        });
+
+        allQuizResults = await prisma.quizResult.findMany({
+            where: {
+                userId: user.id,
+                courseId: course.id
+            },
+            select: { lessonId: true, isPassed: true }
+        });
+    }
+
+    // 5. Serialize lesson với proper types
     type TimelineItem = { time: number; label: string };
     const serializedLesson = {
         ...lesson,
@@ -150,6 +174,8 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
             formattedQuestions={formattedQuestions}
             initialResult={initialResult}
             userAnswers={userAnswers}
+            allVideoProgress={allVideoProgress}
+            allQuizResults={allQuizResults}
         />
     );
 }

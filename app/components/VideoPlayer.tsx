@@ -2,6 +2,7 @@
 
 import { Info } from "lucide-react";
 import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
+import { useRouter } from "next/navigation";
 import { saveVideoProgress, getVideoProgress } from "@/app/actions/video-progress";
 
 // Khai báo type cho YouTube Player
@@ -71,23 +72,29 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     loadProgress();
   }, [lessonId]);
 
+  const router = useRouter();
+
   // Hàm lưu progress
-  const saveProgress = useCallback(async () => {
+  const saveProgress = useCallback(async (shouldRefreshUI: boolean = false) => {
     if (!playerRef.current || !lessonId) return;
 
     try {
       const currentTime = playerRef.current.getCurrentTime();
       const duration = playerRef.current.getDuration();
 
-      // Chỉ lưu nếu có sự thay đổi đáng kể (>5 giây)
-      if (Math.abs(currentTime - lastSavedTimeRef.current) < 5) return;
+      // Chỉ lưu nếu có sự thay đổi đáng kể (>5 giây) và không phải force refresh
+      if (!shouldRefreshUI && Math.abs(currentTime - lastSavedTimeRef.current) < 5) return;
 
       lastSavedTimeRef.current = currentTime;
       await saveVideoProgress(lessonId, currentTime, duration);
+      
+      if (shouldRefreshUI) {
+        router.refresh();
+      }
     } catch (error) {
       console.error("Error saving video progress:", error);
     }
-  }, [lessonId]);
+  }, [lessonId, router]);
 
   // Initialize YouTube IFrame API
   useEffect(() => {
@@ -121,10 +128,10 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           },
           onStateChange: (event: any) => {
             if (event.data === window.YT.PlayerState.PAUSED) {
-              saveProgress();
+              saveProgress(true); // Force refresh UI on pause
             }
             if (event.data === window.YT.PlayerState.ENDED) {
-              saveProgress();
+              saveProgress(true); // Force refresh UI on end
             }
           },
         },
@@ -133,7 +140,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       // Setup interval để save progress mỗi 10 giây
       saveIntervalRef.current = setInterval(() => {
         if (playerRef.current?.getPlayerState?.() === window.YT.PlayerState.PLAYING) {
-          saveProgress();
+          saveProgress(true); // Cập nhật cả UI mỗi 10s
         }
       }, 10000);
     };

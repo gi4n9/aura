@@ -1,26 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle } from "lucide-react";
 import confetti from "canvas-confetti"; // (Optional) Hiệu ứng pháo hoa: npm install canvas-confetti @types/canvas-confetti
 import { submitQuiz } from "@/app/actions/student-quiz";
+import { useRouter } from "next/navigation";
 
 interface Question {
     id: string;
     content: string;
     options: string[]; // ["A. ...", "B. ..."]
+    timestamp?: number; // thời điểm trong video (giây)
 }
 
 export default function QuizPlayer({
     lessonId,
     questions,
     initialResult,
-    initialAnswers
+    initialAnswers,
+    onSeek
 }: {
     lessonId: string,
     questions: Question[],
     initialResult?: any,
-    initialAnswers?: Record<string, string>
+    initialAnswers?: Record<string, string>,
+    onSeek?: (time: number) => void
 }) {
     const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(initialAnswers || {});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +38,8 @@ export default function QuizPlayer({
             [qId]: optionPrefix
         }));
     };
+
+    const router = useRouter();
 
     // Xử lý nộp bài
     const handleSubmit = async () => {
@@ -60,6 +66,9 @@ export default function QuizPlayer({
             if (res.score ?? 0 >= 80) confetti();
             // Scroll lên đầu để xem kết quả
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Ép UI tải lại dữ liệu từ Server Component (cập nhật thanh tiến độ)
+            router.refresh();
         } else {
             alert(res.error);
         }
@@ -117,10 +126,21 @@ export default function QuizPlayer({
                                     Câu {index + 1}
                                 </span>
 
-                                {/* 2. Nội dung câu hỏi: Căn chỉnh line-height và padding-top để khớp với ô STT */}
-                                <h4 className="flex-1 font-bold text-stone-800 text-lg leading-snug pt-0.5">
-                                    {q.content}
-                                </h4>
+                                {/* 2. Nội dung câu hỏi và nút tua video */}
+                                <div className="flex-1 flex flex-col pt-0.5 gap-2">
+                                    <h4 className="font-bold text-stone-800 text-lg leading-snug">
+                                        {q.content}
+                                    </h4>
+                                    {q.timestamp != null && onSeek && (
+                                        <button 
+                                            onClick={() => onSeek(q.timestamp!)}
+                                            className="self-start text-[10px] font-bold uppercase tracking-wider bg-stone-100 hover:bg-stone-200 text-stone-600 px-2 py-1 rounded flex items-center gap-1 transition-colors mt-1"
+                                        >
+                                            <PlayCircle size={12} />
+                                            Xem lại video ({Math.floor(q.timestamp / 60)}:{String(q.timestamp % 60).padStart(2, '0')})
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Icon đúng sai */}

@@ -94,13 +94,38 @@ const extractAudio = (videoPath: string, audioPath: string): Promise<void> => {
   });
 };
 
-// --- SMART KEYFRAME EXTRACTION: Scene Change Detection ---
-// Thay vì chụp đều, chỉ chụp khi nội dung hình ảnh thay đổi đáng kể
-// (chuyển slide, mở file code mới, chuyển tab, v.v.)
+// --- DYNAMIC KEYFRAME CONFIG: Tính toán maxFrames và sceneThreshold theo thời lượng video ---
+// Video ngắn → ít frame, ngưỡng nhạy hơn (bắt nhiều chi tiết)
+// Video dài → nhiều frame hơn nhưng ngưỡng cao hơn (chỉ bắt thay đổi lớn, tránh quá tải)
+function getSmartKeyframeConfig(durationSeconds: number): { maxFrames: number; sceneThreshold: number } {
+  if (durationSeconds <= 120) {
+    // Video <= 2 phút: tối đa 6 frame, ngưỡng 0.25
+    return { maxFrames: 6, sceneThreshold: 0.25 };
+  } else if (durationSeconds <= 300) {
+    // Video 2-5 phút: tối đa 8 frame, ngưỡng 0.3
+    return { maxFrames: 8, sceneThreshold: 0.3 };
+  } else if (durationSeconds <= 600) {
+    // Video 5-10 phút: tối đa 10 frame, ngưỡng 0.35
+    return { maxFrames: 10, sceneThreshold: 0.35 };
+  } else if (durationSeconds <= 1200) {
+    // Video 10-20 phút: tối đa 12 frame, ngưỡng 0.4
+    return { maxFrames: 12, sceneThreshold: 0.4 };
+  } else if (durationSeconds <= 2400) {
+    // Video 20-40 phút: tối đa 15 frame, ngưỡng 0.45
+    return { maxFrames: 15, sceneThreshold: 0.45 };
+  } else {
+    // Video > 40 phút: tối đa 18 frame, ngưỡng 0.5 (chỉ bắt thay đổi lớn)
+    return { maxFrames: 18, sceneThreshold: 0.5 };
+  }
+}
+
+// --- SMART KEYFRAME EXTRACTION: 2-Phase Scene Change Detection ---
+// Phase 1: Quét toàn bộ video thu thập timestamps (không ghi file, cực nhanh)
+// Phase 2: Chọn lọc maxFrames timestamps phân bố đều → trích xuất chính xác
 const extractKeyframes = (
   videoPath: string,
   outputDir: string,
-  maxFrames: number = 20,       // Giới hạn tối đa frames (kiểm soát token)
+  maxFrames: number = 10,       // Giới hạn tối đa frames (kiểm soát token)
   sceneThreshold: number = 0.3  // Ngưỡng scene change (0-1, thấp = nhạy hơn)
 ): Promise<string[]> => {
   return new Promise(async (resolve) => {
@@ -114,80 +139,96 @@ const extractKeyframes = (
       // Tạo thư mục chứa keyframes
       if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-      const outputPattern = path.join(outputDir, 'scene_%04d.jpg');
+      // ============================================================
+      // PHASE 1: QUÉT TOÀN BỘ VIDEO → Thu thập TIMESTAMPS (không ghi file)
+      // Cực nhanh vì chỉ phân tích, không tốn I/O ghi ảnh ra ổ cứng
+      // ============================================================
+      const sceneTimestamps: number[] = [];
+      console.log(`📡 Phase 1: Quét toàn bộ ${(duration / 60).toFixed(1)} phút video để tìm scene changes...`);
 
-      // Bước 1: Dùng FFmpeg Scene Detection để chụp tất cả scene changes
-      await new Promise<void>((res, rej) => {
+      await new Promise<void>((res) => {
         ffmpeg(videoPath)
           .inputOptions([
-            '-skip_frame', 'nokey'     // TỐI ƯU TỐC ĐỘ: Bỏ qua P/B-frames, chỉ decode I-frames (tăng tốc x50-100 lần)
+            '-skip_frame', 'nokey'     // Chỉ decode I-frames (tăng tốc x50-100 lần)
           ])
           .outputOptions([
-            '-vf', `scale=640:-1,select='gt(scene\\,${sceneThreshold})',showinfo`,  // Giảm size xuống 640px trước để tính scene siêu nhanh
-            '-vsync', 'vfr',           // Variable frame rate (chỉ output frames được select)
-            '-q:v', '5',               // Nén JPEG cao hơn một chút để lưu file lẹ hơn
-            '-frame_pts', '1',         // Giữ timestamp gốc
+            '-vf', `scale=320:-1,select='gt(scene\\\\,${sceneThreshold})',showinfo`,  // 320px đủ để detect scene, siêu nhẹ
+            '-vsync', 'vfr',
+            '-f', 'null',              // KHÔNG ghi file → output tới null
           ])
-          .output(outputPattern)
+          .output(process.platform === 'win32' ? 'NUL' : '/dev/null')
+          .on('stderr', (line: string) => {
+            // Parse timestamp từ showinfo output: "pts_time:123.456"
+            const match = line.match(/pts_time:\s*([\d.]+)/);
+            if (match) {
+              sceneTimestamps.push(parseFloat(match[1]));
+            }
+          })
           .on('end', () => res())
           .on('error', (err) => {
-            console.warn('⚠️ Scene detection gặp lỗi, fallback sang interval mode:', err.message);
-            res(); // Không crash, sẽ fallback bên dưới
+            console.warn('⚠️ Phase 1 scene scan lỗi, sẽ fallback:', err.message);
+            res();
           })
           .run();
       });
 
-      // Bước 2: Đọc các file đã chụp
-      let extractedPaths: string[] = [];
-      if (fs.existsSync(outputDir)) {
-        extractedPaths = fs.readdirSync(outputDir)
-          .filter(f => f.endsWith('.jpg'))
-          .sort() // Sắp xếp theo thứ tự thời gian
-          .map(f => path.join(outputDir, f));
-      }
+      console.log(`📡 Phase 1 hoàn tất: Tìm thấy ${sceneTimestamps.length} scene changes xuyên suốt video.`);
 
-      // Bước 3: Nếu scene detection cho quá nhiều frame → lấy đều maxFrames frame
-      if (extractedPaths.length > maxFrames) {
-        const step = extractedPaths.length / maxFrames;
-        const sampled: string[] = [];
+      // ============================================================
+      // PHASE 2: CHỌN LỌC + TRÍCH XUẤT chính xác maxFrames frame
+      // Phân bố đều xuyên suốt video để không bỏ sót nội dung quan trọng
+      // ============================================================
+      let selectedTimestamps: number[];
+
+      if (sceneTimestamps.length <= maxFrames) {
+        // Ít scene → lấy tất cả
+        selectedTimestamps = sceneTimestamps;
+      } else {
+        // Nhiều scene → lấy đều maxFrames cái phân bố khắp video
+        const step = sceneTimestamps.length / maxFrames;
+        selectedTimestamps = [];
         for (let i = 0; i < maxFrames; i++) {
-          sampled.push(extractedPaths[Math.floor(i * step)]);
+          selectedTimestamps.push(sceneTimestamps[Math.floor(i * step)]);
         }
-        // Xóa các frame không dùng để giải phóng disk
-        for (const p of extractedPaths) {
-          if (!sampled.includes(p)) {
-            try { fs.unlinkSync(p); } catch {}
-          }
-        }
-        extractedPaths = sampled;
       }
 
-      // Bước 4: Fallback - Nếu scene detection không tìm được gì (video camera tĩnh),
-      // chụp tối thiểu 4 frame phân bố đều
-      if (extractedPaths.length < 3) {
+      // Fallback: Nếu scene detection ít kết quả (video camera tĩnh), bổ sung frame phân bố đều
+      if (selectedTimestamps.length < 3) {
         console.log('📸 Scene detection ít kết quả, bổ sung keyframes phân bố đều...');
-        const fallbackCount = 4;
+        const fallbackCount = Math.min(maxFrames, 4);
         const interval = duration / (fallbackCount + 1);
         for (let i = 0; i < fallbackCount; i++) {
           const ts = Math.floor(interval * (i + 1));
-          const outputPath = path.join(outputDir, `fallback_${i}_${ts}s.jpg`);
-          await new Promise<void>((res) => {
-            ffmpeg(videoPath)
-              .seekInput(ts)
-              .frames(1)
-              .outputOptions(['-q:v', '3'])
-              .output(outputPath)
-              .on('end', () => {
-                extractedPaths.push(outputPath);
-                res();
-              })
-              .on('error', () => res())
-              .run();
-          });
+          if (!selectedTimestamps.includes(ts)) {
+            selectedTimestamps.push(ts);
+          }
         }
+        selectedTimestamps.sort((a, b) => a - b);
       }
 
-      console.log(`📸 Keyframe extraction hoàn tất: ${extractedPaths.length} frames (scene change detection, max ${maxFrames}).`);
+      console.log(`📸 Phase 2: Trích xuất ${selectedTimestamps.length} keyframes tại các vị trí đã chọn...`);
+
+      // Seek chính xác tới từng timestamp và chụp 1 frame duy nhất (cực nhanh)
+      const extractedPaths: string[] = [];
+      for (let i = 0; i < selectedTimestamps.length; i++) {
+        const ts = selectedTimestamps[i];
+        const outputPath = path.join(outputDir, `scene_${String(i).padStart(4, '0')}.jpg`);
+        await new Promise<void>((res) => {
+          ffmpeg(videoPath)
+            .seekInput(ts)
+            .frames(1)
+            .outputOptions(['-q:v', '5', '-vf', 'scale=640:-1'])
+            .output(outputPath)
+            .on('end', () => {
+              extractedPaths.push(outputPath);
+              res();
+            })
+            .on('error', () => res())
+            .run();
+        });
+      }
+
+      console.log(`📸 Keyframe extraction hoàn tất: ${extractedPaths.length}/${maxFrames} frames (2-phase scene detection).`);
       resolve(extractedPaths);
     } catch (err) {
       console.error('❌ Lỗi keyframe extraction:', err);
@@ -349,7 +390,10 @@ export async function processVideoUpload(
 
     console.log("📸 Đang phát hiện scene changes trong video (smart keyframe)...");
     keyframeDir = path.join(path.dirname(tempFilePath), `keyframes_${Date.now()}`);
-    const keyframePaths = await extractKeyframes(tempFilePath, keyframeDir, 20, 0.3);
+    const videoDuration = await getVideoDuration(tempFilePath);
+    const keyframeConfig = getSmartKeyframeConfig(videoDuration);
+    console.log(`🎯 Video ${(videoDuration / 60).toFixed(1)} phút → maxFrames=${keyframeConfig.maxFrames}, sceneThreshold=${keyframeConfig.sceneThreshold}`);
+    const keyframePaths = await extractKeyframes(tempFilePath, keyframeDir, keyframeConfig.maxFrames, keyframeConfig.sceneThreshold);
 
     // =========================================================
     // BƯỚC 3.5: TẠO DRAFT LESSON TRONG DB VÀ TRẢ VỀ SỚM (BACKGROUND JOB)
@@ -562,14 +606,16 @@ async function runBackgroundVideoProcessing(
       - **MỤC TIÊU:** Kiểm tra kiến thức kỹ thuật/học thuật mà học viên thu được.
       - **NGUYÊN TẮC TẠO CÂU HỎI (QUAN TRỌNG):**
         1. **CHỈ TẬP TRUNG:** Các định nghĩa, logic code, nguyên lý hoạt động, cú pháp, hoặc kiến thức cốt lõi.
-        ${hasKeyframes ? '2. **SỬ DỤNG KEYFRAMES:** Nếu các ảnh chụp màn hình cho thấy code, diagram, hay công thức, hãy tạo câu hỏi dựa trên cả nội dung trực quan đó.' : ''}
-        2. **TUYỆT ĐỐI BỎ QUA:** - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
+        ${hasKeyframes ? '2. **SỬ DỤNG NỘI DUNG TRỰC QUAN:** Nếu ảnh chụp màn hình cho thấy code, diagram, hay công thức, hãy tạo câu hỏi dựa trên nội dung đó. Nhưng TUYỆT ĐỐI KHÔNG được đề cập đến "keyframe", "ảnh", "hình chụp", "screenshot" trong câu hỏi. Thay vào đó, hãy trích dẫn nội dung thực tế (ví dụ: "Trong đoạn code `const x = 5`..." thay vì "Theo keyframe 3...").' : ''}
+        3. **TUYỆT ĐỐI BỎ QUA:** - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
            - Các câu hỏi về phong cách giảng dạy (Ví dụ: "Giảng viên đã đơn giản hóa thế nào?", "Giảng viên nói câu gì để mở đầu?").
            - Các lời thoại giao đãi, chào hỏi, kể chuyện bên lề.
-        3. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
+           - **TUYỆT ĐỐI CẤM:** Bất kỳ đề cập nào đến "keyframe", "frame", "ảnh số", "screenshot số" hay bất kỳ thuật ngữ kỹ thuật nội bộ nào mà học viên sẽ không hiểu.
+        4. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
       
       - **CẤU TRÚC:** 4 đáp án A, B, C, D.
-      - **GIẢI THÍCH:** Phải giải thích dựa trên logic của bài học (Ví dụ: "Đúng, tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên...").
+      - **GIẢI THÍCH:** Phải giải thích dựa trên logic của bài học (Ví dụ: "Đúng, tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên..."). KHÔNG được đề cập đến "keyframe" trong giải thích.
+      - **TIMESTAMP:** Nếu câu hỏi đề cập đến một sự kiện cụ thể, một đoạn code hay công thức tại một thời điểm nhất định trong bài học, hãy trả về 'timestamp' (SỐ NGUYÊN tính bằng giây). Nếu là câu hỏi tổng quát thì trả về 'null'.
       ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
       {
         "transcript": "Nội dung toàn bộ văn bản tiếng Việt nguyên văn...",
@@ -582,7 +628,8 @@ async function runBackgroundVideoProcessing(
             "question": "Câu hỏi...",
             "options": ["A", "B", "C", "D"], 
             "answer": "A", 
-            "explanation": "Tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên..."
+            "explanation": "Tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên...",
+            "timestamp": 84
           }
         ]
       }
@@ -700,6 +747,7 @@ async function runBackgroundVideoProcessing(
         questions: {
           create: (Array.isArray(aiData.quiz) ? aiData.quiz : []).map((q: any) => ({
             content: q?.question || "Câu hỏi đang gặp lỗi",
+            timestamp: q?.timestamp || null,
             options: Array.isArray(q?.options) ? q.options.map((opt: string) =>
               String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim(),
             ) : ["A", "B", "C", "D"],

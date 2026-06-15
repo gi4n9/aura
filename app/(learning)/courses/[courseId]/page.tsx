@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Clock, CheckCircle2, PlayCircle, Star, Users, Circle, CalendarRange } from "lucide-react";
+import LessonProgressBar from "@/app/components/courseComponents/LessonProgressBar";
 import CourseDescription from "@/app/components/courseComponents/CourseDescription";
 import CourseActionButtons from "@/app/components/courseComponents/CourseActionButtons";
 import { createClient } from "@/utils/supabase/server";
@@ -41,11 +42,26 @@ export default async function CoursePage({ params }: PageProps) {
 
     if (!course) return notFound();
 
-    // 2. Calculate Progress
+    // 2. Calculate Progress & Duration
     let isEnrolled = false;
     let progressPercent = 0;
+    let totalCourseDurationSeconds = 0; // NEW: Total duration
+
     const lessonCompletionMap = new Map<string, boolean>(); // lessonId -> isCompleted
     const chapterProgressMap = new Map<string, number>(); // chapterId -> % completed
+
+    // Calculate total duration from all lessons
+    course.chapters.forEach(chapter => {
+        chapter.lessons.forEach(lesson => {
+            if (lesson.duration) {
+                totalCourseDurationSeconds += lesson.duration;
+            }
+        });
+    });
+
+    // Maps for UI rendering
+    const videoProgressMap = new Map<string, number>(); // lessonId -> percentage
+    const quizPassMap = new Map<string, boolean>(); // lessonId -> isPassed
 
     if (user) {
         const enroll = await prisma.enrollment.findUnique({
@@ -56,50 +72,48 @@ export default async function CoursePage({ params }: PageProps) {
             isEnrolled = true;
             progressPercent = enroll.progress; // Use stored progress
 
-            // Get all user submissions for this course
-            const userSubmissions = await prisma.submission.findMany({
-                where: {
-                    userId: user.id,
-                    question: { lesson: { chapter: { courseId: course.id } } }
-                },
-                select: {
-                    questionId: true,
-                    question: { select: { lessonId: true } }
-                },
-                distinct: ['questionId']
+            // Fetch Video Progress
+            const vpRecords = await prisma.videoProgress.findMany({
+                where: { userId: user.id, lesson: { chapter: { courseId: course.id } } },
+                select: { lessonId: true, percentage: true }
             });
+            vpRecords.forEach(vp => videoProgressMap.set(vp.lessonId, vp.percentage));
 
-            // Map: LessonID -> Count of User Answered Questions
-            const lessonAnsweredCount = new Map<string, number>();
-            userSubmissions.forEach(sub => {
-                const lid = sub.question.lessonId;
-                lessonAnsweredCount.set(lid, (lessonAnsweredCount.get(lid) || 0) + 1);
+            // Fetch Quiz Results
+            const qrRecords = await prisma.quizResult.findMany({
+                where: { userId: user.id, courseId: course.id },
+                select: { lessonId: true, isPassed: true }
             });
+            qrRecords.forEach(qr => quizPassMap.set(qr.lessonId, qr.isPassed));
 
-            // Determine Lesson Completion & Chapter Progress (Question-based)
+            // Legacy Check for Lesson Completion & Chapter Progress
+            // We consider a lesson 'completed' if Video >= 90% AND Quiz is Passed (if exists)
             course.chapters.forEach(chapter => {
-                let totalQuestionsInChapter = 0;
-                let answeredQuestionsInChapter = 0;
+                let chapterProgressAccumulator = 0;
 
                 chapter.lessons.forEach(lesson => {
-                    const totalQ = lesson._count.questions;
-                    totalQuestionsInChapter += totalQ;
+                    const videoPct = videoProgressMap.get(lesson.id) || 0;
+                    const hasQuiz = lesson._count.questions > 0;
+                    const isQuizPassed = quizPassMap.get(lesson.id) || false;
 
-                    const answered = lessonAnsweredCount.get(lesson.id) || 0;
-                    answeredQuestionsInChapter += answered;
+                    let lessonProg = 0;
+                    if (hasQuiz) {
+                        lessonProg = (videoPct * 0.7) + (isQuizPassed ? 30 : 0);
+                    } else {
+                        lessonProg = videoPct;
+                    }
 
-                    if (totalQ > 0 && answered >= totalQ) {
+                    if (lessonProg >= 90) {
                         lessonCompletionMap.set(lesson.id, true);
                     }
+                    chapterProgressAccumulator += lessonProg;
                 });
 
-                const chapProg = totalQuestionsInChapter > 0
-                    ? Math.round((answeredQuestionsInChapter / totalQuestionsInChapter) * 100)
+                const chapProg = chapter.lessons.length > 0
+                    ? Math.round(chapterProgressAccumulator / chapter.lessons.length)
                     : 0;
-                chapterProgressMap.set(chapter.id, chapProg);
+                chapterProgressMap.set(chapter.id, Math.min(chapProg, 100));
             });
-
-            // Keep distinct question-based progressPercent calculated above.
         }
     }
 
@@ -164,8 +178,11 @@ export default async function CoursePage({ params }: PageProps) {
                                 {isEnrolled ? (
                                     <div className="text-center py-2">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-stone-500 font-bold text-xs uppercase">Tiến độ khóa học</span>
-                                            <span className="text-stone-800 font-bold text-sm">{progressPercent}%</span>
+                                            <span className="text-stone-500 font-bold text-xs uppercase flex items-center gap-1">
+                                                <Clock size={14} /> 
+                                                {totalCourseDurationSeconds > 0 ? Math.floor(totalCourseDurationSeconds / 60) + " phút" : "N/A"}
+                                            </span>
+                                            <span className="text-stone-800 font-bold text-sm">Đã học {progressPercent}%</span>
                                         </div>
                                         <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden mb-6">
                                             <div
@@ -239,28 +256,41 @@ export default async function CoursePage({ params }: PageProps) {
                                                 <Link
                                                     key={lesson.id}
                                                     href={`/courses/${course.id}/lessons/${lesson.id}`}
-                                                    className="px-6 py-4 flex items-center justify-between group hover:bg-stone-50 transition-colors cursor-pointer"
+                                                    className="px-6 py-4 flex flex-col group hover:bg-stone-50 transition-colors cursor-pointer"
                                                 >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${isCompleted
-                                                            ? "bg-green-100 text-green-600 border-green-200"
-                                                            : "bg-stone-100 text-[#C5A059] border-stone-200 group-hover:border-[#C5A059]"
-                                                            }`}>
-                                                            {isCompleted ? <CheckCircle2 size={16} /> : <PlayCircle size={16} />}
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center border transition-colors ${isCompleted
+                                                                ? "bg-green-100 text-green-600 border-green-200"
+                                                                : "bg-stone-100 text-[#C5A059] border-stone-200 group-hover:border-[#C5A059]"
+                                                                }`}>
+                                                                {isCompleted ? <CheckCircle2 size={16} /> : <PlayCircle size={16} />}
+                                                            </div>
+                                                            <span className={`font-medium transition-colors ${isCompleted ? "text-stone-400 line-through decoration-stone-300" : "text-stone-600 group-hover:text-stone-900"}`}>
+                                                                {lesson.title}
+                                                            </span>
                                                         </div>
-                                                        <span className={`font-medium transition-colors ${isCompleted ? "text-stone-400 line-through decoration-stone-300" : "text-stone-600 group-hover:text-stone-900"}`}>
-                                                            {lesson.title}
-                                                        </span>
+                                                        <div className="flex items-center gap-6">
+                                                            <span className="text-xs font-mono text-stone-400 flex items-center gap-1">
+                                                                <Clock size={12} />
+                                                                {lesson.duration ? Math.floor(lesson.duration / 60) + "p" : "--"}
+                                                            </span>
+                                                            <span className="text-xs font-bold text-[#C5A059] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
+                                                                {isCompleted ? "Ôn tập" : "Học ngay"}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <span className="text-xs font-mono text-stone-400 flex items-center gap-1">
-                                                            <Clock size={12} />
-                                                            {lesson.duration ? Math.floor(lesson.duration / 60) + "p" : "--"}
-                                                        </span>
-                                                        <span className="text-xs font-bold text-[#C5A059] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
-                                                            {isCompleted ? "Ôn tập" : "Học ngay"}
-                                                        </span>
-                                                    </div>
+                                                    
+                                                    {/* [NEW] Progress Bar */}
+                                                    {isEnrolled && (
+                                                        <div className="mt-4 pl-12 pr-2">
+                                                            <LessonProgressBar 
+                                                                videoPercentage={videoProgressMap.get(lesson.id) || 0}
+                                                                hasQuiz={lesson._count.questions > 0}
+                                                                isQuizPassed={quizPassMap.get(lesson.id) || false}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </Link>
                                             );
                                         })}
@@ -276,6 +306,10 @@ export default async function CoursePage({ params }: PageProps) {
                     <div className="bg-white p-6 rounded-xl border border-stone-200">
                         <h3 className="font-serif text-lg font-bold mb-4">Khóa học này bao gồm:</h3>
                         <ul className="space-y-4 text-sm text-stone-600">
+                            <li className="flex items-center gap-3">
+                                <Clock size={18} className="text-[#C5A059]" />
+                                <span>Thời lượng {totalCourseDurationSeconds > 0 ? Math.floor(totalCourseDurationSeconds / 60) + " phút" : "N/A"}</span>
+                            </li>
                             <li className="flex items-center gap-3">
                                 <BookOpen size={18} className="text-[#C5A059]" />
                                 <span>{course.chapters.length} chương chuyên sâu</span>
