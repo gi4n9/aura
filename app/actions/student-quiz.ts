@@ -109,7 +109,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                 },
                 update: {
                     score,
-                    totalQuestions,
+                    totalQuestions: totalMcQuestions,
                     correctAnswers: correctCount,
                     isPassed,
                     attemptCount: { increment: 1 },

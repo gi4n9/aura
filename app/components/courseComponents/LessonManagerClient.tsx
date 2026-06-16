@@ -101,7 +101,7 @@ export default function LessonManagerClient({
                             </p>
                         </div>
                         {/* Đã thay thế lại QuestionEditor bằng QuizEditor để có full feature */}
-                        <QuizEditor lessonId={lessonId} initialQuestions={initialQuestions} initialDisplayMode={initialDisplayMode} />
+                        <QuizEditor lessonId={lessonId} initialQuestions={initialQuestions} initialDisplayMode={initialDisplayMode} transcript={initialTranscript} />
                     </div>
                 )}
             </div>

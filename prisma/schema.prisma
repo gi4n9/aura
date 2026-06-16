@@ -175,14 +175,15 @@ model Lesson {
   mindMapData    Json?   // GIỮ LẠI: Lưu JSON cho đồ họa Mindmap của React Flow
   flashcards     Flashcard[]
 
-  timeline     Json? 
-  translations Json? 
-  questions    Question[]
+  timeline        Json? 
+  translations    Json? 
+  questions       Question[]
   quizDisplayMode QuizDisplayMode @default(BOTH)
+  examCode        String?         // Mã đề của file worksheet được upload
 
-  studyPlanItems StudyPlanItem[]
-  videoProgress  VideoProgress[]
-  quizResults    QuizResult[]
+  studyPlanItems  StudyPlanItem[]
+  videoProgress   VideoProgress[]
+  quizResults     QuizResult[]
   videoEmbeddings VideoEmbedding[]
 
   createdAt DateTime @default(now())

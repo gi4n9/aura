@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UploadCloud, File, FileText, Image as ImageIcon, Loader2, CheckCircle, X } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { processWorksheetUpload } from "@/app/actions/quiz-worksheet";
+import { processWorksheetUpload, processWorksheetUploadBatch } from "@/app/actions/quiz-worksheet";
 import { toast } from "sonner";
 
 interface WorksheetUploaderProps {
@@ -62,51 +62,47 @@ export default function WorksheetUploader({ lessonId, onUploadSuccess }: Workshe
 
         setFiles(prev => [...prev, ...newFiles]);
 
-        // Process sequentially to avoid overwhelming memory/network
-        for (const fileObj of newFiles) {
-            await uploadAndProcessFile(fileObj.id, fileObj.file);
-        }
-    };
-
-    const uploadAndProcessFile = async (id: string, file: File) => {
         try {
-            // 1. Upload to Supabase Storage
-            setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "uploading", progress: 10 } : f));
-            
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${lessonId}/${crypto.randomUUID()}.${fileExt}`;
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from("quiz-attachments")
-                .upload(fileName, file, {
-                    upsert: false
-                });
-
-            if (uploadError) throw new Error(uploadError.message);
-
-            const { data: publicUrlData } = supabase.storage
-                .from("quiz-attachments")
-                .getPublicUrl(fileName);
-
-            const fileUrl = publicUrlData.publicUrl;
-
-            // 2. Process via Server Action (OCR + Regex)
-            setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "processing", progress: 50, message: "Đang OCR và nhận diện câu hỏi..." } : f));
             setIsProcessing(true);
+            const uploadedUrls: { url: string, type: string }[] = [];
 
-            const result = await processWorksheetUpload(lessonId, fileUrl, file.type);
+            // 1. Upload tất cả file lên Supabase trước
+            for (const fileObj of newFiles) {
+                setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: "uploading", progress: 50 } : f));
+                
+                const fileExt = fileObj.file.name.split('.').pop();
+                const fileName = `${lessonId}/${crypto.randomUUID()}.${fileExt}`;
+
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from("quiz-attachments")
+                    .upload(fileName, fileObj.file, { upsert: false });
+
+                if (uploadError) throw new Error(uploadError.message);
+
+                const { data: publicUrlData } = supabase.storage
+                    .from("quiz-attachments")
+                    .getPublicUrl(fileName);
+
+                uploadedUrls.push({ url: publicUrlData.publicUrl, type: fileObj.file.type });
+                setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: "processing", progress: 90, message: "Đang chờ xử lý AI..." } : f));
+            }
+
+            // 2. Gửi toàn bộ URL sang server action để xử lý batch
+            setFiles(prev => prev.map(f => newFiles.find(n => n.id === f.id) ? { ...f, status: "processing", progress: 95, message: "AI đang phân tích toàn bộ các trang..." } : f));
+            
+            const result = await processWorksheetUploadBatch(lessonId, uploadedUrls);
 
             if (!result.success) throw new Error(result.error);
 
             // 3. Success
-            setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "success", progress: 100, message: result.message } : f));
+            setFiles(prev => prev.map(f => newFiles.find(n => n.id === f.id) ? { ...f, status: "success", progress: 100, message: "Hoàn tất!" } : f));
             toast.success(result.message);
             onUploadSuccess();
 
         } catch (error: any) {
             console.error(error);
-            setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "error", message: error.message } : f));
-            toast.error(`Lỗi xử lý file ${file.name}: ${error.message}`);
+            setFiles(prev => prev.map(f => newFiles.find(n => n.id === f.id) ? { ...f, status: "error", message: error.message } : f));
+            toast.error(`Lỗi xử lý hàng loạt: ${error.message}`);
         } finally {
             setIsProcessing(false);
         }

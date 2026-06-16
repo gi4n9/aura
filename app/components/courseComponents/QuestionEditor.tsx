@@ -64,7 +64,16 @@ export default function QuestionEditor({ lessonId, initialQuestions }: QuestionE
     // 5. Lưu vào Database
     const handleSave = async () => {
         setLoading(true);
-        const res = await saveLessonQuestions(lessonId, questions);
+        const payload = questions.map((q) => ({
+            id: q.id,
+            content: q.content,
+            type: "MULTIPLE_CHOICE" as const,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            aiExplanation: q.aiExplanation,
+            quizSource: "MANUAL" as const
+        }));
+        const res = await saveLessonQuestions(lessonId, payload);
         setLoading(false);
 
         if (res.success) {

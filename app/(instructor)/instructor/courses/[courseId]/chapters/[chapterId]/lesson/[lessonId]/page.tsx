@@ -13,7 +13,7 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
 
     });
 
-    if (!lesson) return redirect("/instructor/dashboard");
+    if (!lesson) return redirect("/instructor/courses");
 
     const formattedQuestions = lesson.questions.map(q => ({
         id: q.id,
@@ -34,7 +34,9 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
         timestamp: fc.timestamp
     }));
 
-    const isProcessing = lesson.youtubeVideoId === null;
+    const isUploading = lesson.youtubeVideoId === null;
+    const isAIProcessing = lesson.transcript === "Đang được AI xử lý ngầm...";
+    const hasError = lesson.transcript?.includes("Lỗi");
 
     return (
         <div className="min-h-screen bg-[#F9F8F4] p-6">
@@ -45,10 +47,22 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
                 <div className="flex flex-col gap-2 mb-2">
                     <h1 className="text-3xl font-serif font-bold text-stone-800 flex items-center flex-wrap gap-3">
                         {lesson.title}
-                        {isProcessing && (
+                        {isUploading && (
+                            <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full animate-pulse flex items-center gap-2 font-medium">
+                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+                                ⏳ Đang tải video lên YouTube...
+                            </span>
+                        )}
+                        {!isUploading && isAIProcessing && (
                             <span className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded-full animate-pulse flex items-center gap-2 font-medium">
                                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
-                                ⏳ AI đang phân tích bài giảng (Vui lòng tải lại trang sau 5-10p)
+                                🧠 Video đã tải lên, AI đang phân tích bài giảng (Vui lòng reload sau 3-5p)...
+                            </span>
+                        )}
+                        {!isUploading && !isAIProcessing && hasError && (
+                            <span className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded-full flex items-center gap-2 font-medium" title={lesson.transcript || ""}>
+                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                ⚠️ AI xử lý gặp lỗi (Rà chuột để xem chi tiết)
                             </span>
                         )}
                     </h1>

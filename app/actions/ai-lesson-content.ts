@@ -4,9 +4,13 @@ import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { off } from "process";
+import Groq from "groq-sdk";
 
-// Initialize Gemini
+// Initialize Gemini & Groq
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+});
 
 // --- SCHEMAS (Native Google AI Format) ---
 
@@ -110,17 +114,6 @@ export async function generateMindmap(lessonId: string, transcript: string, skip
     }
 
     try {
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: mindmapSchema,
-                temperature: 0.4,
-                maxOutputTokens: 8192,
-            },
-            safetySettings,
-        });
-
         const prompt = `
         Tạo mindmap từ transcript video bài giảng sau. 
         Bạn PHẢI trả về ĐÚNG ĐỊNH DẠNG JSON hợp lệ. Bắt buộc bắt đầu bằng dấu '{' và kết thúc bằng dấu '}'.
@@ -163,28 +156,27 @@ export async function generateMindmap(lessonId: string, transcript: string, skip
         ${transcript.substring(0, 30000)}
         `;
 
-        let data: any = null;
-        const MAX_RETRIES = 3;
-
-        // Vòng lặp Retry xử lý lỗi 503
-        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            try {
-                const result = await model.generateContent(prompt);
-                const responseText = result.response.text();
-                data = cleanAndParseJSON(responseText);
-                break; // Gọi API và parse thành công thì thoát vòng lặp
-            } catch (error: any) {
-                if (error.status === 503 || (error.message && error.message.includes('503'))) {
-                    if (attempt < MAX_RETRIES - 1) {
-                        const waitTime = Math.pow(2, attempt) * 1000;
-                        console.warn(`[Lỗi 503] Mindmap: Server Gemini quá tải. Thử lại sau ${waitTime / 1000}s... (Lần ${attempt + 1}/${MAX_RETRIES})`);
-                        await delay(waitTime);
-                        continue;
-                    }
-                }
-                throw error;
-            }
+        console.log("⏳ Groq đang sinh mindmap...");
+        let responseText = "{}";
+        try {
+            const chatCompletion = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt,
+                    },
+                ],
+                model: "llama-3.3-70b-versatile",
+                response_format: { type: "json_object" },
+                temperature: 0.4,
+            });
+            responseText = chatCompletion.choices[0].message.content || "{}";
+        } catch (groqError: any) {
+            console.error("❌ Lỗi gọi Groq Mindmap:", groqError.message);
+            throw new Error(`Groq Mindmap Error: ${groqError.message}`);
         }
+
+        const data = cleanAndParseJSON(responseText);
 
         if (!data || !data.root) {
             console.warn("⚠️ Bỏ qua tạo Mindmap do AI trả về JSON lỗi.");
@@ -219,16 +211,6 @@ export async function generateFlashcards(lessonId: string, transcript: string, s
     }
 
     try {
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: flashcardSchema,
-                temperature: 0.4,
-            },
-            safetySettings,
-        });
-
         const prompt = `
         Tạo flashcards học tập từ transcript video bài giảng sau.
         
@@ -242,30 +224,27 @@ export async function generateFlashcards(lessonId: string, transcript: string, s
         ${transcript.substring(0, 30000)}
         `;
 
-        let data: any = null;
-        const MAX_RETRIES = 3;
-
-        // Vòng lặp Retry xử lý lỗi 503
-        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            try {
-                const result = await model.generateContent(prompt);
-                const responseText = result.response.text();
-                data = cleanAndParseJSON(responseText);
-                break; // Gọi API và parse thành công thì thoát vòng lặp
-            } catch (error: any) {
-                // Kiểm tra nếu là lỗi 503 từ Google
-                if (error.status === 503 || (error.message && error.message.includes('503'))) {
-                    if (attempt < MAX_RETRIES - 1) {
-                        const waitTime = Math.pow(2, attempt) * 1000; // Đợi 1s, 2s...
-                        console.warn(`[Lỗi 503] Flashcards: Server Gemini quá tải. Thử lại sau ${waitTime / 1000}s... (Lần ${attempt + 1}/${MAX_RETRIES})`);
-                        await delay(waitTime);
-                        continue;
-                    }
-                }
-                // Nếu là lỗi khác hoặc hết số lần thử, ném lỗi ra khối catch bên ngoài
-                throw error;
-            }
+        console.log("⏳ Groq đang sinh flashcards...");
+        let responseText = "{}";
+        try {
+            const chatCompletion = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt,
+                    },
+                ],
+                model: "llama-3.3-70b-versatile",
+                response_format: { type: "json_object" },
+                temperature: 0.4,
+            });
+            responseText = chatCompletion.choices[0].message.content || "{}";
+        } catch (groqError: any) {
+            console.error("❌ Lỗi gọi Groq Flashcards:", groqError.message);
+            throw new Error(`Groq Flashcards Error: ${groqError.message}`);
         }
+
+        const data = cleanAndParseJSON(responseText);
 
         if (!data || !data.flashcards) {
             console.warn("⚠️ Bỏ qua tạo Flashcard do AI trả về JSON lỗi.");
@@ -291,6 +270,110 @@ export async function generateFlashcards(lessonId: string, transcript: string, s
     } catch (error: any) {
         console.error("Generate Flashcards Error:", error);
         return { message: "Generate Flashcards Error", success: false, error: error.message };
+    }
+}
+
+export async function generateQuizFromTranscript(lessonId: string, transcript: string, skipAuth: boolean = false) {
+    if (!skipAuth) {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        const prompt = `
+        Bạn là một chuyên gia thiết kế đề thi giáo dục chuyên nghiệp.
+        Dưới đây là transcript (bản dịch ghi âm) của một bài giảng video:
+        
+        **TRANSCRIPT BÀI GIẢNG:**
+        ${transcript.substring(0, 30000)}
+        
+        Nhiệm vụ của bạn là dựa vào nội dung transcript trên để tạo ra danh sách **10 câu hỏi trắc nghiệm** học thuật chất lượng cao để kiểm tra kiến thức của học viên.
+
+        ### NGUYÊN TẮC TẠO CÂU HỎI (QUAN TRỌNG):
+        1. **CHỈ TẬP TRUNG:** Các định nghĩa, logic code, nguyên lý hoạt động, cú pháp, hoặc kiến thức cốt lõi chuyên môn.
+        2. **TUYỆT ĐỐI BỎ QUA:**
+           - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
+           - Các câu hỏi về phong cách giảng dạy (Ví dụ: "Giảng viên đã đơn giản hóa thế nào?", "Giảng viên nói câu gì để mở đầu?").
+           - Các lời thoại giao đãi, chào hỏi, kể chuyện bên lề.
+           - **TUYỆT ĐỐI CẤM:** Bất kỳ đề cập nào đến "keyframe", "frame", "ảnh", "hình chụp", "screenshot" hay bất kỳ thuật ngữ kỹ thuật nội bộ nào.
+        3. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
+        4. **MỖI CÂU HỎI GỒM:**
+           - 4 đáp án A, B, C, D (options).
+           - Đáp án đúng (answer: A, B, C hoặc D).
+           - Giải thích chi tiết dựa trên bài học.
+           - "timestamp" (số nguyên tính bằng giây hoặc null) thể hiện thời điểm xuất hiện kiến thức đó trong bài học.
+
+        ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
+        {
+          "quiz": [
+            {
+              "question": "Nội dung câu hỏi...",
+              "options": ["Đáp án A...", "Đáp án B...", "Đáp án C...", "Đáp án D..."],
+              "answer": "A",
+              "explanation": "Giải thích tại sao A đúng...",
+              "timestamp": 84
+            }
+          ]
+        }
+        `;
+
+        console.log("⏳ Groq đang sinh quiz...");
+        let responseText = "{}";
+        try {
+            const chatCompletion = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: "user",
+                        content: prompt,
+                    },
+                ],
+                model: "llama-3.3-70b-versatile",
+                response_format: { type: "json_object" },
+                temperature: 0.4,
+            });
+            responseText = chatCompletion.choices[0].message.content || "{}";
+        } catch (groqError: any) {
+            console.error("❌ Lỗi gọi Groq Quiz:", groqError.message);
+            throw new Error(`Groq Quiz Error: ${groqError.message}`);
+        }
+
+        const data = cleanAndParseJSON(responseText);
+
+        if (!data || !data.quiz) {
+            console.warn("⚠️ Bỏ qua tạo Quiz do AI trả về JSON lỗi.");
+            return { success: false, error: "Malformed JSON from AI" };
+        }
+
+        // Xóa câu hỏi AI cũ trước khi tạo mới để tránh bị lặp trùng lặp
+        await db.question.deleteMany({
+            where: {
+                lessonId,
+                quizSource: "AI_VIDEO"
+            }
+        });
+
+        // Save to DB
+        await db.question.createMany({
+            data: data.quiz.map((q: any) => ({
+                lessonId,
+                content: q.question || "Câu hỏi đang gặp lỗi",
+                timestamp: q.timestamp || null,
+                options: Array.isArray(q.options) ? q.options.map((opt: string) =>
+                    String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim()
+                ) : ["A", "B", "C", "D"],
+                correctAnswer: q.answer || "A",
+                type: "MULTIPLE_CHOICE",
+                aiExplanation: q.explanation || "Chưa có giải thích.",
+                quizSource: "AI_VIDEO"
+            }))
+        });
+
+        return { message: "Quiz generated successfully", success: true, data: data.quiz };
+
+    } catch (error: any) {
+        console.error("Generate Quiz Error:", error);
+        return { message: "Generate Quiz Error", success: false, error: error.message };
     }
 }
 

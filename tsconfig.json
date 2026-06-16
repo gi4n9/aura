@@ -38,7 +38,9 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase"
+    "supabase",
+    "appDataDir",
+    "prisma"
   ],
   "ts-node": {
     "compilerOptions": {

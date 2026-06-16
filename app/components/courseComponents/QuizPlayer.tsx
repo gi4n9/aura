@@ -195,9 +195,9 @@ export default function QuizPlayer({
                 const feedback = result?.feedback.find((f: any) => f.questionId === q.id);
 
                 return (
-                    <div key={q.id} className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-                        <div className="flex justify-between items-start gap-4  mb-5">
-                            <div className="flex gap-3 items-start w-full">
+                    <div key={q.id} className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+                        <div className="flex justify-between items-start gap-4 mb-5 min-w-0">
+                            <div className="flex gap-3 items-start w-full min-w-0">
                                 <div className="flex flex-row gap-2 items-center shrink-0 mt-1">
                                     <span className="inline-flex items-center justify-center px-3 py-1.5 rounded bg-[#1a1a1a] text-[#C5A059] text-xs font-bold uppercase tracking-wider shadow-sm select-none">
                                         Câu {index + 1}
@@ -220,14 +220,34 @@ export default function QuizPlayer({
                                 </div>
 
                                 {/* 2. Nội dung câu hỏi và nút tua video */}
-                                <div className="flex-1 flex flex-col pt-0.5 gap-2">
+                                <div className="flex-1 min-w-0 flex flex-col pt-0.5 gap-2">
                                     {q.contentImageUrl && (
                                         <div className="mb-3">
                                             <img src={q.contentImageUrl} alt="Question image" className="max-h-60 rounded-lg border border-stone-200 object-contain" />
                                         </div>
                                     )}
-                                    <div className="prose prose-sm md:prose-base max-w-none text-stone-800 prose-pre:my-2 prose-pre:bg-stone-900 prose-pre:p-3 prose-p:my-1 font-medium leading-snug">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    <div className="prose prose-sm md:prose-base max-w-none text-stone-800 prose-p:my-1 font-medium leading-snug w-full min-w-0">
+                                        <ReactMarkdown 
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                pre: ({ children }) => (
+                                                    <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs md:text-sm w-full max-w-full block border border-stone-850 scrollbar-thin">
+                                                        {children}
+                                                    </pre>
+                                                ),
+                                                code: ({ inline, children, className, ...props }: any) => {
+                                                    return inline ? (
+                                                        <code className="bg-stone-100 text-[#C5A059] px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                                                            {children}
+                                                        </code>
+                                                    ) : (
+                                                        <code className={`${className} font-mono`} {...props}>
+                                                            {children}
+                                                        </code>
+                                                    );
+                                                }
+                                            }}
+                                        >
                                             {q.content}
                                         </ReactMarkdown>
                                     </div>
@@ -325,10 +345,30 @@ export default function QuizPlayer({
 
                         {/* GIẢI THÍCH (Chỉ hiện khi đã nộp) */}
                         {result && feedback?.explanation && (
-                            <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg flex gap-2 items-start">
+                            <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg flex gap-2 items-start min-w-0 overflow-hidden">
                                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                                <div className="prose prose-sm max-w-none text-blue-800 prose-p:my-0 prose-pre:my-2 prose-pre:bg-stone-900 prose-pre:text-stone-50 prose-pre:p-2">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                <div className="flex-1 min-w-0 prose prose-sm max-w-none text-blue-800 prose-p:my-0">
+                                    <ReactMarkdown 
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            pre: ({ children }) => (
+                                                <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs w-full max-w-full block border border-stone-850">
+                                                    {children}
+                                                </pre>
+                                            ),
+                                            code: ({ inline, children, className, ...props }: any) => {
+                                                return inline ? (
+                                                    <code className="bg-blue-100/50 text-blue-900 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                                                        {children}
+                                                    </code>
+                                                ) : (
+                                                    <code className={`${className} font-mono`} {...props}>
+                                                        {children}
+                                                    </code>
+                                                );
+                                            }
+                                        }}
+                                    >
                                         {`**Giải thích:** ${feedback.explanation}`}
                                     </ReactMarkdown>
                                 </div>

@@ -51,6 +51,7 @@
     "tesseract.js": "^7.0.0",
     "three": "^0.182.0",
     "tus-js-client": "^4.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@
 import { google } from "googleapis";
 import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
+import Groq from "groq-sdk";
 import { prisma } from "@/lib/prisma";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
@@ -34,11 +35,14 @@ oauth2Client.setCredentials({
 
 const youtube = google.youtube({ version: "v3", auth: oauth2Client });
 
-// --- 2. CẤU HÌNH GEMINI ---
+// --- 2. CẤU HÌNH GEMINI & GROQ ---
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const fileManager = new GoogleAIFileManager(
   process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
 );
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const getVideoDuration = (filePath: string): Promise<number> => {
   return new Promise((resolve, reject) => {
@@ -251,20 +255,15 @@ function cleanAndParseJSON(rawText: string) {
     return {
       transcript: "",
       timeline: [],
-      quiz: [],
     };
   }
 }
 
-const videoAnalysisSchema: Schema = {
+const videoTimelineSchema: Schema = {
   description:
-    "Kết quả phân tích video giáo dục bao gồm transcript, timeline, quiz và dịch thuật.",
+    "Danh sách các mốc thời gian trong video.",
   type: SchemaType.OBJECT,
   properties: {
-    transcript: {
-      type: SchemaType.STRING,
-      description: "Nội dung nguyên văn tiếng Việt.",
-    },
     timeline: {
       type: SchemaType.ARRAY,
       description: "Danh sách các mốc thời gian trong video. Mỗi mốc gồm thời gian (giây) và tiêu đề.",
@@ -283,28 +282,8 @@ const videoAnalysisSchema: Schema = {
         required: ["time", "label"],
       },
     },
-    quiz: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          question: { type: SchemaType.STRING },
-          options: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
-            description: "Danh sách 4 đáp án A, B, C, D",
-          },
-          answer: {
-            type: SchemaType.STRING,
-            description: "Đáp án đúng (A, B, C hoặc D)",
-          },
-          explanation: { type: SchemaType.STRING },
-        },
-        required: ["question", "options", "answer", "explanation"],
-      },
-    },
   },
-  required: ["transcript", "timeline", "quiz"],
+  required: ["timeline"],
 };
 
 export async function processVideoUpload(
@@ -469,9 +448,9 @@ async function runBackgroundVideoProcessing(
 
   try {
     // =========================================================
-    // BƯỚC 3: UPLOAD LÊN YOUTUBE & GEMINI (SONG SONG)
+    // BƯỚC 3: UPLOAD LÊN YOUTUBE & BÓC BĂNG TRANSCRIPT BẰNG GROQ (SONG SONG)
     // =========================================================
-    console.log("⚡ Đang upload lên YouTube và Gemini...");
+    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Groq...");
 
     // A. Upload YouTube (vẫn upload video gốc)
     const youtubeUploadPromise = youtube.videos.insert({
@@ -484,111 +463,70 @@ async function runBackgroundVideoProcessing(
         status: { privacyStatus: "unlisted" },
       },
       media: { body: fs.createReadStream(tempFilePath) },
-    }).then(ytRes => {
+    }).then(async (ytRes) => {
       if (!ytRes.data.id) throw new Error("Không nhận được YouTube Video ID.");
       console.log(`✅ YouTube Upload OK. ID: ${ytRes.data.id}`);
+      
+      // Cập nhật database lưu youtubeVideoId ngay lập tức để tránh mất link video
+      console.log(`💾 Đang lưu youtubeVideoId (${ytRes.data.id}) vào database...`);
+      await prisma.lesson.update({
+        where: { id: lessonId },
+        data: { youtubeVideoId: ytRes.data.id }
+      });
+      
       return ytRes.data.id;
     });
 
-    // B. Upload AUDIO (thay vì video) lên Gemini → tiết kiệm ~90-95% token
-    const geminiUploadPromise = fileManager.uploadFile(audioFilePath, {
-      mimeType: "audio/mp4",
-      displayName: `[Audio] ${title}`,
-    }).then(async (uploadResult) => {
-      const name = uploadResult.file.name;
-      console.log(`⬆️ Đã upload AUDIO lên Gemini: ${name}`);
-
-      // Polling trạng thái xử lý
-      let file = await fileManager.getFile(name);
-      while (file.state === FileState.PROCESSING) {
-        console.log("... Gemini đang xử lý audio ...");
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        file = await fileManager.getFile(name);
-      }
-
-      if (file.state === FileState.FAILED) {
-        throw new Error("Gemini xử lý audio thất bại.");
-      }
-      return file;
+    // B. Bóc băng audio bằng Groq Whisper API (whisper-large-v3)
+    const groqTranscriptionPromise = groq.audio.transcriptions.create({
+      file: fs.createReadStream(audioFilePath),
+      model: "whisper-large-v3",
+      language: "vi",
+      response_format: "json",
+    }).then((transRes) => {
+      console.log("✅ Groq Transcription OK.");
+      return transRes.text;
     });
 
     // Đợi cả 2 hoàn tất an toàn
     const uploadResults = await Promise.allSettled([
       youtubeUploadPromise,
-      geminiUploadPromise,
+      groqTranscriptionPromise,
     ]);
 
     if (uploadResults[0].status === "rejected") {
       throw new Error(`YouTube API Error: ${uploadResults[0].reason?.message || "Lỗi không xác định"}`);
     }
     if (uploadResults[1].status === "rejected") {
-      throw new Error(`Gemini API Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
+      throw new Error(`Groq STT Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
     }
 
     youtubeId = uploadResults[0].value;
-    const geminiFile = uploadResults[1].value;
-
-    geminiFileName = geminiFile.name;
-    const geminiFileUri = geminiFile.uri;
-    console.log(`🔗 Gemini Audio URI: ${geminiFileUri}`);
+    const transcriptText = uploadResults[1].value;
+    console.log(`📝 Groq transcript length: ${transcriptText.length} characters`);
 
     // =========================================================
-    // BƯỚC 4: GỬI GEMINI PHÂN TÍCH (AUDIO + KEYFRAMES)
+    // BƯỚC 4: GỬI GROQ PHÂN TÍCH VÀ SINH TIMELINE TỪ TRANSCRIPT TEXT
     // =========================================================
-    console.log("🧠 Đang gửi yêu cầu phân tích Audio + Keyframes...");
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        maxOutputTokens: 16384,
-        temperature: 0.4, // QUAN TRỌNG: Tăng nhẹ tính sáng tạo để tránh bị chặn lỗi RECITATION
-        responseMimeType: "application/json",
-        responseSchema: videoAnalysisSchema,
-      },
-      // Safety settings để tránh lỗi RECITATION khi xử lý video giáo dục
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-      ],
-    });
+    console.log("🧠 Đang gửi yêu cầu sinh timeline từ transcript văn bản qua Groq...");
 
     // --- PROMPT ĐƯỢC THIẾT KẾ RIÊNG ---
     const videoDuration = Math.round(durationInSeconds);
-    const hasKeyframes = keyframePaths.length > 0;
     const prompt = `
       Bạn là một chuyên gia phân tích bài giảng giáo dục và ngôn ngữ học.
       
       **THÔNG TIN BÀI GIẢNG:**
       - Tiêu đề: "${title}"
       - Thời lượng: ${videoDuration} giây (tương đương ${Math.floor(videoDuration / 60)} phút ${videoDuration % 60} giây)
-      - Dữ liệu đầu vào: File AUDIO bài giảng${hasKeyframes ? " + " + keyframePaths.length + " ảnh chụp màn hình quan trọng (keyframes)" : ""}
+      - Dữ liệu đầu vào: Văn bản transcript bóc băng từ video bài giảng bên dưới.
       
-      Nhiệm vụ của bạn là xử lý bài giảng này và trả về kết quả JSON chính xác tuyệt đối theo các yêu cầu sau:
-
-      ### NHIỆM VỤ 1: TRANSCRIPT (QUAN TRỌNG NHẤT)
-      - Yêu cầu: **CHI TIẾT VÀ ĐẦY ĐỦ NHẤT CÓ THỂ**.
-      - Bạn hãy ghi chép lại toàn bộ ý nghĩa lời nói tiếng Việt có trong audio.
-      - **BẮT BUỘC ĐỂ TRÁNH LỖI RECITATION:** Để tránh vi phạm lỗi bản quyền, bạn PHẢI diễn đạt lại (Paraphrase), thay đổi cấu trúc câu văn hoặc chọn từ đồng nghĩa sao cho tự nhiên mà không làm mất kiến thức chuyên môn.
-      - **TUYỆT ĐỐI KHÔNG** chép lại nguyên văn y hệt 100% từng từ (Verbatim), nếu không bạn sẽ bị hệ thống chặn ngay lập tức.
-      - **QUAN TRỌNG VỀ SỐ LIỆU:** Nếu giảng viên đọc số thập phân (ví dụ "4 phẩy 9"), hãy viết chính xác con số đó (4.9). Giữ số liệu ngắn gọn đúng như thuật toán.
-      ${hasKeyframes ? '- **KEYFRAMES:** Các ảnh chụp màn hình kèm theo giúp bạn thấy nội dung trực quan (code, slide, diagram) mà giảng viên đang trình bày. Hãy kết hợp thông tin từ audio VÀ keyframes để tạo transcript đầy đủ nhất.' : ''}
+      **VĂN BẢN TRANSCRIPT:**
+      """
+      ${transcriptText}
+      """
       
-      ### NHIỆM VỤ 2: TIMELINE (Mốc thời gian bài giảng)
-      - Chia bài giảng thành các đoạn (chapters) có ý nghĩa dựa trên nội dung audio.
+      Nhiệm vụ của bạn là sinh Timeline (Mốc thời gian bài giảng) dưới dạng JSON chính xác tuyệt đối theo các yêu cầu sau:
+      - Chia bài giảng thành các đoạn (chapters) có ý nghĩa dựa trên nội dung transcript.
       - **QUAN TRỌNG VỀ TIME:**
         - "time" PHẢI là **SỐ NGUYÊN** (integer) tính bằng giây.
         - **RÀNG BUỘC:** 0 <= time < ${videoDuration} (thời lượng video là ${videoDuration} giây).
@@ -601,113 +539,40 @@ async function runBackgroundVideoProcessing(
         - Ví dụ: "Giới thiệu", "Cài đặt môi trường", "Code ví dụ đầu tiên".
       - **SỐ LƯỢNG:** Chia thành 3-10 mốc tùy độ dài video.
 
-
-      ### NHIỆM VỤ 3: QUIZ (10 CÂU HỎI CHUYÊN MÔN)
-      - **MỤC TIÊU:** Kiểm tra kiến thức kỹ thuật/học thuật mà học viên thu được.
-      - **NGUYÊN TẮC TẠO CÂU HỎI (QUAN TRỌNG):**
-        1. **CHỈ TẬP TRUNG:** Các định nghĩa, logic code, nguyên lý hoạt động, cú pháp, hoặc kiến thức cốt lõi.
-        ${hasKeyframes ? '2. **SỬ DỤNG NỘI DUNG TRỰC QUAN:** Nếu ảnh chụp màn hình cho thấy code, diagram, hay công thức, hãy tạo câu hỏi dựa trên nội dung đó. Nhưng TUYỆT ĐỐI KHÔNG được đề cập đến "keyframe", "ảnh", "hình chụp", "screenshot" trong câu hỏi. Thay vào đó, hãy trích dẫn nội dung thực tế (ví dụ: "Trong đoạn code `const x = 5`..." thay vì "Theo keyframe 3...").' : ''}
-        3. **TUYỆT ĐỐI BỎ QUA:** - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
-           - Các câu hỏi về phong cách giảng dạy (Ví dụ: "Giảng viên đã đơn giản hóa thế nào?", "Giảng viên nói câu gì để mở đầu?").
-           - Các lời thoại giao đãi, chào hỏi, kể chuyện bên lề.
-           - **TUYỆT ĐỐI CẤM:** Bất kỳ đề cập nào đến "keyframe", "frame", "ảnh số", "screenshot số" hay bất kỳ thuật ngữ kỹ thuật nội bộ nào mà học viên sẽ không hiểu.
-        4. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
-      
-      - **CẤU TRÚC:** 4 đáp án A, B, C, D.
-      - **GIẢI THÍCH:** Phải giải thích dựa trên logic của bài học (Ví dụ: "Đúng, tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên..."). KHÔNG được đề cập đến "keyframe" trong giải thích.
-      - **TIMESTAMP:** Nếu câu hỏi đề cập đến một sự kiện cụ thể, một đoạn code hay công thức tại một thời điểm nhất định trong bài học, hãy trả về 'timestamp' (SỐ NGUYÊN tính bằng giây). Nếu là câu hỏi tổng quát thì trả về 'null'.
       ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
       {
-        "transcript": "Nội dung toàn bộ văn bản tiếng Việt nguyên văn...",
         "timeline": [
           { "time": 0, "label": "Giới thiệu" },
           { "time": 120, "label": "Nội dung chính" }
-        ],
-        "quiz": [
-          {
-            "question": "Câu hỏi...",
-            "options": ["A", "B", "C", "D"], 
-            "answer": "A", 
-            "explanation": "Tại thời điểm 1:24, vì theo logic của vòng lặp mà giảng viên giải thích, biến i sẽ tăng lên...",
-            "timestamp": 84
-          }
         ]
       }
     `;
 
-    console.log("⏳ Gemini đang thực hiện 4 nhiệm vụ cùng lúc (Audio + Keyframes)...");
+    console.log("⏳ Groq đang sinh timeline...");
 
-    // Xây dựng content parts: Audio file + Keyframe images + Prompt
-    const contentParts: any[] = [
-      {
-        fileData: {
-          mimeType: "audio/mp4",
-          fileUri: geminiFileUri,
-        },
-      },
-    ];
-
-    // Thêm keyframe images (inline base64) nếu có
-    for (const kfPath of keyframePaths) {
-      try {
-        const imageBuffer = fs.readFileSync(kfPath);
-        const base64Data = imageBuffer.toString('base64');
-        contentParts.push({
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: base64Data,
+    let responseText = "{}";
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: prompt,
           },
-        });
-      } catch (imgErr) {
-        console.warn(`⚠️ Không đọc được keyframe: ${kfPath}`);
-      }
+        ],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+        temperature: 0.4,
+      });
+      responseText = chatCompletion.choices[0].message.content || "{}";
+    } catch (groqError: any) {
+      console.error("❌ Lỗi gọi Groq Timeline:", groqError.message);
+      throw new Error(`Groq Timeline Error: ${groqError.message}`);
     }
 
-    // Thêm prompt text cuối cùng
-    contentParts.push({ text: prompt });
-
-    console.log(`📦 Gửi Gemini: 1 audio file + ${keyframePaths.length} keyframes + prompt`);
-
-    let result;
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🧠 Bắt đầu gọi Gemini API (Lần ${attempt}/${maxRetries})...`);
-        result = await model.generateContent(contentParts);
-        break; // Thoát vòng lặp nếu thành công
-      } catch (aiError: any) {
-        console.error(`❌ Lỗi gọi Gemini lần ${attempt}:`, aiError.message);
-        
-        // Bắt lỗi 503 Quá tải của server Google
-        if (aiError.message?.includes("503") || aiError.message?.includes("high demand")) {
-          if (attempt < maxRetries) {
-            const waitTime = attempt * 15; // Đợi 15s, 30s...
-            console.warn(`⏳ Gemini đang quá tải (503). Đợi ${waitTime} giây trước khi thử lại...`);
-            await new Promise((res) => setTimeout(res, waitTime * 1000));
-            continue;
-          } else {
-            throw new Error("Hệ thống AI (Gemini) của Google hiện đang quá tải (503 Service Unavailable). Vui lòng thử lại sau ít phút.");
-          }
-        }
-        
-        // Bắt lỗi bản quyền
-        if (aiError.message?.includes("RECITATION")) {
-          throw new Error("Gemini từ chối xử lý do lỗi bảo vệ bản quyền (RECITATION Block). Mẹo: Hãy cắt bớt đoạn âm nhạc bản quyền trong video, hoặc thử lại một video giảng dạy khác.");
-        }
-        
-        // Các lỗi khác thì throw luôn
-        throw aiError;
-      }
-    }
-
-    if (!result) {
-      throw new Error("Lỗi không xác định: Không nhận được kết quả từ Gemini.");
-    }
-
-    const aiData = cleanAndParseJSON(result.response.text());
+    const aiData = cleanAndParseJSON(responseText);
 
     console.log(
-      `✨ AI hoàn tất! (Transcript: ${aiData.transcript?.length} chars)`,
+      `✨ AI hoàn tất! Timeline: ${aiData.timeline?.length || 0} mốc`,
     );
 
     // =========================================================
@@ -735,27 +600,14 @@ async function runBackgroundVideoProcessing(
     // =========================================================
     // BƯỚC 6: CẬP NHẬT DATABASE
     // =========================================================
-    // Lưu Lesson + Questions + Timeline + Translations
+    // Lưu Lesson + Timeline + Translations
     await prisma.lesson.update({
       where: { id: lessonId },
       data: {
         youtubeVideoId: youtubeId,
-        transcript: aiData.transcript,
+        transcript: transcriptText,
         timeline: validatedTimeline, // Đã validate
         translations: {}, // Tạm tắt dịch thuật vì vượt giới hạn token Gemini
-
-        questions: {
-          create: (Array.isArray(aiData.quiz) ? aiData.quiz : []).map((q: any) => ({
-            content: q?.question || "Câu hỏi đang gặp lỗi",
-            timestamp: q?.timestamp || null,
-            options: Array.isArray(q?.options) ? q.options.map((opt: string) =>
-              String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim(),
-            ) : ["A", "B", "C", "D"],
-            correctAnswer: q?.answer || "A",
-            type: "MULTIPLE_CHOICE",
-            aiExplanation: q?.explanation || "Chưa có giải thích.",
-          })),
-        },
       },
     });
 
@@ -767,7 +619,7 @@ async function runBackgroundVideoProcessing(
       const { generateEmbeddings: genEmbed } = await import("@/lib/ai/embedding");
 
       // Chunk transcript bằng thuật toán Overlapping
-      const transcript = aiData.transcript || "";
+      const transcript = transcriptText || "";
       const chunks = chunkTranscriptWithOverlap(transcript, maxDuration, {
         chunkSize: 500,     // ~500 ký tự mỗi chunk
         overlapSize: 80,    // ~80 ký tự gối đầu

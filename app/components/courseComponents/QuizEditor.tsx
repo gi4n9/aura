@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 
-import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User } from "lucide-react";
+import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
+import { generateQuizFromTranscript } from "@/app/actions/ai-lesson-content";
 
 import { toast } from "sonner";
 import { QuizDisplayMode, QuizSource } from "@prisma/client";
 import WorksheetUploader from "./WorksheetUploader";
+import AnswerKeyUploader from "./AnswerKeyUploader";
 import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 
 
@@ -28,9 +30,10 @@ interface QuizEditorProps {
     lessonId: string;
     initialQuestions: any[];
     initialDisplayMode?: QuizDisplayMode;
+    transcript?: string | null;
 }
 
-export default function QuizEditor({ lessonId, initialQuestions, initialDisplayMode = QuizDisplayMode.BOTH }: QuizEditorProps) {
+export default function QuizEditor({ lessonId, initialQuestions, initialDisplayMode = QuizDisplayMode.BOTH, transcript }: QuizEditorProps) {
     const [questions, setQuestions] = useState<QuestionState[]>(
         initialQuestions.map((q) => ({
             id: q.id,
@@ -51,6 +54,28 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
     }
 
     const [isSaving, setIsSaving] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerateQuiz = async () => {
+        if (!transcript) {
+            toast.error("Không có Transcript để tạo câu hỏi trắc nghiệm!");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const res = await generateQuizFromTranscript(lessonId, transcript, false);
+            if (res.success && res.data) {
+                toast.success("Tạo câu hỏi AI thành công!");
+                window.location.reload();
+            } else {
+                throw new Error(res.error || "Lỗi tạo câu hỏi");
+            }
+        } catch (error: any) {
+            toast.error(`Có lỗi xảy ra: ${error.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleAddQuestion = () => {
         setQuestions([
@@ -124,18 +149,37 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
     return (<div className="max-w-4xl mx-auto space-y-8 pb-20">
         <QuizDisplayModeSelector lessonId={lessonId} initialMode={initialDisplayMode} />
         
-        <WorksheetUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <WorksheetUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
+            <AnswerKeyUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
+        </div>
 
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800">
                 Danh sách câu hỏi ({questions.length})
             </h2>
-            <button
-                onClick={handleAddQuestion}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
-            >
-                <Plus size={18} /> Thêm câu hỏi
-            </button>
+            <div className="flex gap-2">
+                {transcript && (
+                    <button
+                        onClick={handleGenerateQuiz}
+                        disabled={isGenerating}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-semibold shadow-sm ${
+                            isGenerating
+                                ? "bg-blue-100 text-blue-400 cursor-not-allowed"
+                                : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+                        }`}
+                    >
+                        <Sparkles size={18} className={isGenerating ? "animate-spin" : ""} />
+                        {isGenerating ? "Đang tạo câu hỏi..." : "Tạo câu hỏi bằng AI"}
+                    </button>
+                )}
+                <button
+                    onClick={handleAddQuestion}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
+                >
+                    <Plus size={18} /> Thêm câu hỏi
+                </button>
+            </div>
         </div>
 
         {questions.map((q, qIndex) => (
