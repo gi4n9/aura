@@ -28,16 +28,20 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
             mindMapData: true,
             flashcards: true,
             duration: true,
+            quizDisplayMode: true,
             questions: {
                 where: { isArchived: false },
                 orderBy: { createdAt: "asc" },
                 select: {
                     id: true,
                     content: true,
+                    type: true,
                     options: true,
                     correctAnswer: true,
                     aiExplanation: true,
                     timestamp: true,
+                    quizSource: true,
+                    contentImageUrl: true,
                 }
             }
         }
@@ -87,11 +91,19 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
     // Actually we know lessonId, so we can fetch submissions by lessonId directly if we didn't need Q mapping
     // But we map Qs.
 
-    let userAnswers: Record<string, string> = {};
+    let userAnswers: Record<string, { selectedOption?: string, answerText?: string, fileUrl?: string }> = {};
     let initialResult = null;
 
-    if (user && lesson.questions.length > 0) {
-        const questionsIds = lesson.questions.map(q => q.id);
+    // Filter questions based on displayMode
+    let displayQuestions = lesson.questions;
+    if (lesson.quizDisplayMode === "AI_ONLY") {
+        displayQuestions = lesson.questions.filter(q => q.quizSource === "AI_VIDEO");
+    } else if (lesson.quizDisplayMode === "WORKSHEET_ONLY") {
+        displayQuestions = lesson.questions.filter(q => q.quizSource === "WORKSHEET");
+    }
+
+    if (user && displayQuestions.length > 0) {
+        const questionsIds = displayQuestions.map(q => q.id);
 
         const submissions = await prisma.submission.findMany({
             where: {
@@ -102,15 +114,29 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
 
         if (submissions.length > 0) {
             submissions.forEach(sub => {
-                userAnswers[sub.questionId] = sub.answerText || "";
+                const isMC = displayQuestions.find(q => q.id === sub.questionId)?.type === "MULTIPLE_CHOICE";
+                userAnswers[sub.questionId] = {
+                    selectedOption: isMC ? sub.answerText || undefined : undefined,
+                    answerText: !isMC ? sub.answerText || undefined : undefined,
+                    fileUrl: sub.fileUrl || undefined
+                };
             });
 
             // Calculate Result
             let correctCount = 0;
-            const feedback = lesson.questions.map(q => {
+            const mcQuestions = displayQuestions.filter(q => q.type === "MULTIPLE_CHOICE");
+            const totalMcQuestions = mcQuestions.length;
+
+            const feedback = displayQuestions.map(q => {
                 const userAns = userAnswers[q.id];
-                const isCorrect = userAns === q.correctAnswer;
-                if (isCorrect) correctCount++;
+                const isMC = q.type === "MULTIPLE_CHOICE";
+                
+                let isCorrect = true;
+                if (isMC) {
+                    isCorrect = userAns?.selectedOption === q.correctAnswer;
+                    if (isCorrect) correctCount++;
+                }
+
                 return {
                     questionId: q.id,
                     isCorrect,
@@ -121,21 +147,23 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
 
             initialResult = {
                 success: true,
-                score: Math.round((correctCount / lesson.questions.length) * 100),
+                score: totalMcQuestions > 0 ? Math.round((correctCount / totalMcQuestions) * 100) : 100,
                 correctCount,
-                total: lesson.questions.length,
+                total: totalMcQuestions,
                 feedback
             };
         }
     }
 
     // 3. Format Questions
-    const formattedQuestions = lesson.questions.map((q) => ({
+    const formattedQuestions = displayQuestions.map((q) => ({
         id: q.id,
         content: q.content,
+        type: q.type,
         options: q.options as string[],
-        userAnswer: userAnswers[q.id] || null,
-        timestamp: q.timestamp
+        contentImageUrl: q.contentImageUrl,
+        timestamp: q.timestamp,
+        quizSource: q.quizSource
     }));
 
     // 4. Fetch all user progress for this course to display in Sidebar

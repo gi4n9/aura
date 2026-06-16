@@ -2,37 +2,53 @@
 
 import { useState } from "react";
 
-import { AlertCircle, CheckCircle, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
 
 import { toast } from "sonner";
+import { QuizDisplayMode, QuizSource } from "@prisma/client";
+import WorksheetUploader from "./WorksheetUploader";
+import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 
 
 interface QuestionState {
     id?: string;
     content: string;
+    type: "MULTIPLE_CHOICE" | "ESSAY";
     options: string[];
-    correctAnswer: "A" | "B" | "C" | "D";
+    correctAnswer: "A" | "B" | "C" | "D" | string;
     aiExplanation: string;
+    quizSource: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
+    contentImageUrl?: string | null;
 }
 
 
 interface QuizEditorProps {
     lessonId: string;
     initialQuestions: any[];
+    initialDisplayMode?: QuizDisplayMode;
 }
 
-export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorProps) {
+export default function QuizEditor({ lessonId, initialQuestions, initialDisplayMode = QuizDisplayMode.BOTH }: QuizEditorProps) {
     const [questions, setQuestions] = useState<QuestionState[]>(
         initialQuestions.map((q) => ({
             id: q.id,
             content: q.content,
-            options: q.options as string[],
-            correctAnswer: q.correctAnswer,
+            type: q.type || "MULTIPLE_CHOICE",
+            options: Array.isArray(q.options) ? q.options : ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
+            correctAnswer: q.correctAnswer || "A",
             aiExplanation: q.aiExplanation || "",
+            quizSource: q.quizSource || "MANUAL",
+            contentImageUrl: q.contentImageUrl
         }))
     );
+
+    const handleUploadSuccess = () => {
+        // Tải lại trang hiện tại để có thể fetch lại list questions mới 
+        // Component này được sử dụng chung trong 2 routes, do đó dùng window.location.reload()
+        window.location.reload();
+    }
 
     const [isSaving, setIsSaving] = useState(false);
 
@@ -41,9 +57,11 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
             ...questions,
             {
                 content: "Câu hỏi mới ...",
+                type: "MULTIPLE_CHOICE",
                 options: ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
                 correctAnswer: "A",
                 aiExplanation: "",
+                quizSource: "MANUAL"
             }
         ])
     }
@@ -78,10 +96,14 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
             setIsSaving(true);
 
             const payload = questions.map((q) => ({
+                id: q.id,
                 content: q.content,
-                options: q.options,
-                correctAnswer: q.correctAnswer,
-                aiExplanation: q.aiExplanation
+                type: q.type,
+                options: q.type === "MULTIPLE_CHOICE" ? q.options : [],
+                correctAnswer: q.type === "MULTIPLE_CHOICE" ? q.correctAnswer : "",
+                aiExplanation: q.aiExplanation,
+                quizSource: q.quizSource,
+                contentImageUrl: q.contentImageUrl
             }))
 
             const result = await saveLessonQuestions(lessonId, payload)
@@ -100,6 +122,10 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
     }
 
     return (<div className="max-w-4xl mx-auto space-y-8 pb-20">
+        <QuizDisplayModeSelector lessonId={lessonId} initialMode={initialDisplayMode} />
+        
+        <WorksheetUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
+
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800">
                 Danh sách câu hỏi ({questions.length})
@@ -119,9 +145,49 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
             >
                 {/* Header câu hỏi */}
                 <div className="flex justify-between items-start mb-4">
-                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded text-sm font-bold">
-                        Câu {qIndex + 1}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded text-sm font-bold">
+                            Câu {qIndex + 1}
+                        </span>
+                        
+                        {/* Type Badge */}
+                        <div className="flex bg-slate-100 rounded-md p-0.5">
+                            <button
+                                onClick={() => handleChangeField(qIndex, "type", "MULTIPLE_CHOICE")}
+                                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    q.type === "MULTIPLE_CHOICE" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                <List size={14} /> Trắc nghiệm
+                            </button>
+                            <button
+                                onClick={() => handleChangeField(qIndex, "type", "ESSAY")}
+                                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                    q.type === "ESSAY" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                <AlignLeft size={14} /> Tự luận
+                            </button>
+                        </div>
+
+                        {/* Source Badge */}
+                        {q.quizSource === "AI_VIDEO" && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                <Bot size={12} /> AI Video
+                            </span>
+                        )}
+                        {q.quizSource === "WORKSHEET" && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                                <FileText size={12} /> Phiếu bài tập
+                            </span>
+                        )}
+                        {q.quizSource === "MANUAL" && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                                <User size={12} /> Thủ công
+                            </span>
+                        )}
+                    </div>
+
                     <button
                         onClick={() => handleDeleteQuestion(qIndex)}
                         className="text-slate-400 hover:text-red-500 p-2 transition-colors"
@@ -133,6 +199,11 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
 
                 {/* Nội dung câu hỏi */}
                 <div className="mb-6">
+                    {q.contentImageUrl && (
+                        <div className="mb-4">
+                            <img src={q.contentImageUrl} alt="Ảnh câu hỏi" className="max-h-60 object-contain rounded-lg border border-slate-200" />
+                        </div>
+                    )}
                     <textarea
                         value={q.content}
                         onChange={(e) => handleChangeField(qIndex, "content", e.target.value)}
@@ -142,9 +213,10 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
                     />
                 </div>
 
-                {/* Danh sách đáp án */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {q.options.map((opt, optIndex) => {
+                {/* Danh sách đáp án - Chỉ hiển thị cho MULTIPLE_CHOICE */}
+                {q.type === "MULTIPLE_CHOICE" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {(q.options || []).map((opt, optIndex) => {
                         const label = ["A", "B", "C", "D"][optIndex];
                         const isCorrect = q.correctAnswer === label;
 
@@ -183,6 +255,7 @@ export default function QuizEditor({ lessonId, initialQuestions }: QuizEditorPro
                         );
                     })}
                 </div>
+                )}
 
                 {/* Giải thích AI */}
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">

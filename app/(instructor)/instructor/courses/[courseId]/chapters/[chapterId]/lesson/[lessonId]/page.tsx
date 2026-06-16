@@ -20,7 +20,11 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
         content: q.content,
         options: q.options as string[],
         correctAnswer: (q.correctAnswer as "A" | "B" | "C" | "D") || "A",
-        aiExplanation: q.aiExplanation || ""
+        aiExplanation: q.aiExplanation || "",
+        quizSource: q.quizSource,
+        contentImageUrl: q.contentImageUrl,
+        timestamp: q.timestamp,
+        type: q.type
     }));
 
     const formattedFlashcards = lesson.flashcards.map(fc => ({
@@ -60,6 +64,7 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
                     initialTranscript={lesson.transcript}
                     initialMindMap={lesson.mindMapData}
                     initialFlashcards={formattedFlashcards}
+                    initialDisplayMode={lesson.quizDisplayMode}
                 />
             </div>
         </div>

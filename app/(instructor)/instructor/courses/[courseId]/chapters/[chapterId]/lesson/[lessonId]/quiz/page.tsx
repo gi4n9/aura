@@ -41,6 +41,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
             <QuizEditor
                 lessonId={lesson.id}
                 initialQuestions={lesson.questions}
+                initialDisplayMode={lesson.quizDisplayMode}
             />
         </div>
     );

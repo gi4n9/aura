@@ -2,7 +2,7 @@ import ProfileForm from "@/app/components/profile/ProfileForm";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { BookOpen, Compass, CheckCircle2 } from "lucide-react";
+import { BookOpen, Compass, CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default async function StudentProfilePage() {

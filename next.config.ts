@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
     "ffmpeg-static",
     "ffprobe-static",
     "get-video-duration",
+    "tesseract.js",
+    "pdf-parse",
   ],
 
   experimental: {

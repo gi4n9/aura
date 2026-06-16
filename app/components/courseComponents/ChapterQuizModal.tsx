@@ -119,6 +119,7 @@ export default function ChapterQuizModal({ chapterId, chapterTitle, onClose }: C
 function QuizLoader({ lessonId }: { lessonId: string }) {
     const [loading, setLoading] = useState(true);
     const [questions, setQuestions] = useState<any[]>([]);
+    const [displayMode, setDisplayMode] = useState<any>("BOTH");
 
     useEffect(() => {
         let mounted = true;
@@ -126,6 +127,7 @@ function QuizLoader({ lessonId }: { lessonId: string }) {
         getLessonQuestions(lessonId).then(res => {
             if (mounted && res.success) {
                 setQuestions(res.data || []);
+                setDisplayMode((res as any).quizDisplayMode || "BOTH");
             }
             if (mounted) setLoading(false);
         });
@@ -141,7 +143,7 @@ function QuizLoader({ lessonId }: { lessonId: string }) {
 
     return (
         <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <QuizEditor lessonId={lessonId} initialQuestions={questions} />
+            <QuizEditor lessonId={lessonId} initialQuestions={questions} initialDisplayMode={displayMode} />
         </div>
     );
 }

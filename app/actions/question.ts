@@ -11,12 +11,14 @@ import { QuestionType } from "@prisma/client";
 // ============================================
 
 const questionInputSchema = z.object({
+  id: z.string().optional(),
   content: z.string().min(1, "Nội dung câu hỏi không được để trống"),
-  options: z.array(z.string()).length(4, "Phải có đúng 4 đáp án"),
-  correctAnswer: z.enum(["A", "B", "C", "D"], {
-    message: "Đáp án đúng phải là A, B, C hoặc D",
-  }),
-  aiExplanation: z.string().optional(),
+  type: z.enum(["MULTIPLE_CHOICE", "ESSAY"]).default("MULTIPLE_CHOICE"),
+  options: z.array(z.string()).nullable().optional(),
+  correctAnswer: z.string().nullable().optional(),
+  aiExplanation: z.string().nullable().optional(),
+  quizSource: z.enum(["AI_VIDEO", "MANUAL", "WORKSHEET"]).default("MANUAL"),
+  contentImageUrl: z.string().nullable().optional(),
 });
 
 const saveLessonQuestionsSchema = z.object({
@@ -130,10 +132,12 @@ export async function saveLessonQuestions(
         data: validated.questions.map((q) => ({
           lessonId: validated.lessonId,
           content: q.content,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          type: QuestionType.MULTIPLE_CHOICE,
+          options: q.options || [],
+          correctAnswer: q.correctAnswer || null,
+          type: q.type as QuestionType,
           aiExplanation: q.aiExplanation || "",
+          quizSource: q.quizSource as any,
+          contentImageUrl: q.contentImageUrl || null,
           isArchived: false,
         })),
       });
@@ -181,6 +185,11 @@ export async function saveLessonQuestions(
 
 export async function getLessonQuestions(lessonId: string) {
   try {
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      select: { quizDisplayMode: true }
+    });
+
     const questions = await db.question.findMany({
       where: {
         lessonId,
@@ -197,11 +206,14 @@ export async function getLessonQuestions(lessonId: string) {
       data: questions.map((q) => ({
         id: q.id,
         content: q.content,
-        // Cast JSON to string[] (Prisma JSON type)
+        type: q.type,
         options: (q.options as string[]) || [],
-        correctAnswer: (q.correctAnswer as "A" | "B" | "C" | "D") || "A",
+        correctAnswer: q.correctAnswer || "",
         aiExplanation: q.aiExplanation || "",
+        quizSource: q.quizSource,
+        contentImageUrl: q.contentImageUrl || "",
       })),
+      quizDisplayMode: lesson?.quizDisplayMode || "BOTH"
     };
   } catch (error) {
     console.error("Get Questions Error:", error);

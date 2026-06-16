@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 
 interface StudentAnswer {
   questionId: string;
-  selectedOption: string; // "A", "B", "C", "D"
+  selectedOption?: string; // "A", "B", "C", "D" (cho trắc nghiệm)
+  answerText?: string; // Câu trả lời văn bản (cho tự luận)
+  fileUrl?: string; // Link file (cho tự luận)
 }
 
 export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
@@ -58,14 +60,16 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       const question = questions.find((q) => q.id === ans.questionId);
       if (!question) continue;
 
-      // So sánh đáp án
-      const isCorrect = question.correctAnswer === ans.selectedOption;
+      // So sánh đáp án (Chỉ tính cho trắc nghiệm)
+      const isMultipleChoice = question.type === "MULTIPLE_CHOICE";
+      const isCorrect = isMultipleChoice && question.correctAnswer === ans.selectedOption;
+      
       if (isCorrect) correctCount++;
 
       // Dữ liệu trả về cho Client (UI)
       feedbackData.push({
         questionId: question.id,
-        isCorrect: isCorrect,
+        isCorrect: isMultipleChoice ? isCorrect : true, // Tự luận luôn pass
         correctAnswer: question.correctAnswer,
         explanation: question.aiExplanation,
       });
@@ -74,9 +78,10 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       submissionsToCreate.push({
         userId: user.id,
         questionId: question.id,
-        answerText: ans.selectedOption,
-        score: isCorrect ? 1 : 0,
-        feedback: isCorrect ? "Chính xác" : "Sai",
+        answerText: isMultipleChoice ? ans.selectedOption : ans.answerText,
+        fileUrl: ans.fileUrl,
+        score: isMultipleChoice ? (isCorrect ? 1 : 0) : null,
+        feedback: isMultipleChoice ? (isCorrect ? "Chính xác" : "Sai") : "Đã ghi nhận bài nộp tự luận",
       });
     }
 
@@ -90,8 +95,10 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
     // 3.5 Update QuizResult & Course Progress
     if (lessonInfo) {
         const courseId = lessonInfo.chapter.courseId;
-        const totalQuestions = questions.length;
-        const score = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
+        // Tính điểm tổng (Chỉ tính số câu trắc nghiệm)
+        const mcQuestions = questions.filter(q => q.type === "MULTIPLE_CHOICE");
+        const totalMcQuestions = mcQuestions.length;
+        const score = totalMcQuestions > 0 ? (correctCount / totalMcQuestions) * 100 : 100; // Nếu toàn tự luận thì mặc định 100
         const isPassed = score >= 80; // Pass nếu đúng từ 80% trở lên (hoặc tuỳ chọn)
 
         // Lưu QuizResult
@@ -113,7 +120,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     lessonId,
                     courseId,
                     score,
-                    totalQuestions,
+                    totalQuestions: mcQuestions.length,
                     correctAnswers: correctCount,
                     isPassed,
                     attemptCount: 1
@@ -151,10 +158,11 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
     }
 
     // 4. Tính toán kết quả
-    const totalQuestions = questions.length;
-    const scorePercent = totalQuestions > 0
-        ? Math.round((correctCount / totalQuestions) * 100)
-        : 0;
+    const mcQuestions = questions.filter(q => q.type === "MULTIPLE_CHOICE");
+    const totalMcQuestions = mcQuestions.length;
+    const scorePercent = totalMcQuestions > 0
+        ? Math.round((correctCount / totalMcQuestions) * 100)
+        : 100;
 
     // 5. [NEW] Upsert QuizResult - Lưu kết quả tổng hợp
     if (lessonInfo) {
@@ -179,7 +187,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     data: {
                         score: scorePercent,
                         correctAnswers: correctCount,
-                        totalQuestions: totalQuestions,
+                        totalQuestions: totalMcQuestions,
                         isPassed: isPassed || existingResult.isPassed, // Nếu đã pass thì giữ nguyên
                         lastAttemptAt: new Date(),
                         attemptCount: { increment: 1 }
@@ -204,7 +212,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     courseId: courseId,
                     score: scorePercent,
                     correctAnswers: correctCount,
-                    totalQuestions: totalQuestions,
+                    totalQuestions: totalMcQuestions,
                     isPassed: isPassed,
                     attemptCount: 1,
                     lastAttemptAt: new Date()
@@ -222,7 +230,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       success: true,
       score: scorePercent,
       correctCount,
-      total: totalQuestions,
+      total: totalMcQuestions,
       feedback: feedbackData,
     };
   } catch (error: any) {

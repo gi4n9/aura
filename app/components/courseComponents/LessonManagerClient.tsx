@@ -6,9 +6,9 @@ import {
     Network, Layers, LayoutDashboard
 } from "lucide-react";
 
-// Import đầy đủ các component (Đã sửa đổi thành QuestionEditor)
+// Import đầy đủ các component (Đã sửa đổi thành QuizEditor)
 import LessonVideoEditor from "./LessonVideoEditor";
-import QuestionEditor from "./QuestionEditor";
+import QuizEditor from "./QuizEditor";
 import TranscriptEditor from "./TranscriptEditor";
 import MindMapEditor from "./MindMapEditor";
 import FlashcardEditor from "./FlashcardEditor";
@@ -20,6 +20,7 @@ interface LessonManagerProps {
     initialTranscript?: string | null;
     initialMindMap?: any;
     initialFlashcards?: any;
+    initialDisplayMode?: any;
 }
 
 export default function LessonManagerClient({
@@ -28,7 +29,8 @@ export default function LessonManagerClient({
     initialQuestions,
     initialTranscript,
     initialMindMap,
-    initialFlashcards
+    initialFlashcards,
+    initialDisplayMode
 }: LessonManagerProps) {
     const [activeTab, setActiveTab] = useState<"video" | "transcript" | "mindmap" | "flashcards" | "questions">("video");
 
@@ -98,8 +100,8 @@ export default function LessonManagerClient({
                                 Bạn có thể chỉnh sửa, thêm mới hoặc xóa bớt trước khi xuất bản.
                             </p>
                         </div>
-                        {/* Đã thay thế QuizEditor bằng QuestionEditor */}
-                        <QuestionEditor lessonId={lessonId} initialQuestions={initialQuestions} />
+                        {/* Đã thay thế lại QuestionEditor bằng QuizEditor để có full feature */}
+                        <QuizEditor lessonId={lessonId} initialQuestions={initialQuestions} initialDisplayMode={initialDisplayMode} />
                     </div>
                 )}
             </div>

@@ -71,7 +71,7 @@ export default function LessonLayout({
     lesson: LessonData;
     formattedQuestions: any[];
     initialResult?: any;
-    userAnswers?: Record<string, string>;
+    userAnswers?: Record<string, { selectedOption?: string, answerText?: string, fileUrl?: string }>;
     allVideoProgress?: any[];
     allQuizResults?: any[];
 }) {
