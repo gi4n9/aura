@@ -10,15 +10,31 @@ import { QuestionType } from "@prisma/client";
 // ZOD VALIDATION SCHEMAS (VIBE PROTOCOL #3)
 // ============================================
 
+const subItemSchema = z.object({
+  id: z.string().optional(),
+  label: z.string(),
+  content: z.string(),
+  isCorrect: z.boolean(),
+  position: z.number().default(0)
+});
+
+const passageSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().nullable().optional(),
+  content: z.string()
+});
+
 const questionInputSchema = z.object({
   id: z.string().optional(),
   content: z.string().min(1, "Nội dung câu hỏi không được để trống"),
-  type: z.enum(["MULTIPLE_CHOICE", "ESSAY"]).default("MULTIPLE_CHOICE"),
+  type: z.enum(["MULTIPLE_CHOICE", "ESSAY", "TRUE_FALSE", "FILL_IN_BLANK", "READING_COMPREHENSION"]).default("MULTIPLE_CHOICE"),
   options: z.array(z.string()).nullable().optional(),
   correctAnswer: z.string().nullable().optional(),
   aiExplanation: z.string().nullable().optional(),
   quizSource: z.enum(["AI_VIDEO", "MANUAL", "WORKSHEET"]).default("MANUAL"),
   contentImageUrl: z.string().nullable().optional(),
+  subItems: z.array(subItemSchema).optional(),
+  passage: passageSchema.optional().nullable(),
 });
 
 const saveLessonQuestionsSchema = z.object({
@@ -85,8 +101,6 @@ export async function saveLessonQuestions(
       };
     }
 
-    // Check if the authenticated user is the instructor of this course
-    // Profile.id maps 1-1 with Supabase auth.users.id
     if (lesson.chapter.course.instructorId !== authUser.id) {
       return {
         success: false,
@@ -104,14 +118,16 @@ export async function saveLessonQuestions(
 
     // 5. HANDLE EXISTING QUESTIONS
     if (!hasSubmission) {
-      // No submissions yet - safe to delete old questions
+      // Xóa Passages cũ trước (vì SubItem tự cascade theo Question)
+      await db.passage.deleteMany({
+        where: { lessonId: validated.lessonId },
+      });
       await db.question.deleteMany({
         where: {
           lessonId: validated.lessonId,
         },
       });
     } else {
-      // Has submissions - archive old questions instead
       await db.question.updateMany({
         where: {
           lessonId: validated.lessonId,
@@ -121,26 +137,56 @@ export async function saveLessonQuestions(
           isArchived: true,
         },
       });
-      console.log(
-        `Lesson ${validated.lessonId} đã có bài nộp. Đã archived ${validated.questions.length} câu hỏi cũ.`
-      );
     }
 
-    // 6. CREATE NEW QUESTIONS
+    // 6. CREATE NEW QUESTIONS (Tạo tuần tự để xử lý nested Passages và SubItems)
     if (validated.questions.length > 0) {
-      await db.question.createMany({
-        data: validated.questions.map((q) => ({
-          lessonId: validated.lessonId,
-          content: q.content,
-          options: q.options || [],
-          correctAnswer: q.correctAnswer || null,
-          type: q.type as QuestionType,
-          aiExplanation: q.aiExplanation || "",
-          quizSource: q.quizSource as any,
-          contentImageUrl: q.contentImageUrl || null,
-          isArchived: false,
-        })),
-      });
+      // Để tránh tạo trùng Passage (nếu các câu hỏi chia sẻ chung content), dùng Map
+      const passageMap = new Map<string, string>(); // passage.content -> passage.id
+
+      for (const q of validated.questions) {
+        let passageId = null;
+
+        if (q.passage && q.passage.content) {
+          const passageKey = q.passage.content.trim();
+          if (passageMap.has(passageKey)) {
+            passageId = passageMap.get(passageKey);
+          } else {
+            const newPassage = await db.passage.create({
+              data: {
+                lessonId: validated.lessonId,
+                title: q.passage.title || null,
+                content: q.passage.content,
+              }
+            });
+            passageId = newPassage.id;
+            passageMap.set(passageKey, passageId);
+          }
+        }
+
+        await db.question.create({
+          data: {
+            lessonId: validated.lessonId,
+            content: q.content,
+            options: q.options || [],
+            correctAnswer: q.correctAnswer || null,
+            type: q.type as QuestionType,
+            aiExplanation: q.aiExplanation || "",
+            quizSource: q.quizSource as any,
+            contentImageUrl: q.contentImageUrl || null,
+            isArchived: false,
+            passageId: passageId,
+            subItems: q.subItems && q.subItems.length > 0 ? {
+              create: q.subItems.map((si, idx) => ({
+                label: si.label,
+                content: si.content,
+                isCorrect: si.isCorrect,
+                position: si.position ?? idx
+              }))
+            } : undefined
+          }
+        });
+      }
     }
 
     // 7. REVALIDATE CACHE (VIBE PROTOCOL #8)
@@ -195,6 +241,12 @@ export async function getLessonQuestions(lessonId: string) {
         lessonId,
         isArchived: false,
       },
+      include: {
+        subItems: {
+          orderBy: { position: 'asc' }
+        },
+        passage: true
+      },
       orderBy: {
         createdAt: "asc",
       },
@@ -212,6 +264,12 @@ export async function getLessonQuestions(lessonId: string) {
         aiExplanation: q.aiExplanation || "",
         quizSource: q.quizSource,
         contentImageUrl: q.contentImageUrl || "",
+        subItems: q.subItems,
+        passage: q.passage ? {
+          id: q.passage.id,
+          title: q.passage.title,
+          content: q.passage.content
+        } : null
       })),
       quizDisplayMode: lesson?.quizDisplayMode || "BOTH"
     };

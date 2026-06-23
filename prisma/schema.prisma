@@ -16,8 +16,11 @@ enum UserRole {
 }
 
 enum QuestionType {
-  MULTIPLE_CHOICE // Trắc nghiệm
-  ESSAY // Tự luận/Bài tập nộp file
+  MULTIPLE_CHOICE        // Trắc nghiệm 4 đáp án A/B/C/D
+  ESSAY                  // Tự luận/Bài tập nộp file
+  TRUE_FALSE             // Đúng/Sai (cụm 4 mệnh đề a,b,c,d)
+  FILL_IN_BLANK          // Điền khuyết (nhập kết quả ngắn)
+  READING_COMPREHENSION  // Đọc hiểu (câu hỏi dựa trên passage chung)
 }
 
 enum CourseStatus {
@@ -185,6 +188,7 @@ model Lesson {
   videoProgress   VideoProgress[]
   quizResults     QuizResult[]
   videoEmbeddings VideoEmbedding[]
+  passages        Passage[]
 
   createdAt DateTime @default(now())
 }
@@ -250,9 +254,53 @@ model Question {
 
   quizSource    QuizSource   @default(AI_VIDEO)  // Nguồn gốc câu hỏi
 
+  // === MỚI: Hỗ trợ đa dạng câu hỏi ===
+  subjectHint   String?  // Gợi ý môn học: "toan", "ngu_van", "anh_van", "ly", "hoa", "sinh", "su", "dia", "gdcd"
+
+  // Quan hệ Passage (Đọc hiểu): 1 Passage → N Questions
+  passageId     String?
+  passage       Passage? @relation(fields: [passageId], references: [id], onDelete: SetNull)
+
+  // Quan hệ SubItem (Đúng/Sai cụm): 1 Question → N SubItems
+  subItems      SubItem[]
+
   isArchived  Boolean      @default(false)
   submissions Submission[]
   createdAt   DateTime     @default(now())
+}
+
+// ================= PASSAGE (ĐỌC HIỂU) =================
+// Lưu đoạn văn bản/ngữ liệu dùng chung cho nhóm câu hỏi đọc hiểu
+model Passage {
+  id        String   @id @default(uuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  title     String?  // VD: "Đọc hiểu bài Sóng - Xuân Quỳnh"
+  content   String   @db.Text // Nội dung đoạn văn/ngữ liệu
+
+  questions Question[]
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+}
+
+// ================= SUBITEM (ĐÚNG/SAI CỤM) =================
+// Lưu từng mệnh đề a, b, c, d cho câu hỏi dạng TRUE_FALSE
+model SubItem {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  label      String   // "a", "b", "c", "d"
+  content    String   @db.Text // Nội dung mệnh đề
+  isCorrect  Boolean  // true = Đúng, false = Sai
+  knowledge  String?  // Tag kiến thức riêng (tùy chọn, cho AI tracking)
+
+  position   Int      @default(0) // Thứ tự hiển thị
+  createdAt  DateTime @default(now())
+
+  @@index([questionId])
 }
 
 // ================= 2.1 CATEGORIES =================

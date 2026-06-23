@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles, CheckSquare, FormInput, BookOpen } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
 import { generateQuizFromTranscript } from "@/app/actions/ai-lesson-content";
@@ -17,12 +17,14 @@ import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 interface QuestionState {
     id?: string;
     content: string;
-    type: "MULTIPLE_CHOICE" | "ESSAY";
+    type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE" | "FILL_IN_BLANK" | "READING_COMPREHENSION";
     options: string[];
     correctAnswer: "A" | "B" | "C" | "D" | string;
     aiExplanation: string;
     quizSource: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
     contentImageUrl?: string | null;
+    subItems?: { id?: string; label: string; content: string; isCorrect: boolean; position?: number }[];
+    passage?: { id?: string; title?: string | null; content: string } | null;
 }
 
 
@@ -43,7 +45,14 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
             correctAnswer: q.correctAnswer || "A",
             aiExplanation: q.aiExplanation || "",
             quizSource: q.quizSource || "MANUAL",
-            contentImageUrl: q.contentImageUrl
+            contentImageUrl: q.contentImageUrl,
+            subItems: q.subItems && q.subItems.length > 0 ? q.subItems : [
+                { label: "a", content: "Mệnh đề A", isCorrect: false },
+                { label: "b", content: "Mệnh đề B", isCorrect: false },
+                { label: "c", content: "Mệnh đề C", isCorrect: false },
+                { label: "d", content: "Mệnh đề D", isCorrect: false }
+            ],
+            passage: q.passage || null
         }))
     );
 
@@ -97,7 +106,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
         setQuestions(newQ);
     }
 
-    const handleChangeField = (index: number, field: keyof QuestionState, value: string) => {
+    const handleChangeField = (index: number, field: keyof QuestionState, value: any) => {
         const newQ = [...questions];
         newQ[index] = { ...newQ[index], [field]: value };
         setQuestions(newQ);
@@ -125,10 +134,12 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                 content: q.content,
                 type: q.type,
                 options: q.type === "MULTIPLE_CHOICE" ? q.options : [],
-                correctAnswer: q.type === "MULTIPLE_CHOICE" ? q.correctAnswer : "",
+                correctAnswer: q.type === "MULTIPLE_CHOICE" ? q.correctAnswer : (q.type === "FILL_IN_BLANK" ? q.correctAnswer : ""),
                 aiExplanation: q.aiExplanation,
                 quizSource: q.quizSource,
-                contentImageUrl: q.contentImageUrl
+                contentImageUrl: q.contentImageUrl,
+                subItems: q.type === "TRUE_FALSE" ? (q.subItems?.map((s, idx) => ({ ...s, position: s.position ?? idx })) || []) : [],
+                passage: q.type === "READING_COMPREHENSION" ? q.passage : null
             }))
 
             const result = await saveLessonQuestions(lessonId, payload)
@@ -195,18 +206,42 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                         </span>
                         
                         {/* Type Badge */}
-                        <div className="flex bg-slate-100 rounded-md p-0.5">
+                        <div className="flex bg-slate-100 rounded-md p-0.5 overflow-x-auto max-w-full">
                             <button
                                 onClick={() => handleChangeField(qIndex, "type", "MULTIPLE_CHOICE")}
-                                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                className={`flex items-center gap-1.5 px-2 py-1 whitespace-nowrap text-xs font-medium rounded transition-colors ${
                                     q.type === "MULTIPLE_CHOICE" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
                                 }`}
                             >
                                 <List size={14} /> Trắc nghiệm
                             </button>
                             <button
+                                onClick={() => handleChangeField(qIndex, "type", "TRUE_FALSE")}
+                                className={`flex items-center gap-1.5 px-2 py-1 whitespace-nowrap text-xs font-medium rounded transition-colors ${
+                                    q.type === "TRUE_FALSE" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                <CheckSquare size={14} /> Đúng/Sai
+                            </button>
+                            <button
+                                onClick={() => handleChangeField(qIndex, "type", "FILL_IN_BLANK")}
+                                className={`flex items-center gap-1.5 px-2 py-1 whitespace-nowrap text-xs font-medium rounded transition-colors ${
+                                    q.type === "FILL_IN_BLANK" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                <FormInput size={14} /> Điền khuyết
+                            </button>
+                            <button
+                                onClick={() => handleChangeField(qIndex, "type", "READING_COMPREHENSION")}
+                                className={`flex items-center gap-1.5 px-2 py-1 whitespace-nowrap text-xs font-medium rounded transition-colors ${
+                                    q.type === "READING_COMPREHENSION" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                                }`}
+                            >
+                                <BookOpen size={14} /> Đọc hiểu
+                            </button>
+                            <button
                                 onClick={() => handleChangeField(qIndex, "type", "ESSAY")}
-                                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                className={`flex items-center gap-1.5 px-2 py-1 whitespace-nowrap text-xs font-medium rounded transition-colors ${
                                     q.type === "ESSAY" ? "bg-white shadow-sm text-indigo-600" : "text-slate-500 hover:text-slate-700"
                                 }`}
                             >
@@ -241,7 +276,29 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                     </button>
                 </div>
 
-                {/* Nội dung câu hỏi */}
+                {/* Passage content cho READING_COMPREHENSION */}
+                {q.type === "READING_COMPREHENSION" && (
+                    <div className="mb-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold text-sm">
+                            <BookOpen size={16} /> Ngữ liệu đọc hiểu (Passage)
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Tiêu đề đoạn văn (VD: Đọc hiểu bài Sóng - Xuân Quỳnh)..."
+                            value={q.passage?.title || ""}
+                            onChange={(e) => handleChangeField(qIndex, "passage", { ...q.passage, title: e.target.value, content: q.passage?.content || "" })}
+                            className="w-full p-2 mb-2 rounded bg-white border border-amber-200 outline-none focus:border-amber-400 text-sm font-medium text-slate-800"
+                        />
+                        <textarea
+                            value={q.passage?.content || ""}
+                            onChange={(e) => handleChangeField(qIndex, "passage", { ...q.passage, title: q.passage?.title || "", content: e.target.value })}
+                            className="w-full p-3 rounded bg-white border border-amber-200 outline-none focus:border-amber-400 min-h-[100px] text-slate-700"
+                            placeholder="Nhập nội dung đoạn văn/ngữ liệu..."
+                        />
+                    </div>
+                )}
+
+                {/* Nội dung câu hỏi chính */}
                 <div className="mb-6">
                     {q.contentImageUrl && (
                         <div className="mb-4">
@@ -252,12 +309,12 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                         value={q.content}
                         onChange={(e) => handleChangeField(qIndex, "content", e.target.value)}
                         className="w-full p-3 text-lg font-medium border-b-2 border-transparent focus:border-indigo-500 bg-transparent outline-none placeholder:text-slate-300 transition-colors resize-none"
-                        placeholder="Nhập nội dung câu hỏi..."
+                        placeholder={q.type === "TRUE_FALSE" ? "Nhập câu lệnh chung (VD: Cho hàm số y = f(x)...)" : "Nhập nội dung câu hỏi..."}
                         rows={2}
                     />
                 </div>
 
-                {/* Danh sách đáp án - Chỉ hiển thị cho MULTIPLE_CHOICE */}
+                {/* Danh sách đáp án cho MULTIPLE_CHOICE */}
                 {q.type === "MULTIPLE_CHOICE" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {(q.options || []).map((opt, optIndex) => {
@@ -299,6 +356,60 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                         );
                     })}
                 </div>
+                )}
+
+                {/* Mệnh đề cho TRUE_FALSE */}
+                {q.type === "TRUE_FALSE" && (
+                    <div className="grid gap-3 mb-6">
+                        {(q.subItems || []).map((subItem, sIdx) => (
+                            <div key={sIdx} className={`flex items-center gap-3 p-3 rounded-lg border-2 ${subItem.isCorrect ? "border-green-400 bg-green-50" : "border-slate-200"}`}>
+                                <span className="bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded">{subItem.label.toUpperCase()}</span>
+                                <input
+                                    type="text"
+                                    value={subItem.content}
+                                    onChange={(e) => {
+                                        const newSub = [...(q.subItems || [])];
+                                        newSub[sIdx] = { ...newSub[sIdx], content: e.target.value };
+                                        handleChangeField(qIndex, "subItems", newSub);
+                                    }}
+                                    className="flex-1 bg-transparent outline-none font-medium"
+                                    placeholder="Nội dung mệnh đề..."
+                                />
+                                <div className="flex gap-2 shrink-0">
+                                    <button 
+                                        onClick={() => {
+                                            const newSub = [...(q.subItems || [])];
+                                            newSub[sIdx] = { ...newSub[sIdx], isCorrect: true };
+                                            handleChangeField(qIndex, "subItems", newSub);
+                                        }}
+                                        className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${subItem.isCorrect ? "bg-green-500 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                                    >Đúng</button>
+                                    <button 
+                                        onClick={() => {
+                                            const newSub = [...(q.subItems || [])];
+                                            newSub[sIdx] = { ...newSub[sIdx], isCorrect: false };
+                                            handleChangeField(qIndex, "subItems", newSub);
+                                        }}
+                                        className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${!subItem.isCorrect ? "bg-red-500 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                                    >Sai</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Đáp án cho FILL_IN_BLANK */}
+                {q.type === "FILL_IN_BLANK" && (
+                    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <div className="text-sm font-semibold text-slate-600 mb-2">Đáp án chính xác:</div>
+                        <input
+                            type="text"
+                            value={q.correctAnswer}
+                            onChange={(e) => handleChangeField(qIndex, "correctAnswer", e.target.value)}
+                            className="w-full p-3 rounded border border-slate-300 outline-none focus:border-indigo-500 font-medium text-slate-800 bg-white"
+                            placeholder="Nhập đáp án đúng (học sinh cần điền chính xác cụm từ này)"
+                        />
+                    </div>
                 )}
 
                 {/* Giải thích AI */}

@@ -7,8 +7,9 @@ import { revalidatePath } from "next/cache";
 interface StudentAnswer {
   questionId: string;
   selectedOption?: string; // "A", "B", "C", "D" (cho trắc nghiệm)
-  answerText?: string; // Câu trả lời văn bản (cho tự luận)
+  answerText?: string; // Câu trả lời văn bản (cho tự luận/điền khuyết)
   fileUrl?: string; // Link file (cho tự luận)
+  subItemAnswers?: Record<string, boolean>; // (cho Đúng/Sai)
 }
 
 export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
@@ -29,6 +30,9 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         lessonId: lessonId,
         isArchived: false,
       },
+      include: {
+        subItems: true
+      }
     });
 
     // 1.5 Ensure Enrollment Exists
@@ -51,7 +55,10 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         }
     }
 
-    let correctCount = 0;
+    let totalScore = 0;
+    let maxPossibleScore = 0;
+    let fullyCorrectCount = 0; // Số câu hỏi lấy trọn điểm 1.0
+
     const feedbackData: any[] = [];
     const submissionsToCreate: any[] = []; // Mảng chứa dữ liệu để lưu 1 lần
 
@@ -60,28 +67,72 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       const question = questions.find((q) => q.id === ans.questionId);
       if (!question) continue;
 
-      // So sánh đáp án (Chỉ tính cho trắc nghiệm)
-      const isMultipleChoice = question.type === "MULTIPLE_CHOICE";
-      const isCorrect = isMultipleChoice && question.correctAnswer === ans.selectedOption;
-      
-      if (isCorrect) correctCount++;
+      let questionPoints = 0;
+      let qMaxPoints = 0;
+      let isCorrect = false;
+      let fbText = "Đã ghi nhận bài nộp tự luận";
+      let subItemFeedback: Record<string, { isCorrect: boolean }> = {};
+
+      if (question.type === "MULTIPLE_CHOICE") {
+        qMaxPoints = 1;
+        isCorrect = question.correctAnswer === ans.selectedOption;
+        if (isCorrect) questionPoints = 1;
+        fbText = isCorrect ? "Chính xác" : "Sai";
+      } 
+      else if (question.type === "FILL_IN_BLANK") {
+        qMaxPoints = 1;
+        if (question.correctAnswer) {
+          const normalizedCorrect = question.correctAnswer.trim().toLowerCase();
+          const normalizedAnswer = (ans.answerText || "").trim().toLowerCase();
+          isCorrect = normalizedCorrect === normalizedAnswer;
+          if (isCorrect) questionPoints = 1;
+          fbText = isCorrect ? "Chính xác" : "Sai";
+        }
+      } 
+      else if (question.type === "TRUE_FALSE") {
+        qMaxPoints = 1; // Điểm tối đa cho 1 câu hỏi chùm
+        let subCorrectCount = 0;
+        
+        if (question.subItems && ans.subItemAnswers) {
+            for (const sub of question.subItems) {
+                const studentAns = ans.subItemAnswers[sub.id];
+                const isSubCorrect = studentAns === sub.isCorrect;
+                if (isSubCorrect) subCorrectCount++;
+                subItemFeedback[sub.id] = { isCorrect: isSubCorrect };
+            }
+        }
+        
+        // Barem GDPT 2025
+        if (subCorrectCount === 1) questionPoints = 0.1;
+        else if (subCorrectCount === 2) questionPoints = 0.25;
+        else if (subCorrectCount === 3) questionPoints = 0.5;
+        else if (subCorrectCount >= 4) questionPoints = 1.0;
+        
+        isCorrect = questionPoints === 1.0;
+        fbText = `Bạn đúng ${subCorrectCount}/${question.subItems?.length || 4} ý. (+${questionPoints} điểm)`;
+      }
+
+      totalScore += questionPoints;
+      maxPossibleScore += qMaxPoints;
+      if (questionPoints === 1.0) fullyCorrectCount++;
 
       // Dữ liệu trả về cho Client (UI)
       feedbackData.push({
         questionId: question.id,
-        isCorrect: isMultipleChoice ? isCorrect : true, // Tự luận luôn pass
+        isCorrect: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION" && !question.correctAnswer) ? true : isCorrect,
         correctAnswer: question.correctAnswer,
         explanation: question.aiExplanation,
+        subItemFeedback: Object.keys(subItemFeedback).length > 0 ? subItemFeedback : undefined
       });
 
       // Dữ liệu để lưu vào DB (Đẩy vào mảng chờ)
       submissionsToCreate.push({
         userId: user.id,
         questionId: question.id,
-        answerText: isMultipleChoice ? ans.selectedOption : ans.answerText,
+        answerText: ans.answerText || ans.selectedOption || JSON.stringify(ans.subItemAnswers),
         fileUrl: ans.fileUrl,
-        score: isMultipleChoice ? (isCorrect ? 1 : 0) : null,
-        feedback: isMultipleChoice ? (isCorrect ? "Chính xác" : "Sai") : "Đã ghi nhận bài nộp tự luận",
+        score: qMaxPoints > 0 ? questionPoints : null,
+        feedback: fbText,
       });
     }
 
@@ -95,11 +146,9 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
     // 3.5 Update QuizResult & Course Progress
     if (lessonInfo) {
         const courseId = lessonInfo.chapter.courseId;
-        // Tính điểm tổng (Chỉ tính số câu trắc nghiệm)
-        const mcQuestions = questions.filter(q => q.type === "MULTIPLE_CHOICE");
-        const totalMcQuestions = mcQuestions.length;
-        const score = totalMcQuestions > 0 ? (correctCount / totalMcQuestions) * 100 : 100; // Nếu toàn tự luận thì mặc định 100
-        const isPassed = score >= 80; // Pass nếu đúng từ 80% trở lên (hoặc tuỳ chọn)
+        // Điểm số theo %
+        const scorePercent = maxPossibleScore > 0 ? (totalScore / maxPossibleScore) * 100 : 100;
+        const isPassed = scorePercent >= 80;
 
         // Lưu QuizResult
         try {
@@ -108,9 +157,9 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     userId_lessonId: { userId: user.id, lessonId }
                 },
                 update: {
-                    score,
-                    totalQuestions: totalMcQuestions,
-                    correctAnswers: correctCount,
+                    score: scorePercent,
+                    totalQuestions: Math.round(maxPossibleScore), // Lấy đại diện
+                    correctAnswers: fullyCorrectCount,
                     isPassed,
                     attemptCount: { increment: 1 },
                     lastAttemptAt: new Date()
@@ -119,9 +168,9 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     userId: user.id,
                     lessonId,
                     courseId,
-                    score,
-                    totalQuestions: mcQuestions.length,
-                    correctAnswers: correctCount,
+                    score: scorePercent,
+                    totalQuestions: Math.round(maxPossibleScore),
+                    correctAnswers: fullyCorrectCount,
                     isPassed,
                     attemptCount: 1
                 }
@@ -158,11 +207,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
     }
 
     // 4. Tính toán kết quả
-    const mcQuestions = questions.filter(q => q.type === "MULTIPLE_CHOICE");
-    const totalMcQuestions = mcQuestions.length;
-    const scorePercent = totalMcQuestions > 0
-        ? Math.round((correctCount / totalMcQuestions) * 100)
-        : 100;
+    const scorePercent = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 100;
 
     // 5. [NEW] Upsert QuizResult - Lưu kết quả tổng hợp
     if (lessonInfo) {
@@ -186,8 +231,8 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     where: { id: existingResult.id },
                     data: {
                         score: scorePercent,
-                        correctAnswers: correctCount,
-                        totalQuestions: totalMcQuestions,
+                        correctAnswers: fullyCorrectCount,
+                        totalQuestions: Math.round(maxPossibleScore),
                         isPassed: isPassed || existingResult.isPassed, // Nếu đã pass thì giữ nguyên
                         lastAttemptAt: new Date(),
                         attemptCount: { increment: 1 }
@@ -211,8 +256,8 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
                     lessonId: lessonId,
                     courseId: courseId,
                     score: scorePercent,
-                    correctAnswers: correctCount,
-                    totalQuestions: totalMcQuestions,
+                    correctAnswers: fullyCorrectCount,
+                    totalQuestions: Math.round(maxPossibleScore),
                     isPassed: isPassed,
                     attemptCount: 1,
                     lastAttemptAt: new Date()
@@ -229,8 +274,8 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
     return {
       success: true,
       score: scorePercent,
-      correctCount,
-      total: totalMcQuestions,
+      correctCount: totalScore, // For backward compatibility or display
+      total: maxPossibleScore,
       feedback: feedbackData,
     };
   } catch (error: any) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User, BookOpen } from "lucide-react";
 import confetti from "canvas-confetti"; // (Optional) Hiệu ứng pháo hoa: npm install canvas-confetti @types/canvas-confetti
 import { submitQuiz } from "@/app/actions/student-quiz";
 import { useRouter } from "next/navigation";
@@ -12,17 +12,20 @@ import remarkGfm from "remark-gfm";
 interface Question {
     id: string;
     content: string;
-    type: "MULTIPLE_CHOICE" | "ESSAY";
+    type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE" | "FILL_IN_BLANK" | "READING_COMPREHENSION";
     options: string[]; // ["A. ...", "B. ..."]
     contentImageUrl?: string | null;
     timestamp?: number; // thời điểm trong video (giây)
     quizSource?: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
+    subItems?: { id: string; label: string; content: string; position: number }[];
+    passage?: { id: string; title: string | null; content: string } | null;
 }
 
 interface AnswerState {
     selectedOption?: string;
     answerText?: string;
     fileUrl?: string;
+    subItemAnswers?: Record<string, boolean>; // subItemId -> boolean
 }
 
 export default function QuizPlayer({
@@ -54,7 +57,22 @@ export default function QuizPlayer({
         }));
     };
 
-    // Xử lý khi nhập text tự luận
+    // Xử lý khi chọn Đúng/Sai cho mệnh đề
+    const handleSubItemSelect = (qId: string, subItemId: string, isTrue: boolean) => {
+        if (result) return;
+        setAnswers(prev => ({
+            ...prev,
+            [qId]: {
+                ...prev[qId],
+                subItemAnswers: {
+                    ...(prev[qId]?.subItemAnswers || {}),
+                    [subItemId]: isTrue
+                }
+            }
+        }));
+    };
+
+    // Xử lý khi nhập text (tự luận / điền khuyết)
     const handleTextChange = (qId: string, text: string) => {
         if (result) return;
         setAnswers(prev => ({
@@ -66,7 +84,7 @@ export default function QuizPlayer({
     // Xử lý khi upload file tự luận
     const handleFileUpload = async (qId: string, file: File) => {
         if (result) return;
-        
+
         // Kiểm tra dung lượng (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             alert("File quá lớn. Vui lòng chọn file dưới 5MB.");
@@ -75,7 +93,7 @@ export default function QuizPlayer({
 
         try {
             setUploadingFiles(prev => ({ ...prev, [qId]: true }));
-            
+
             const fileExt = file.name.split('.').pop();
             const fileName = `${lessonId}/submissions/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
@@ -112,6 +130,11 @@ export default function QuizPlayer({
             if (!ans) return true;
             if (q.type === "MULTIPLE_CHOICE" && !ans.selectedOption) return true;
             if (q.type === "ESSAY" && !ans.answerText?.trim() && !ans.fileUrl) return true;
+            if (q.type === "FILL_IN_BLANK" && !ans.answerText?.trim()) return true;
+            if (q.type === "TRUE_FALSE") {
+                if (!ans.subItemAnswers) return true;
+                if (q.subItems && Object.keys(ans.subItemAnswers).length < q.subItems.length) return true;
+            }
             return false;
         });
 
@@ -127,7 +150,8 @@ export default function QuizPlayer({
             questionId: qid,
             selectedOption: val.selectedOption,
             answerText: val.answerText,
-            fileUrl: val.fileUrl
+            fileUrl: val.fileUrl,
+            subItemAnswers: val.subItemAnswers
         }));
 
         const res = await submitQuiz(lessonId, payload);
@@ -139,7 +163,7 @@ export default function QuizPlayer({
             if (res.score ?? 0 >= 80) confetti();
             // Scroll lên đầu để xem kết quả
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            
+
             // Ép UI tải lại dữ liệu từ Server Component (cập nhật thanh tiến độ)
             router.refresh();
         } else {
@@ -159,7 +183,7 @@ export default function QuizPlayer({
         // Đã nộp:
         const feedback = result.feedback.find((f: any) => f.questionId === qId);
         const isSelected = answers[qId]?.selectedOption === optionPrefix;
-        
+
         // Nếu không có feedback (vd câu tự luận), mặc định
         if (!feedback) return "bg-stone-50 border-stone-200 opacity-50";
 
@@ -193,51 +217,252 @@ export default function QuizPlayer({
             {/* DANH SÁCH CÂU HỎI */}
             {questions.map((q, index) => {
                 const feedback = result?.feedback.find((f: any) => f.questionId === q.id);
+                // Kiểm tra xem có cần render passage (nếu là câu hỏi đầu tiên của passage này)
+                const isFirstInPassage = q.passage && (index === 0 || questions[index - 1]?.passage?.id !== q.passage.id);
 
                 return (
-                    <div key={q.id} className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-                        <div className="flex justify-between items-start gap-4 mb-5 min-w-0">
-                            <div className="flex gap-3 items-start w-full min-w-0">
-                                <div className="flex flex-row gap-2 items-center shrink-0 mt-1">
-                                    <span className="inline-flex items-center justify-center px-3 py-1.5 rounded bg-[#1a1a1a] text-[#C5A059] text-xs font-bold uppercase tracking-wider shadow-sm select-none">
-                                        Câu {index + 1}
-                                    </span>
-                                    {q.quizSource === "AI_VIDEO" && (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1.5 rounded whitespace-nowrap">
-                                            <Bot size={12} /> AI
+                    <div key={q.id} className="space-y-4">
+                        {isFirstInPassage && (
+                            <div className="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                                <h4 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+                                    <BookOpen size={18} />
+                                    {q.passage!.title || "Ngữ liệu đọc hiểu"}
+                                </h4>
+                                <div className="prose prose-sm max-w-none text-amber-950 prose-p:my-1">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {q.passage!.content}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+                            <div className="flex justify-between items-start gap-4 mb-5 min-w-0">
+                                <div className="flex gap-3 items-start w-full min-w-0">
+                                    <div className="flex flex-row gap-2 items-center shrink-0 mt-1">
+                                        <span className="inline-flex items-center justify-center px-3 py-1.5 rounded bg-[#1a1a1a] text-[#C5A059] text-xs font-bold uppercase tracking-wider shadow-sm select-none">
+                                            Câu {index + 1}
                                         </span>
-                                    )}
-                                    {q.quizSource === "WORKSHEET" && (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1.5 rounded whitespace-nowrap">
-                                            <FileText size={12} /> Phiếu BT
-                                        </span>
-                                    )}
-                                    {q.quizSource === "MANUAL" && (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1.5 rounded whitespace-nowrap">
-                                            <User size={12} /> Thủ công
-                                        </span>
-                                    )}
+                                        {q.quizSource === "AI_VIDEO" && (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1.5 rounded whitespace-nowrap">
+                                                <Bot size={12} /> AI
+                                            </span>
+                                        )}
+                                        {q.quizSource === "WORKSHEET" && (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1.5 rounded whitespace-nowrap">
+                                                <FileText size={12} /> Phiếu BT
+                                            </span>
+                                        )}
+                                        {q.quizSource === "MANUAL" && (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1.5 rounded whitespace-nowrap">
+                                                <User size={12} /> Thủ công
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* 2. Nội dung câu hỏi và nút tua video */}
+                                    <div className="flex-1 min-w-0 flex flex-col pt-0.5 gap-2">
+                                        {q.contentImageUrl && (
+                                            <div className="mb-3">
+                                                <img src={q.contentImageUrl} alt="Question image" className="max-h-60 rounded-lg border border-stone-200 object-contain" />
+                                            </div>
+                                        )}
+                                        <div className="prose prose-sm md:prose-base max-w-none text-stone-800 prose-p:my-1 font-medium leading-snug w-full min-w-0">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    pre: ({ children }) => (
+                                                        <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs md:text-sm w-full max-w-full block border border-stone-850 scrollbar-thin">
+                                                            {children}
+                                                        </pre>
+                                                    ),
+                                                    code: ({ inline, children, className, ...props }: any) => {
+                                                        return inline ? (
+                                                            <code className="bg-stone-100 text-[#C5A059] px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                                                                {children}
+                                                            </code>
+                                                        ) : (
+                                                            <code className={`${className} font-mono`} {...props}>
+                                                                {children}
+                                                            </code>
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                {q.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                        {q.timestamp != null && onSeek && (
+                                            <button
+                                                onClick={() => onSeek(q.timestamp!)}
+                                                className="self-start text-[10px] font-bold uppercase tracking-wider bg-stone-100 hover:bg-stone-200 text-stone-600 px-2 py-1 rounded flex items-center gap-1 transition-colors mt-1"
+                                            >
+                                                <PlayCircle size={12} />
+                                                Xem lại video ({Math.floor(q.timestamp / 60)}:{String(q.timestamp % 60).padStart(2, '0')})
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* 2. Nội dung câu hỏi và nút tua video */}
-                                <div className="flex-1 min-w-0 flex flex-col pt-0.5 gap-2">
-                                    {q.contentImageUrl && (
-                                        <div className="mb-3">
-                                            <img src={q.contentImageUrl} alt="Question image" className="max-h-60 rounded-lg border border-stone-200 object-contain" />
+                                {/* Icon đúng sai */}
+                                {result && (
+                                    <div className="flex-shrink-0 ml-2 mt-1">
+                                        {feedback?.isCorrect ? (
+                                            <CheckCircle className="text-green-500 fill-green-50" size={24} />
+                                        ) : (
+                                            <XCircle className="text-red-500 fill-red-50" size={24} />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* OPTIONS HOẶC INPUT THEO TYPE */}
+                            {q.type === "MULTIPLE_CHOICE" && (
+                                <div className="grid grid-cols-1 gap-3 mt-4">
+                                    {q.options.map((opt, i) => {
+                                        const prefix = ["A", "B", "C", "D"][i];
+
+                                        return (
+                                            <button
+                                                key={i}
+                                                disabled={!!result}
+                                                onClick={() => handleSelectOption(q.id, prefix)}
+                                                className={`text-left p-3 rounded-lg border transition-all ${getOptionStyle(q.id, prefix)}`}
+                                            >
+                                                <span className="font-semibold mr-2">{prefix}.</span>
+                                                {opt}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {q.type === "TRUE_FALSE" && (
+                                <div className="mt-4 border rounded-xl overflow-hidden border-stone-200 divide-y divide-stone-200">
+                                    <div className="bg-stone-50 grid grid-cols-[1fr_80px_80px] p-3 text-sm font-bold text-stone-600 text-center">
+                                        <div className="text-left">Mệnh đề</div>
+                                        <div>Đúng</div>
+                                        <div>Sai</div>
+                                    </div>
+                                    {q.subItems?.map((sub) => {
+                                        const subAnswer = answers[q.id]?.subItemAnswers?.[sub.id];
+                                        const fbSubItem = feedback?.subItemFeedback?.[sub.id]; // Nếu server trả về kết quả từng ý
+                                        const isCorrectFb = fbSubItem?.isCorrect; // true nếu sv chọn đúng theo barem
+
+                                        return (
+                                            <div key={sub.id} className="grid grid-cols-[1fr_80px_80px] p-3 items-center hover:bg-stone-50 transition-colors">
+                                                <div className="pr-4 text-sm font-medium text-stone-700 flex items-start gap-2">
+                                                    <span className="font-bold text-stone-900">{sub.label}.</span>
+                                                    <span>{sub.content}</span>
+                                                </div>
+                                                <div className="flex justify-center border-l border-stone-200">
+                                                    <button
+                                                        disabled={!!result}
+                                                        onClick={() => handleSubItemSelect(q.id, sub.id, true)}
+                                                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${subAnswer === true ? "border-green-500 bg-green-500" : "border-stone-300 bg-white"}`}
+                                                    >
+                                                        {subAnswer === true && <div className="w-2.5 h-2.5 bg-white rounded-full"></div>}
+                                                    </button>
+                                                </div>
+                                                <div className="flex justify-center border-l border-stone-200">
+                                                    <button
+                                                        disabled={!!result}
+                                                        onClick={() => handleSubItemSelect(q.id, sub.id, false)}
+                                                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${subAnswer === false ? "border-red-500 bg-red-500" : "border-stone-300 bg-white"}`}
+                                                    >
+                                                        {subAnswer === false && <div className="w-2.5 h-2.5 bg-white rounded-full"></div>}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {q.type === "FILL_IN_BLANK" && (
+                                <div className="mt-4">
+                                    <input
+                                        type="text"
+                                        disabled={!!result}
+                                        placeholder="Nhập câu trả lời ngắn của bạn vào đây..."
+                                        value={answers[q.id]?.answerText || ""}
+                                        onChange={(e) => handleTextChange(q.id, e.target.value)}
+                                        className={`w-full p-4 rounded-xl border-2 outline-none font-semibold text-lg transition-all 
+                                        ${result ? (feedback?.isCorrect ? "bg-green-50 border-green-500 text-green-700" : "bg-red-50 border-red-500 text-red-700") : "border-stone-200 focus:border-[#C5A059]"}`}
+                                    />
+                                    {result && !feedback?.isCorrect && (
+                                        <div className="mt-2 text-sm text-green-600 font-bold">
+                                            Đáp án đúng: {feedback?.correctAnswer}
                                         </div>
                                     )}
-                                    <div className="prose prose-sm md:prose-base max-w-none text-stone-800 prose-p:my-1 font-medium leading-snug w-full min-w-0">
-                                        <ReactMarkdown 
+                                </div>
+                            )}
+
+                            {(q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (
+                                <div className="mt-4 space-y-4">
+                                    <textarea
+                                        disabled={!!result}
+                                        placeholder="Nhập câu trả lời của bạn vào đây..."
+                                        value={answers[q.id]?.answerText || ""}
+                                        onChange={(e) => handleTextChange(q.id, e.target.value)}
+                                        className="w-full min-h-[120px] p-4 rounded-xl border border-stone-200 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all disabled:bg-stone-50 disabled:text-stone-500 resize-y"
+                                    />
+
+                                    <div className="flex flex-col gap-2">
+                                        <label className="text-sm font-semibold text-stone-700 flex items-center justify-between">
+                                            <span>Hoặc đính kèm hình ảnh/file đáp án:</span>
+                                            {uploadingFiles[q.id] && <Loader2 size={16} className="animate-spin text-[#C5A059]" />}
+                                        </label>
+
+                                        {!answers[q.id]?.fileUrl ? (
+                                            <input
+                                                type="file"
+                                                disabled={!!result || uploadingFiles[q.id]}
+                                                accept="image/*,application/pdf"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleFileUpload(q.id, file);
+                                                }}
+                                                className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#C5A059]/10 file:text-[#C5A059] hover:file:bg-[#C5A059]/20 transition-all disabled:opacity-50"
+                                            />
+                                        ) : (
+                                            <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg border border-stone-200">
+                                                <span className="text-sm text-stone-700 truncate max-w-[200px] md:max-w-md">
+                                                    Đã đính kèm file
+                                                </span>
+                                                <a href={answers[q.id].fileUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
+                                                    Xem file
+                                                </a>
+                                                {!result && (
+                                                    <button
+                                                        onClick={() => setAnswers(prev => ({ ...prev, [q.id]: { ...prev[q.id], fileUrl: undefined } }))}
+                                                        className="ml-auto text-red-500 text-sm hover:underline"
+                                                    >
+                                                        Xóa
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* GIẢI THÍCH (Chỉ hiện khi đã nộp) */}
+                            {result && feedback?.explanation && (
+                                <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg flex gap-2 items-start min-w-0 overflow-hidden">
+                                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0 prose prose-sm max-w-none text-blue-800 prose-p:my-0">
+                                        <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
                                             components={{
                                                 pre: ({ children }) => (
-                                                    <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs md:text-sm w-full max-w-full block border border-stone-850 scrollbar-thin">
+                                                    <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs w-full max-w-full block border border-stone-850">
                                                         {children}
                                                     </pre>
                                                 ),
                                                 code: ({ inline, children, className, ...props }: any) => {
                                                     return inline ? (
-                                                        <code className="bg-stone-100 text-[#C5A059] px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                                                        <code className="bg-blue-100/50 text-blue-900 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
                                                             {children}
                                                         </code>
                                                     ) : (
@@ -248,132 +473,12 @@ export default function QuizPlayer({
                                                 }
                                             }}
                                         >
-                                            {q.content}
+                                            {`**Giải thích:** ${feedback.explanation}`}
                                         </ReactMarkdown>
                                     </div>
-                                    {q.timestamp != null && onSeek && (
-                                        <button 
-                                            onClick={() => onSeek(q.timestamp!)}
-                                            className="self-start text-[10px] font-bold uppercase tracking-wider bg-stone-100 hover:bg-stone-200 text-stone-600 px-2 py-1 rounded flex items-center gap-1 transition-colors mt-1"
-                                        >
-                                            <PlayCircle size={12} />
-                                            Xem lại video ({Math.floor(q.timestamp / 60)}:{String(q.timestamp % 60).padStart(2, '0')})
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Icon đúng sai */}
-                            {result && (
-                                <div className="flex-shrink-0 ml-2 mt-1">
-                                    {feedback?.isCorrect ? (
-                                        <CheckCircle className="text-green-500 fill-green-50" size={24} />
-                                    ) : (
-                                        <XCircle className="text-red-500 fill-red-50" size={24} />
-                                    )}
                                 </div>
                             )}
                         </div>
-
-                        {/* OPTIONS HOẶC ESSAY INPUT */}
-                        {q.type === "MULTIPLE_CHOICE" ? (
-                            <div className="grid grid-cols-1 gap-3 mt-4">
-                                {q.options.map((opt, i) => {
-                                    const prefix = ["A", "B", "C", "D"][i];
-
-                                    return (
-                                        <button
-                                            key={i}
-                                            disabled={!!result}
-                                            onClick={() => handleSelectOption(q.id, prefix)}
-                                            className={`text-left p-3 rounded-lg border transition-all ${getOptionStyle(q.id, prefix)}`}
-                                        >
-                                            <span className="font-semibold mr-2">{prefix}.</span>
-                                            {opt}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="mt-4 space-y-4">
-                                <textarea
-                                    disabled={!!result}
-                                    placeholder="Nhập câu trả lời của bạn vào đây..."
-                                    value={answers[q.id]?.answerText || ""}
-                                    onChange={(e) => handleTextChange(q.id, e.target.value)}
-                                    className="w-full min-h-[120px] p-4 rounded-xl border border-stone-200 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none transition-all disabled:bg-stone-50 disabled:text-stone-500 resize-y"
-                                />
-                                
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-semibold text-stone-700 flex items-center justify-between">
-                                        <span>Hoặc đính kèm hình ảnh/file đáp án:</span>
-                                        {uploadingFiles[q.id] && <Loader2 size={16} className="animate-spin text-[#C5A059]" />}
-                                    </label>
-                                    
-                                    {!answers[q.id]?.fileUrl ? (
-                                        <input
-                                            type="file"
-                                            disabled={!!result || uploadingFiles[q.id]}
-                                            accept="image/*,application/pdf"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) handleFileUpload(q.id, file);
-                                            }}
-                                            className="block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#C5A059]/10 file:text-[#C5A059] hover:file:bg-[#C5A059]/20 transition-all disabled:opacity-50"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg border border-stone-200">
-                                            <span className="text-sm text-stone-700 truncate max-w-[200px] md:max-w-md">
-                                                Đã đính kèm file
-                                            </span>
-                                            <a href={answers[q.id].fileUrl} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
-                                                Xem file
-                                            </a>
-                                            {!result && (
-                                                <button
-                                                    onClick={() => setAnswers(prev => ({ ...prev, [q.id]: { ...prev[q.id], fileUrl: undefined } }))}
-                                                    className="ml-auto text-red-500 text-sm hover:underline"
-                                                >
-                                                    Xóa
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* GIẢI THÍCH (Chỉ hiện khi đã nộp) */}
-                        {result && feedback?.explanation && (
-                            <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-lg flex gap-2 items-start min-w-0 overflow-hidden">
-                                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                                <div className="flex-1 min-w-0 prose prose-sm max-w-none text-blue-800 prose-p:my-0">
-                                    <ReactMarkdown 
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            pre: ({ children }) => (
-                                                <pre className="bg-[#1a1a1a] text-slate-100 rounded-lg p-3 my-2 overflow-x-auto text-xs w-full max-w-full block border border-stone-850">
-                                                    {children}
-                                                </pre>
-                                            ),
-                                            code: ({ inline, children, className, ...props }: any) => {
-                                                return inline ? (
-                                                    <code className="bg-blue-100/50 text-blue-900 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
-                                                        {children}
-                                                    </code>
-                                                ) : (
-                                                    <code className={`${className} font-mono`} {...props}>
-                                                        {children}
-                                                    </code>
-                                                );
-                                            }
-                                        }}
-                                    >
-                                        {`**Giải thích:** ${feedback.explanation}`}
-                                    </ReactMarkdown>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 );
             })}
