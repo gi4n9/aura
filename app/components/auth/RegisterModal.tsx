@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Sparkles, Mail, Lock, EyeOff, Eye, ArrowRight, X, User } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signup } from '@/app/actions/auth';
+import { useRouter } from 'next/navigation';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -13,14 +14,15 @@ interface RegisterModalProps {
 }
 
 export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModalProps) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isPending, startTransition] = useTransition();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setErrorMsg('');
 
     const formData = new FormData(e.currentTarget);
@@ -29,22 +31,22 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
 
     if (password !== confirmPassword) {
       setErrorMsg('Passwords do not match');
-      setIsLoading(false);
       return;
     }
 
-    try {
+    startTransition(async () => {
       const res = await signup(formData);
-      
+
       if (res?.error) {
         setErrorMsg(res.error);
-        setIsLoading(false);
+      } else if (res?.success) {
+        onClose();
+        router.refresh();
+        if (res.redirectTo) {
+          router.push(res.redirectTo);
+        }
       }
-    } catch (err) {
-      // Next.js redirect() throws an error to navigate.
-      onClose();
-      throw err;
-    }
+    });
   };
 
   return (

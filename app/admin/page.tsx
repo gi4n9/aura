@@ -1,54 +1,100 @@
-import { prisma } from "@/lib/prisma";
-import { BadgeCheck, User, Shield } from "lucide-react";
+import { getAdminStats } from "@/app/actions/admin";
+import AdminDashboardClient from "@/app/components/admin/AdminDashboardClient";
+import { Users, BookOpen, TrendingUp, GraduationCap, ArrowUp } from "lucide-react";
 
 export default async function AdminDashboard() {
-  const users = await prisma.profile.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const result = await getAdminStats();
+
+  const stats = result.success ? result.data : null;
+
+  const statCards = [
+    {
+      label: "Tổng Người Dùng",
+      value: stats?.totalUsers ?? 0,
+      icon: Users,
+      color: "from-violet-500 to-purple-600",
+      bg: "bg-violet-50",
+      text: "text-violet-700",
+      change: "+12%",
+    },
+    {
+      label: "Khóa Học",
+      value: stats?.totalCourses ?? 0,
+      icon: BookOpen,
+      color: "from-blue-500 to-cyan-600",
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      change: "+5%",
+    },
+    {
+      label: "Đăng Ký Học",
+      value: stats?.totalEnrollments ?? 0,
+      icon: GraduationCap,
+      color: "from-emerald-500 to-teal-600",
+      bg: "bg-emerald-50",
+      text: "text-emerald-700",
+      change: "+18%",
+    },
+    {
+      label: "Doanh Thu (VND)",
+      value: stats?.totalRevenue ?? 0,
+      icon: TrendingUp,
+      color: "from-amber-500 to-orange-600",
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      change: "+8%",
+      isCurrency: true,
+    },
+  ];
 
   return (
-    <div>
-      <h2 className="text-3xl font-serif font-bold text-stone-800 mb-6">Quản lý người dùng</h2>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-stone-50 text-stone-500 font-medium text-sm uppercase">
-            <tr>
-              <th className="p-4">User</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">Role</th>
-              <th className="p-4">Ngày tham gia</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-stone-50 transition">
-                <td className="p-4 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-500 font-bold">
-                    {u.fullName ? u.fullName[0].toUpperCase() : "U"}
-                  </div>
-                  <span className="font-semibold">{u.fullName || "Chưa đặt tên"}</span>
-                </td>
-                <td className="p-4">{u.email}</td>
-                <td className="p-4">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${u.role === "ADMIN" ? "bg-red-50 text-red-700 border-red-200" :
-                    u.role === "INSTRUCTOR" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                      "bg-gray-50 text-gray-600 border-gray-200"
-                    }`}>
-                    {u.role === "ADMIN" && <Shield size={12} />}
-                    {u.role === "INSTRUCTOR" && <BadgeCheck size={12} />}
-                    {u.role === "STUDENT" && <User size={12} />}
-                    {u.role}
-                  </span>
-                </td>
-                <td className="p-4 text-stone-400">
-                  {new Date(u.createdAt).toLocaleDateString("vi-VN")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-stone-900">Dashboard Quản trị</h1>
+        <p className="text-stone-500 mt-1">Tổng quan hệ thống Aura Learning Platform</p>
       </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        {statCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 flex flex-col gap-3 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between">
+                <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center`}>
+                  <Icon size={22} className={card.text} />
+                </div>
+                <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                  <ArrowUp size={12} />
+                  {card.change}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500 mb-1">{card.label}</p>
+                <p className="text-2xl font-bold text-stone-900">
+                  {card.isCurrency
+                    ? new Intl.NumberFormat("vi-VN").format(card.value)
+                    : card.value.toLocaleString()}
+                  {card.isCurrency && <span className="text-base font-medium text-stone-400 ml-1">₫</span>}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Charts */}
+      {stats && (
+        <AdminDashboardClient
+          usersByMonth={stats.usersByMonth}
+          roleDistribution={stats.roleDistribution}
+          courseStatusDist={stats.courseStatusDist}
+        />
+      )}
     </div>
   );
 }

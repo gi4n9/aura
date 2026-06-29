@@ -1,20 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition } from "react";
 import { useAuth } from "../AuthProvider";
 import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 import LoginModal from "../auth/LoginModal";
 import RegisterModal from "../auth/RegisterModal";
+import { useRouter } from "next/navigation";
 
 export default function Header() {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isPendingLogout, startTransitionLogout] = useTransition();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile } = useAuth();
@@ -39,6 +42,19 @@ export default function Header() {
 
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
+  };
+
+  const handleSignOut = () => {
+    startTransitionLogout(async () => {
+      const res = await signOut();
+      if (res?.success) {
+        setIsDropdownOpen(false); // Đóng dropdown
+        router.refresh(); // Cập nhật lại UI Header ngay lập tức
+        if (res.redirectTo) {
+          router.push(res.redirectTo);
+        }
+      }
+    });
   };
 
   const paddingClass = isScrolled ? "py-2" : "py-4";
@@ -133,11 +149,14 @@ export default function Header() {
                       </div>
 
                       <div className="p-2 border-t border-stone-100">
-                        <form action={signOut}>
-                          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-stone-400 hover:bg-stone-100 hover:text-stone-800 transition-colors">
-                            <LogOut size={16} /> Đăng xuất
-                          </button>
-                        </form>
+                        <button
+                          onClick={handleSignOut}
+                          disabled={isPendingLogout}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-stone-400 hover:bg-stone-100 hover:text-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <LogOut size={16} />
+                          {isPendingLogout ? "Đang xử lý..." : "Đăng xuất"}
+                        </button>
                       </div>
                     </motion.div>
                   )}
@@ -191,11 +210,14 @@ export default function Header() {
                         <Link href="/profile" className="text-xs text-[#C5A059] hover:underline block">Hồ sơ cá nhân</Link>
                       </div>
                     </div>
-                    <form action={signOut} className="w-full">
-                      <button className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors flex items-center justify-center gap-2">
-                        <LogOut size={16} /> Đăng xuất
-                      </button>
-                    </form>
+                    <button
+                      onClick={handleSignOut}
+                      disabled={isPendingLogout}
+                      className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <LogOut size={16} />
+                      {isPendingLogout ? "Đang xử lý..." : "Đăng xuất"}
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -212,17 +234,17 @@ export default function Header() {
           </div>
         )}
       </AnimatePresence>
-      <LoginModal 
-        isOpen={isLoginModalOpen} 
-        onClose={() => setIsLoginModalOpen(false)} 
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
         onSwitchToRegister={() => {
           setIsLoginModalOpen(false);
           setIsRegisterModalOpen(true);
         }}
       />
-      <RegisterModal 
-        isOpen={isRegisterModalOpen} 
-        onClose={() => setIsRegisterModalOpen(false)} 
+      <RegisterModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
         onSwitchToLogin={() => {
           setIsRegisterModalOpen(false);
           setIsLoginModalOpen(true);

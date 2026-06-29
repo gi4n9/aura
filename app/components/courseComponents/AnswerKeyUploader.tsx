@@ -34,17 +34,17 @@ export default function AnswerKeyUploader({ lessonId, onUploadSuccess }: AnswerK
         setIsDragging(false);
         const droppedFiles = Array.from(e.dataTransfer.files);
         if (droppedFiles.length > 0) {
-            await handleFile(droppedFiles[0]);
+            await handleFiles(droppedFiles);
         }
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            await handleFile(e.target.files[0]);
+            await handleFiles(Array.from(e.target.files));
         }
     };
 
-    const handleFile = async (selectedFile: File) => {
+    const handleFiles = async (selectedFiles: File[]) => {
         const validTypes = [
             "image/jpeg", "image/png", "image/webp", 
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
@@ -52,45 +52,80 @@ export default function AnswerKeyUploader({ lessonId, onUploadSuccess }: AnswerK
             "text/csv"
         ];
         
-        if (!validTypes.includes(selectedFile.type)) {
-            toast.error("Vui lòng tải lên file ảnh (JPG, PNG) hoặc Excel (XLSX, CSV).");
-            return;
+        const filesToUpload: File[] = [];
+        for (const file of selectedFiles) {
+            if (!validTypes.includes(file.type)) {
+                toast.error(`File ${file.name} không đúng định dạng và bị bỏ qua.`);
+                continue;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error(`File ${file.name} vượt quá 10MB và sẽ bị bỏ qua.`);
+                continue;
+            }
+            filesToUpload.push(file);
         }
         
-        if (selectedFile.size > 10 * 1024 * 1024) {
-            toast.error("File không được vượt quá 10MB.");
-            return;
-        }
+        if (filesToUpload.length === 0) return;
 
-        setFileStatus({ name: selectedFile.name, status: "pending", message: "Đang tải lên..." });
+        setFileStatus({ 
+            name: filesToUpload.map(f => f.name).join(", "), 
+            status: "pending", 
+            message: `Đang tải lên ${filesToUpload.length} file...` 
+        });
         setIsProcessing(true);
 
         try {
-            const fileExt = selectedFile.name.split('.').pop();
-            const fileName = `${lessonId}/answer-key-${crypto.randomUUID()}.${fileExt}`;
+            const uploadedUrls: string[] = [];
+            
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const file = filesToUpload[i];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${lessonId}/answer-key-${crypto.randomUUID()}.${fileExt}`;
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from("quiz-attachments")
-                .upload(fileName, selectedFile, { upsert: false });
+                const { error: uploadError } = await supabase.storage
+                    .from("quiz-attachments")
+                    .upload(fileName, file, { upsert: false });
 
-            if (uploadError) throw new Error(uploadError.message);
+                if (uploadError) throw new Error(`Lỗi khi tải file ${file.name} lên: ${uploadError.message}`);
 
-            const { data: publicUrlData } = supabase.storage
-                .from("quiz-attachments")
-                .getPublicUrl(fileName);
+                const { data: publicUrlData } = supabase.storage
+                    .from("quiz-attachments")
+                    .getPublicUrl(fileName);
+                
+                uploadedUrls.push(publicUrlData.publicUrl);
+            }
 
-            setFileStatus({ name: selectedFile.name, status: "processing", message: "AI đang phân tích bảng đáp án..." });
+            setFileStatus({ 
+                name: filesToUpload.map(f => f.name).join(", "), 
+                status: "processing", 
+                message: "AI đang phân tích các bảng đáp án..." 
+            });
 
-            const result = await processAnswerKeyUpload(lessonId, publicUrlData.publicUrl, selectedFile.type, examCode);
+            // Gửi JSON string mảng URL sang API
+            const result = await processAnswerKeyUpload(
+                lessonId, 
+                JSON.stringify(uploadedUrls), 
+                filesToUpload[0].type, 
+                examCode
+            );
 
             if (!result.success) throw new Error(result.error);
 
-            setFileStatus({ name: selectedFile.name, status: "success", message: "Hoàn tất!" });
+            setFileStatus({ 
+                name: filesToUpload.map(f => f.name).join(", "), 
+                status: "success", 
+                message: "Đã cập nhật đáp án thành công!" 
+            });
             toast.success(result.message);
             onUploadSuccess();
 
         } catch (error: any) {
-            setFileStatus({ name: selectedFile.name, status: "error", message: error.message });
+            setFileStatus({ 
+                name: filesToUpload.map(f => f.name).join(", "), 
+                status: "error", 
+                message: error.message 
+            });
             toast.error(error.message || "Lỗi khi xử lý file đáp án");
         } finally {
             setIsProcessing(false);
@@ -105,7 +140,7 @@ export default function AnswerKeyUploader({ lessonId, onUploadSuccess }: AnswerK
                 </div>
                 <div>
                     <h3 className="font-semibold text-slate-800 text-lg">Upload Bảng đáp án</h3>
-                    <p className="text-sm text-slate-500">Tải lên ảnh hoặc file Excel để tự động điền đáp án.</p>
+                    <p className="text-sm text-slate-500">Tải lên một hoặc nhiều ảnh/file Excel để tự động điền đáp án.</p>
                 </div>
             </div>
 
@@ -132,6 +167,7 @@ export default function AnswerKeyUploader({ lessonId, onUploadSuccess }: AnswerK
             >
                 <input
                     type="file"
+                    multiple
                     accept="image/*,.xlsx,.xls,.csv"
                     onChange={handleFileSelect}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"

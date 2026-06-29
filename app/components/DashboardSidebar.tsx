@@ -9,7 +9,10 @@ import {
   Settings,
   LogOut,
   UploadCloud,
-  MessageSquare
+  MessageSquare,
+  BookOpen,
+  Tag,
+  UserCog,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 
@@ -22,9 +25,10 @@ export default function DashboardSidebar({ role }: { role: Role }) {
   const adminLinks = [
     { name: "Tổng quan", href: "/admin", icon: LayoutDashboard },
     { name: "Quản lý Users", href: "/admin/users", icon: Users },
+    { name: "Quản lý Khóa học", href: "/admin/courses", icon: BookOpen },
+    { name: "Quản lý Danh mục", href: "/admin/categories", icon: Tag },
     { name: "Cài đặt", href: "/admin/settings", icon: Settings },
-    { name: "Thông tin quản trị", href: "/admin/profile", icon: Users },
-
+    { name: "Thông tin quản trị", href: "/admin/profile", icon: UserCog },
   ];
 
   // Menu cho Instructor

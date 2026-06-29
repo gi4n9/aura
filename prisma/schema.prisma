@@ -252,6 +252,10 @@ model Question {
   // Cho AI
   aiExplanation String? // Giải thích của AI cho đáp án đúng/gợi ý chấm điểm
 
+  // === ĐÁP ÁN MẪU (cho câu tự luận / đọc hiểu) ===
+  modelAnswer        String?  @db.Text  // Đáp án mẫu dạng text/Markdown (bài văn mẫu, ý chính, rubric)
+  modelAnswerFileUrl String?            // URL file đáp án mẫu (PDF/Word/Ảnh) trên Storage
+
   quizSource    QuizSource   @default(AI_VIDEO)  // Nguồn gốc câu hỏi
 
   // === MỚI: Hỗ trợ đa dạng câu hỏi ===
@@ -449,6 +453,11 @@ model Submission {
   feedback String?   @db.Text // Nhận xét chi tiết của AI
   gradedAt DateTime?
 
+  // Chấm điểm chi tiết (Giảng viên / AI)
+  gradedBy    String?  // userId của giảng viên chấm (null = AI hoặc auto)
+  isAiGraded  Boolean  @default(false) // true nếu điểm do AI gợi ý
+  isFinalized Boolean  @default(false) // true khi giảng viên đã duyệt/xác nhận điểm cuối cùng
+
   createdAt DateTime @default(now())
 }
 
@@ -615,4 +624,12 @@ model UserRoadmapNode {
   updatedAt      DateTime    @updatedAt
 
   @@unique([roadmapId, courseId])
+}
+
+model OcrCache {
+  hash      String   @id
+  type      String   // "pdf" or "image"
+  text      String
+  meta      Json     // Lưu { confidence, textLength, wordCount, vietnameseRatio }
+  createdAt DateTime @default(now())
 }

@@ -123,16 +123,16 @@ const answerKeySchema: Schema = {
     items: {
         type: SchemaType.OBJECT,
         properties: {
-            questionNumber: {
+            questionId: {
                 type: SchemaType.STRING,
-                description: "Số thứ tự câu hỏi (ví dụ: '1', '2')"
+                description: "ID duy nhất (UUID) của câu hỏi trong cơ sở dữ liệu"
             },
             correctAnswer: {
                 type: SchemaType.STRING,
-                description: "Đáp án đúng (A, B, C, D hoặc DSDS)"
+                description: "Đáp án đúng (A, B, C, D hoặc DSDS đối với trắc nghiệm, hoặc nội dung đáp án chi tiết/hướng dẫn chấm đối với câu hỏi tự luận)"
             }
         },
-        required: ["questionNumber", "correctAnswer"]
+        required: ["questionId", "correctAnswer"]
     }
 };
 
@@ -624,63 +624,57 @@ function regexParser(rawText: string): ParsedQuestion[] {
     return questions;
 }
 
-export async function parseAnswerKeyFromImage(buffer: Buffer, mimeType: string, targetExamCode: string | null): Promise<Record<string, string>> {
+export async function parseAnswerKeyFromImage(
+    buffer: Buffer,
+    mimeType: string,
+    targetExamCode: string | null,
+    existingQuestions?: { id: string; index: number; content: string; type: string }[]
+): Promise<Record<string, string>> {
     const examCodeInstruction = targetExamCode ? `LƯU Ý QUAN TRỌNG: Bạn chỉ được trích xuất đáp án cho Mã đề thi là "${targetExamCode}". Hãy tìm đúng cột hoặc phần văn bản của mã đề này.` : `Nếu ảnh có nhiều cột mã đề, hãy tự động chọn cột mã đề đầu tiên.`;
 
-    const prompt = `
-Bạn là một công cụ đọc bảng đáp án. Nhiệm vụ của bạn là trích xuất chính xác bảng đáp án từ hình ảnh (hoặc dữ liệu).
-${examCodeInstruction}
-`;
+    const questionsInfo = existingQuestions && existingQuestions.length > 0
+        ? `\nDưới đây là danh sách các câu hỏi đã có trong đề thi (đã được sắp xếp tuần tự theo thứ tự xuất hiện từ trên xuống dưới):\n${existingQuestions.map(q => `- ID: ${q.id} - Câu ${q.index} (Loại: ${q.type}): ${q.content.slice(0, 120)}...`).join("\n")}
+LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
+- Đề thi tự luận/Ngữ văn thường chia làm các phần (Ví dụ: Phần I Đọc hiểu có các Câu 1, 2, 3, 4 và Phần II Làm văn/Viết có các Câu 1, 2).
+- Tuy nhiên trong CSDL, toàn bộ các câu hỏi này được xếp tuần tự thành danh sách phẳng (ví dụ: các câu đọc hiểu là từ 1 đến 4, câu làm văn sẽ là câu thứ 5, 6...).
+- Do đó, hãy trích xuất các đáp án từ tài liệu tải lên theo thứ tự xuất hiện từ trên xuống dưới của chúng, rồi gán lần lượt cho các ID câu hỏi trong danh sách CSDL ở trên theo đúng thứ tự tuyến tính (ví dụ: đáp án đầu tiên tương ứng ID câu thứ 1, đáp án thứ hai tương ứng ID câu thứ 2... đáp án của Phần II Câu 1 tương ứng ID câu thứ 5).
+- Hãy đối khớp kỹ lưỡng nội dung câu hỏi và ngữ cảnh để gán chính xác ID câu hỏi dạng UUID làm khóa chính cho đáp án đó.
+- YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN (ESSAY):
+  * Đối với các câu hỏi tự luận/làm văn có đáp án chứa nhiều ý nhỏ (như a, b... hoặc Ý 1, Ý 2...), bạn PHẢI GIỮ NGUYÊN cấu trúc cụm đáp án gốc, KHÔNG được phép rút gọn hay tự ý viết lại.
+  * Phải bảo toàn toàn bộ ký tự xuống dòng (sử dụng định dạng danh sách liệt kê bằng Markdown hoặc các dòng riêng biệt kết thúc bằng ký tự '\\n') để nội dung hiển thị phân dòng rõ ràng, ngăn nắp. TUYỆT ĐỐI không được gộp các dòng lại thành một hàng duy nhất hoặc một đoạn văn liền mạch, gây khó đọc cho sinh viên.
+- YÊU CẦU BỎ QUA CÂU HỎI KHÔNG CÓ TRONG FILE:
+  * Ảnh/tài liệu này có thể chỉ là một phần (một trang) của bảng đáp án. Chỉ trích xuất những câu hỏi thực sự xuất hiện đáp án trong file này.
+  * Đối với những câu hỏi KHÔNG xuất hiện đáp án trong file này, bạn TUYỆT ĐỐI KHÔNG được đưa vào kết quả trả về (không tạo key JSON cho chúng, không trả về giá trị kiểu "Không có thông tin", "Không tìm thấy", v.v.).`
+        : "";
 
-    console.log(`🧠 Calling Gemini 2.5 Flash for answer key image...`);
-    const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: answerKeySchema,
-            temperature: 0.2
-        }
-    });
+    console.log("Running Tesseract OCR on answer key image...");
+    const text = await extractTextFromImage(buffer);
+    if (!text || text.trim().length === 0) {
+        throw new Error("Không thể trích xuất văn bản từ hình ảnh đáp án.");
+    }
 
-    const filePart = {
-        inlineData: {
-            data: buffer.toString("base64"),
-            mimeType
-        }
-    };
-
+    console.log(`🧠 Calling Groq Llama 3.3 for answer key parsing (Direct OCR Mode)...`);
     let responseText = "[]";
     try {
-        const result = await model.generateContent([prompt, filePart]);
-        responseText = result.response.text();
-    } catch (error: any) {
-        console.warn("⚠️ Gemini failed (parseAnswerKeyFromImage), falling back to OCR + Groq Llama 3.3...", error.message);
-        try {
-            console.log("Running Tesseract OCR on answer key image...");
-            const text = await extractTextFromImage(buffer);
-            if (!text || text.trim().length === 0) {
-                throw new Error("Không thể trích xuất văn bản từ hình ảnh đáp án.");
-            }
-
-            console.log(`🧠 Calling Groq Llama 3.3 fallback for answer key parsing...`);
-            const chatCompletion = await groq.chat.completions.create({
-                messages: [
-                    {
-                        role: "user",
-                        content: `
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "user",
+                    content: `
 Dưới đây là văn bản được trích xuất (OCR) từ một hình ảnh bảng đáp án bằng Tiếng Việt.
 Nhiệm vụ của bạn là trích xuất bảng đáp án từ dữ liệu này.
 ${examCodeInstruction}
+${questionsInfo}
 
 Văn bản OCR:
 ${text}
 
 Quy tắc trả về:
-- Cấu trúc JSON phải là một dictionary: key là "số thứ tự câu hỏi" (chuỗi), value là "đáp án đúng" (A, B, C, D hoặc DSDS).
+- Cấu trúc JSON phải là một dictionary: key là "questionId" (ID câu hỏi dạng UUID từ danh sách câu hỏi đã cho), value là "đáp án đúng" (A, B, C, D hoặc DSDS đối với trắc nghiệm, hoặc nội dung đáp án mẫu chi tiết đối với câu hỏi tự luận).
 - Ví dụ:
 {
-  "1": "A",
-  "2": "C"
+  "uuid-cua-cau-1": "A",
+  "uuid-cua-cau-2": "Nội dung đáp án mẫu chi tiết của câu tự luận..."
 }
 `
                     }
@@ -693,7 +687,7 @@ Quy tắc trả về:
             const completionContent = chatCompletion.choices[0].message.content || "{}";
             const parsedObj = JSON.parse(completionContent);
             const arrayFormat = Object.entries(parsedObj).map(([key, val]) => ({
-                questionNumber: key,
+                questionId: key,
                 correctAnswer: val
             }));
             responseText = JSON.stringify(arrayFormat);
@@ -701,15 +695,14 @@ Quy tắc trả về:
             console.error("❌ Fallback answer key to Groq also failed:", fallbackError.message);
             throw new Error(`Fallback Answer Key Error: ${fallbackError.message}`);
         }
-    }
 
     let parsed: Record<string, string> = {};
     try {
         const parsedArray = JSON.parse(responseText);
         if (Array.isArray(parsedArray)) {
             for (const item of parsedArray) {
-                if (item.questionNumber && item.correctAnswer) {
-                    parsed[String(item.questionNumber)] = String(item.correctAnswer);
+                if (item.questionId && item.correctAnswer) {
+                    parsed[String(item.questionId)] = String(item.correctAnswer);
                 }
             }
         }
@@ -720,8 +713,8 @@ Quy tắc trả về:
                 const parsedArray = JSON.parse(jsonMatch[0]);
                 if (Array.isArray(parsedArray)) {
                     for (const item of parsedArray) {
-                        if (item.questionNumber && item.correctAnswer) {
-                            parsed[String(item.questionNumber)] = String(item.correctAnswer);
+                        if (item.questionId && item.correctAnswer) {
+                            parsed[String(item.questionId)] = String(item.correctAnswer);
                         }
                     }
                 }
@@ -731,7 +724,11 @@ Quy tắc trả về:
     return parsed;
 }
 
-export async function parseAnswerKeyFromExcel(buffer: Buffer, targetExamCode: string | null): Promise<Record<string, string>> {
+export async function parseAnswerKeyFromExcel(
+    buffer: Buffer,
+    targetExamCode: string | null,
+    existingQuestions?: { id: string; index: number; content: string; type: string }[]
+): Promise<Record<string, string>> {
     const workbook = xlsx.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -739,20 +736,33 @@ export async function parseAnswerKeyFromExcel(buffer: Buffer, targetExamCode: st
 
     const examCodeInstruction = targetExamCode ? `LƯU Ý QUAN TRỌNG: Chỉ trích xuất cột đáp án dành cho Mã đề thi là "${targetExamCode}".` : `If file has multiple columns of exam codes, take the first column of exam codes.`;
 
+    const questionsInfo = existingQuestions && existingQuestions.length > 0
+        ? `\nDưới đây là danh sách các câu hỏi đã có trong đề thi (đã được sắp xếp tuần tự theo thứ tự xuất hiện từ trên xuống dưới):\n${existingQuestions.map(q => `- ID: ${q.id} - Câu ${q.index} (Loại: ${q.type}): ${q.content.slice(0, 120)}...`).join("\n")}
+LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
+- Đề thi tự luận/Ngữ văn thường chia làm các phần (Ví dụ: Phần I Đọc hiểu có các Câu 1, 2, 3, 4 và Phần II Làm văn/Viết có các Câu 1, 2).
+- Tuy nhiên trong CSDL, toàn bộ các câu hỏi này được xếp tuần tự thành danh sách phẳng (ví dụ: các câu đọc hiểu là từ 1 đến 4, câu làm văn sẽ là câu thứ 5, 6...).
+- Do đó, hãy trích xuất các đáp án từ tài liệu tải lên theo thứ tự xuất hiện từ trên xuống dưới của chúng, rồi gán lần lượt cho các ID câu hỏi trong danh sách CSDL ở trên theo đúng thứ tự tuyến tính (ví dụ: đáp án đầu tiên tương ứng ID câu thứ 1, đáp án thứ hai tương ứng ID câu thứ 2... đáp án của Phần II Câu 1 tương ứng ID câu thứ 5).
+- Hãy đối khớp kỹ lưỡng nội dung câu hỏi và ngữ cảnh để gán chính xác ID câu hỏi dạng UUID làm khóa chính cho đáp án đó.
+- YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN (ESSAY):
+  * Đối với các câu hỏi tự luận/làm văn có đáp án chứa nhiều ý nhỏ (như a, b... hoặc Ý 1, Ý 2...), bạn PHẢI GIỮ NGUYÊN cấu trúc cụm đáp án gốc, KHÔNG được phép rút gọn hay tự ý viết lại.
+  * Phải bảo toàn toàn bộ ký tự xuống dòng (sử dụng định dạng danh sách liệt kê bằng Markdown hoặc các dòng riêng biệt kết thúc bằng ký tự '\\n') để nội dung hiển thị phân dòng rõ ràng, ngăn nắp. TUYỆT ĐỐI không được gộp các dòng lại thành một hàng duy nhất hoặc một đoạn văn liền mạch, gây khó đọc cho sinh viên.`
+        : "";
+
     const prompt = `
 Dưới đây là dữ liệu CSV được xuất từ một file Excel chứa bảng đáp án.
 Nhiệm vụ của bạn là trích xuất bảng đáp án từ dữ liệu này.
 ${examCodeInstruction}
+${questionsInfo}
 
 Dữ liệu CSV:
 ${csvData}
 
 Quy tắc trả về:
-- Cấu trúc JSON phải là một dictionary: key là "số thứ tự câu hỏi" (chuỗi), value là "đáp án đúng" (A, B, C, D hoặc DSDS).
+- Cấu trúc JSON phải là một dictionary: key là "questionId" (ID câu hỏi dạng UUID từ danh sách câu hỏi đã cho ở trên), value là "đáp án đúng" (A, B, C, D hoặc DSDS đối với trắc nghiệm, hoặc nội dung đáp án mẫu chi tiết đối với câu hỏi tự luận).
 - Ví dụ:
 {
-  "1": "A",
-  "2": "C"
+  "uuid-cua-cau-1": "A",
+  "uuid-cua-cau-2": "Nội dung đáp án mẫu chi tiết của câu tự luận..."
 }
 `;
 
@@ -778,10 +788,24 @@ Quy tắc trả về:
 
     let parsed: Record<string, string> = {};
     try {
-        parsed = JSON.parse(responseText);
+        const parsedObj = JSON.parse(responseText);
+        for (const [key, val] of Object.entries(parsedObj)) {
+            if (key && val) {
+                parsed[String(key)] = String(val);
+            }
+        }
     } catch (e) {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+        if (jsonMatch) {
+            try {
+                const parsedObj = JSON.parse(jsonMatch[0]);
+                for (const [key, val] of Object.entries(parsedObj)) {
+                    if (key && val) {
+                        parsed[String(key)] = String(val);
+                    }
+                }
+            } catch (e2) {}
+        }
     }
     return parsed;
 }

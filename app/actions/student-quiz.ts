@@ -111,6 +111,13 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         isCorrect = questionPoints === 1.0;
         fbText = `Bạn đúng ${subCorrectCount}/${question.subItems?.length || 4} ý. (+${questionPoints} điểm)`;
       }
+      else if (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") {
+        // Tự luận: KHÔNG chấm điểm tự động, chờ giảng viên/AI
+        qMaxPoints = 0; // Không tính vào maxPossibleScore (chưa có điểm)
+        questionPoints = 0;
+        isCorrect = true; // Luôn "pass" để UI không hiện X đỏ
+        fbText = "⏳ Bài tự luận đang chờ giảng viên chấm điểm";
+      }
 
       totalScore += questionPoints;
       maxPossibleScore += qMaxPoints;
@@ -119,10 +126,13 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       // Dữ liệu trả về cho Client (UI)
       feedbackData.push({
         questionId: question.id,
-        isCorrect: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION" && !question.correctAnswer) ? true : isCorrect,
+        isCorrect: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") ? true : isCorrect,
         correctAnswer: question.correctAnswer,
+        modelAnswer: question.modelAnswer,
+        modelAnswerFileUrl: question.modelAnswerFileUrl,
         explanation: question.aiExplanation,
-        subItemFeedback: Object.keys(subItemFeedback).length > 0 ? subItemFeedback : undefined
+        subItemFeedback: Object.keys(subItemFeedback).length > 0 ? subItemFeedback : undefined,
+        isPendingGrading: question.type === "ESSAY" || question.type === "READING_COMPREHENSION"
       });
 
       // Dữ liệu để lưu vào DB (Đẩy vào mảng chờ)
@@ -131,7 +141,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         questionId: question.id,
         answerText: ans.answerText || ans.selectedOption || JSON.stringify(ans.subItemAnswers),
         fileUrl: ans.fileUrl,
-        score: qMaxPoints > 0 ? questionPoints : null,
+        score: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") ? null : (qMaxPoints > 0 ? questionPoints : null),
         feedback: fbText,
       });
     }

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Sparkles, Mail, Lock, EyeOff, Eye, ArrowRight, X } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { login } from '@/app/actions/auth';
+import { useRouter } from 'next/navigation';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -13,29 +14,30 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalProps) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isPending, startTransition] = useTransition();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setErrorMsg('');
 
-    try {
-      const formData = new FormData(e.currentTarget);
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
       const res = await login(formData);
-      
+
       if (res?.error) {
         setErrorMsg(res.error);
-        setIsLoading(false);
+      } else if (res?.success) {
+        // Đăng nhập thành công: Đóng modal, làm mới data và chuyển hướng ở Client
+        onClose();
+        router.refresh(); // Cập nhật lại Header và các component khác
+        if (res.redirectTo) {
+          router.push(res.redirectTo); // Chuyển trang mượt mà không có 303
+        }
       }
-    } catch (err) {
-      // Next.js redirect() throws an error to navigate.
-      // We catch it, close the modal, and re-throw it so the navigation happens.
-      onClose();
-      throw err;
-    }
+    });
   };
 
   return (
@@ -142,9 +144,9 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                 <button
                   className="mt-2 w-full bg-[#C5A059] text-white text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest py-3.5 rounded-md hover:bg-[#A88849] transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isPending}
                 >
-                  {isLoading ? (
+                  {isPending ? (
                     <span className="flex items-center gap-2">
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

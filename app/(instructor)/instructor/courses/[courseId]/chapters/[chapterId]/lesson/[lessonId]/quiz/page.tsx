@@ -19,6 +19,12 @@ export default async function QuizPage({ params }: QuizPageProps) {
             questions: {
                 where: { isArchived: false },
                 orderBy: { createdAt: "asc" },
+                include: {
+                    subItems: {
+                        orderBy: { position: "asc" }
+                    },
+                    passage: true
+                }
             },
         },
     });

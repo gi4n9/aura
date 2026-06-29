@@ -42,6 +42,25 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                     timestamp: true,
                     quizSource: true,
                     contentImageUrl: true,
+                    modelAnswer: true,
+                    modelAnswerFileUrl: true,
+                    passage: {
+                        select: {
+                            id: true,
+                            title: true,
+                            content: true
+                        }
+                    },
+                    subItems: {
+                        orderBy: { position: "asc" },
+                        select: {
+                            id: true,
+                            label: true,
+                            content: true,
+                            isCorrect: true,
+                            position: true
+                        }
+                    }
                 }
             }
         }
@@ -91,8 +110,9 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
     // Actually we know lessonId, so we can fetch submissions by lessonId directly if we didn't need Q mapping
     // But we map Qs.
 
-    let userAnswers: Record<string, { selectedOption?: string, answerText?: string, fileUrl?: string }> = {};
+    let userAnswers: Record<string, any> = {};
     let initialResult = null;
+    let submissions: any[] = [];
 
     // Filter questions based on displayMode
     let displayQuestions = lesson.questions;
@@ -105,7 +125,7 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
     if (user && displayQuestions.length > 0) {
         const questionsIds = displayQuestions.map(q => q.id);
 
-        const submissions = await prisma.submission.findMany({
+        submissions = await prisma.submission.findMany({
             where: {
                 userId: user.id,
                 questionId: { in: questionsIds }
@@ -114,48 +134,104 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
 
         if (submissions.length > 0) {
             submissions.forEach(sub => {
-                const isMC = displayQuestions.find(q => q.id === sub.questionId)?.type === "MULTIPLE_CHOICE";
-                userAnswers[sub.questionId] = {
-                    selectedOption: isMC ? sub.answerText || undefined : undefined,
-                    answerText: !isMC ? sub.answerText || undefined : undefined,
-                    fileUrl: sub.fileUrl || undefined
-                };
+                const question = displayQuestions.find(q => q.id === sub.questionId);
+                if (!question) return;
+
+                if (question.type === "MULTIPLE_CHOICE") {
+                    userAnswers[sub.questionId] = {
+                        selectedOption: sub.answerText || undefined
+                    };
+                } else if (question.type === "TRUE_FALSE") {
+                    let parsedAnswers = {};
+                    try {
+                        parsedAnswers = sub.answerText ? JSON.parse(sub.answerText) : {};
+                    } catch (e) {
+                        console.error("Failed to parse TRUE_FALSE answers:", e);
+                    }
+                    userAnswers[sub.questionId] = {
+                        subItemAnswers: parsedAnswers
+                    };
+                } else {
+                    // FILL_IN_BLANK, ESSAY, READING_COMPREHENSION
+                    userAnswers[sub.questionId] = {
+                        answerText: sub.answerText || undefined,
+                        fileUrl: sub.fileUrl || undefined
+                    };
+                }
             });
 
-            // Calculate Result
-            let correctCount = 0;
-            const mcQuestions = displayQuestions.filter(q => q.type === "MULTIPLE_CHOICE");
-            const totalMcQuestions = mcQuestions.length;
+            // Fetch QuizResult
+            const quizResult = await prisma.quizResult.findUnique({
+                where: {
+                    userId_lessonId: { userId: user.id, lessonId: lessonsId }
+                }
+            });
 
             const feedback = displayQuestions.map(q => {
+                const sub = submissions.find(s => s.questionId === q.id);
                 const userAns = userAnswers[q.id];
-                const isMC = q.type === "MULTIPLE_CHOICE";
-                
-                let isCorrect = true;
-                if (isMC) {
-                    isCorrect = userAns?.selectedOption === q.correctAnswer;
-                    if (isCorrect) correctCount++;
+
+                if (!sub) return null;
+
+                let isCorrect = false;
+                let subItemFeedback = undefined;
+                let isPendingGrading = false;
+                let essayScore = null;
+                let essayFeedback = null;
+                let isFinalized = false;
+
+                if (q.type === "MULTIPLE_CHOICE") {
+                    isCorrect = sub.score === 1;
+                } else if (q.type === "FILL_IN_BLANK") {
+                    isCorrect = sub.score === 1;
+                } else if (q.type === "TRUE_FALSE") {
+                    isCorrect = sub.score === 1;
+                    const subItemFeedbackObj: Record<string, { isCorrect: boolean }> = {};
+                    const studentAns = userAns?.subItemAnswers;
+                    if (q.subItems && studentAns) {
+                        q.subItems.forEach((subItem: any) => {
+                            const ansVal = studentAns[subItem.id];
+                            subItemFeedbackObj[subItem.id] = {
+                                isCorrect: ansVal === subItem.isCorrect
+                            };
+                        });
+                        subItemFeedback = subItemFeedbackObj;
+                    }
+                } else if (q.type === "ESSAY" || q.type === "READING_COMPREHENSION") {
+                    isCorrect = true; // Luôn hiển thị pass màu xanh ở viền/icon chính
+                    isFinalized = sub.isFinalized;
+                    isPendingGrading = !sub.isFinalized;
+                    essayScore = sub.score;
+                    essayFeedback = sub.feedback;
                 }
 
                 return {
                     questionId: q.id,
                     isCorrect,
                     correctAnswer: q.correctAnswer,
-                    explanation: q.aiExplanation
+                    explanation: q.aiExplanation,
+                    subItemFeedback,
+                    isPendingGrading,
+                    essayScore,
+                    essayFeedback,
+                    isFinalized,
+                    modelAnswer: q.modelAnswer,
+                    modelAnswerFileUrl: q.modelAnswerFileUrl
                 };
-            });
+            }).filter(Boolean);
 
             initialResult = {
                 success: true,
-                score: totalMcQuestions > 0 ? Math.round((correctCount / totalMcQuestions) * 100) : 100,
-                correctCount,
-                total: totalMcQuestions,
+                score: quizResult?.score ?? 0,
+                correctCount: quizResult?.correctAnswers ?? 0,
+                total: quizResult?.totalQuestions ?? 0,
                 feedback
             };
         }
     }
 
     // 3. Format Questions
+    const hasSubmitted = submissions && submissions.length > 0;
     const formattedQuestions = displayQuestions.map((q) => ({
         id: q.id,
         content: q.content,
@@ -163,7 +239,19 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
         options: q.options as string[],
         contentImageUrl: q.contentImageUrl,
         timestamp: q.timestamp,
-        quizSource: q.quizSource
+        quizSource: q.quizSource,
+        passage: q.passage ? {
+            id: q.passage.id,
+            title: q.passage.title,
+            content: q.passage.content
+        } : null,
+        subItems: q.subItems ? q.subItems.map((sub: any) => ({
+            id: sub.id,
+            label: sub.label,
+            content: sub.content,
+            position: sub.position,
+            isCorrect: hasSubmitted ? sub.isCorrect : undefined
+        })) : []
     }));
 
     // 4. Fetch all user progress for this course to display in Sidebar

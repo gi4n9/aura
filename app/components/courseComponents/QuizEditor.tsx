@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { QuizDisplayMode, QuizSource } from "@prisma/client";
 import WorksheetUploader from "./WorksheetUploader";
 import AnswerKeyUploader from "./AnswerKeyUploader";
+import EssayGradingPanel from "./EssayGradingPanel";
 import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 
 
@@ -20,6 +21,7 @@ interface QuestionState {
     type: "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE" | "FILL_IN_BLANK" | "READING_COMPREHENSION";
     options: string[];
     correctAnswer: "A" | "B" | "C" | "D" | string;
+    modelAnswer?: string | null;
     aiExplanation: string;
     quizSource: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
     contentImageUrl?: string | null;
@@ -43,6 +45,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
             type: q.type || "MULTIPLE_CHOICE",
             options: Array.isArray(q.options) ? q.options : ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
             correctAnswer: q.correctAnswer || "A",
+            modelAnswer: q.modelAnswer || "",
             aiExplanation: q.aiExplanation || "",
             quizSource: q.quizSource || "MANUAL",
             contentImageUrl: q.contentImageUrl,
@@ -135,6 +138,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                 type: q.type,
                 options: q.type === "MULTIPLE_CHOICE" ? q.options : [],
                 correctAnswer: q.type === "MULTIPLE_CHOICE" ? q.correctAnswer : (q.type === "FILL_IN_BLANK" ? q.correctAnswer : ""),
+                modelAnswer: (q.type === "ESSAY" || q.type === "READING_COMPREHENSION") ? q.modelAnswer : "",
                 aiExplanation: q.aiExplanation,
                 quizSource: q.quizSource,
                 contentImageUrl: q.contentImageUrl,
@@ -164,6 +168,8 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
             <WorksheetUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
             <AnswerKeyUploader lessonId={lessonId} onUploadSuccess={handleUploadSuccess} />
         </div>
+
+        <EssayGradingPanel lessonId={lessonId} />
 
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800">
@@ -408,6 +414,32 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                             onChange={(e) => handleChangeField(qIndex, "correctAnswer", e.target.value)}
                             className="w-full p-3 rounded border border-slate-300 outline-none focus:border-indigo-500 font-medium text-slate-800 bg-white"
                             placeholder="Nhập đáp án đúng (học sinh cần điền chính xác cụm từ này)"
+                        />
+                    </div>
+                )}
+
+                {/* Đáp án mẫu cho tự luận / đọc hiểu */}
+                {(q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (
+                    <div className="mb-6 p-4 bg-emerald-50/50 border border-emerald-200 rounded-lg">
+                        <div className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-1.5">
+                            <CheckCircle size={16} className="text-emerald-600" />
+                            Đáp án mẫu / Hướng dẫn chấm tự luận:
+                            {q.modelAnswer ? (
+                                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-medium">
+                                    Đã khớp đáp án thành công
+                                </span>
+                            ) : (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
+                                    Chưa có đáp án mẫu
+                                </span>
+                            )}
+                        </div>
+                        <textarea
+                            value={q.modelAnswer || ""}
+                            onChange={(e) => handleChangeField(qIndex, "modelAnswer", e.target.value)}
+                            className="w-full p-3 rounded border border-emerald-200 outline-none focus:border-emerald-500 font-medium text-slate-800 bg-white min-h-[120px]"
+                            placeholder="Nhập hướng dẫn chấm điểm chi tiết hoặc đáp án mẫu cho câu tự luận..."
+                            rows={4}
                         />
                     </div>
                 )}
