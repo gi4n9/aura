@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format, isSameMonth, parseISO, isToday } from "date-fns";
 import { vi } from "date-fns/locale";
-import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Circle, PlusCircle, ExternalLink, Award } from "lucide-react";
+import { LayoutGrid, List, Calendar as CalendarIcon, Trophy, CheckCircle2, BookOpen, Star, PlusCircle, ExternalLink, Award } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -16,6 +16,8 @@ interface LessonItem {
     courseId?: string; // Added courseId
     chapterId?: string; // Added chapterId
     isCompleted?: boolean;
+    hasQuiz?: boolean;
+    quizCompleted?: boolean;
 }
 
 interface StudySession {
@@ -28,18 +30,82 @@ interface StudySession {
     topics: LessonItem[];
 }
 
+const getTopicCups = (topic: LessonItem) => {
+    if (!topic.isCompleted) return 0;
+    if (!topic.hasQuiz) return 2;
+    return topic.quizCompleted ? 2 : 1;
+};
+
+const getSessionCups = (session: StudySession) => {
+    return session.topics.reduce((sum, topic) => sum + getTopicCups(topic), 0);
+};
+
 // --- COMPONENTS ---
 
 const SessionCard = ({ session }: { session: StudySession }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const topics = session.topics;
+    const hasManyTopics = topics.length > 2;
+
+    const renderTopic = (topic: LessonItem, idx: number) => (
+        <div key={topic.id + idx} className="group/topic">
+            {/* CLICKABLE ROW */}
+            <Link
+                href={topic.courseId && topic.chapterId
+                    ? `/courses/${topic.courseId}/lessons/${topic.id}`
+                    : "#"}
+                className="flex items-start gap-2 mb-1.5 hover:bg-stone-50 p-1.5 -mx-1.5 rounded-lg transition-colors"
+            >
+                <Star size={8} className={`mt-1.5 shrink-0 ${topic.isCompleted ? "text-green-500 fill-green-500" : "text-[#C5A059] fill-[#C5A059]"}`} />
+                <div className="flex-1">
+                    <p className={`text-sm font-medium leading-tight line-clamp-2 transition-colors
+                        ${topic.isCompleted ? "text-stone-500 line-through decoration-stone-300" : "text-stone-700 group-hover/topic:text-[#C5A059]"}
+                    `}>
+                        {topic.title}
+                    </p>
+                </div>
+                {/* Hover Icon */}
+                <ExternalLink size={14} className="mt-1 text-stone-300 opacity-0 group-hover/topic:opacity-100 transition-opacity" />
+            </Link>
+
+            {/* Tags */}
+            <div className="flex gap-2 ml-4">
+                <span className="inline-block px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-bold rounded border border-stone-200">
+                    {topic.type}
+                </span>
+                {topic.courseTitle && (
+                    <Link href={`/courses/${topic.courseId}`} className="inline-block px-2 py-0.5 bg-blue-50 text-blue-500 text-[10px] font-bold rounded border border-blue-100 max-w-[120px] truncate hover:underline">
+                        {topic.courseTitle}
+                    </Link>
+                )}
+            </div>
+        </div>
+    );
+
+    const sessionCups = getSessionCups(session);
+
     return (
         <div className={`
-             rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full overflow-hidden group
+             rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full overflow-hidden group relative
              ${isToday(session.date) ? "border-[#C5A059] ring-1 ring-[#C5A059]/30 bg-amber-50/20" : "bg-white border-stone-100 hover:border-green-200"}
         `}>
+            {/* Floating Cup Tag */}
+            {sessionCups > 0 && (
+                <div className="absolute top-3 right-3 w-12 h-12 rounded-full bg-amber-50/80 border border-amber-100/80 text-[#C5A059] flex flex-col items-center justify-center shadow-sm z-10 select-none">
+                    <div className="flex items-center justify-center gap-0.5 font-extrabold text-xs leading-none">
+                        <Trophy size={11} className="fill-[#C5A059]/20" />
+                        <span>+{sessionCups}</span>
+                    </div>
+                    <span className="text-[8px] font-bold uppercase tracking-widest leading-none mt-1 text-[#C5A059]/70">
+                        cups
+                    </span>
+                </div>
+            )}
+
             {/* Header */}
-            <div className="p-4 pb-2 flex justify-between items-start">
+            <div className={`p-4 pb-2 flex justify-between items-start ${sessionCups > 0 ? "pr-24" : ""}`}>
                 <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white flex items-center gap-1 shrink-0 whitespace-nowrap
                          ${session.isCompleted ? "bg-[#22c55e]" : "bg-[#C5A059]"}
                     `}>
                         Buổi {session.index}
@@ -49,53 +115,75 @@ const SessionCard = ({ session }: { session: StudySession }) => {
                         {format(session.date, "EEEE, d 'Thg' M", { locale: vi })}
                     </span>
                 </div>
-
-                <div className="flex items-center gap-2 text-[#F59E0B] font-bold text-sm">
-                    {session.isCompleted && (
-                        <>
-                            <Trophy size={16} />
-                            <span>+{session.topics.length * 3} cups</span>
-                        </>
-                    )}
-                </div>
             </div>
 
             {/* Body */}
-            <div className="px-4 py-2 flex-1 space-y-3">
-                {session.topics.map((topic, idx) => (
-                    <div key={topic.id + idx} className="group/topic">
-                        {/* CLICKABLE ROW */}
-                        <Link
-                            href={topic.courseId && topic.chapterId
-                                ? `/courses/${topic.courseId}/lessons/${topic.id}`
-                                : "#"}
-                            className="flex items-start gap-2 mb-1.5 hover:bg-stone-50 p-1.5 -mx-1.5 rounded-lg transition-colors"
-                        >
-                            <Circle size={8} className={`mt-1.5 shrink-0 ${session.isCompleted ? "text-green-500 fill-green-500" : "text-[#C5A059] fill-[#C5A059]"}`} />
-                            <div className="flex-1">
-                                <p className={`text-sm font-medium leading-tight line-clamp-2 transition-colors
-                                    ${topic.isCompleted ? "text-stone-500 line-through decoration-stone-300" : "text-stone-700 group-hover/topic:text-[#C5A059]"}
-                                `}>
-                                    {topic.title}
-                                </p>
-                            </div>
-                            {/* Hover Icon */}
-                            <ExternalLink size={14} className="mt-1 text-stone-300 opacity-0 group-hover/topic:opacity-100 transition-opacity" />
-                        </Link>
+            <div className="px-4 py-2 flex-1 flex flex-col">
+                <div className="space-y-3 flex-1">
+                    {hasManyTopics && !isExpanded ? (
+                        <>
+                            {(() => {
+                                const firstIncompleteIdx = topics.findIndex(t => !t.isCompleted);
+                                const currentIdx = firstIncompleteIdx !== -1 ? firstIncompleteIdx : topics.length - 1;
+                                const completedCount = topics.filter(t => t.isCompleted).length;
+                                const remainingCount = topics.length - currentIdx - 1;
 
-                        {/* Tags */}
-                        <div className="flex gap-2 ml-4">
-                            <span className="inline-block px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] font-bold rounded border border-stone-200">
-                                {topic.type}
-                            </span>
-                            {topic.courseTitle && (
-                                <Link href={`/courses/${topic.courseId}`} className="inline-block px-2 py-0.5 bg-blue-50 text-blue-500 text-[10px] font-bold rounded border border-blue-100 max-w-[120px] truncate hover:underline">
-                                    {topic.courseTitle}
-                                </Link>
-                            )}
-                        </div>
+                                return (
+                                    <>
+                                        {/* Completed lessons header */}
+                                        {completedCount > 0 && (
+                                            <button
+                                                onClick={() => setIsExpanded(true)}
+                                                className="w-full text-left text-[11px] font-bold text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100/60 border border-stone-200/60 px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors mb-1 shadow-sm"
+                                            >
+                                                <span className="flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                    Đã hoàn thành {completedCount}/{topics.length} bài học
+                                                </span>
+                                                <span className="text-[10px] underline text-[#C5A059] hover:text-[#b08e4f]">Mở rộng</span>
+                                            </button>
+                                        )}
+
+                                        {/* Current Lesson */}
+                                        {renderTopic(topics[currentIdx], currentIdx)}
+
+                                        {/* Remaining lessons footer */}
+                                        {remainingCount > 0 && (
+                                            <div className="flex items-center gap-2 pl-4 py-1">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="w-1 h-1 bg-stone-300 rounded-full"></div>
+                                                    <div className="w-1 h-1 bg-stone-300 rounded-full"></div>
+                                                    <div className="w-1 h-1 bg-stone-300 rounded-full"></div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setIsExpanded(true)}
+                                                    className="text-[11px] font-semibold text-stone-400 hover:text-[#C5A059] transition-colors"
+                                                >
+                                                    + {remainingCount} bài học tiếp theo (nhấp để xem)
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </>
+                    ) : (
+                        <>
+                            {topics.map((topic, idx) => renderTopic(topic, idx))}
+                        </>
+                    )}
+                </div>
+
+                {hasManyTopics && isExpanded && (
+                    <div className="mt-3 pt-2 border-t border-stone-100 flex justify-end">
+                        <button
+                            onClick={() => setIsExpanded(false)}
+                            className="text-xs font-bold text-[#C5A059] hover:text-[#b08e4f] transition-colors"
+                        >
+                            Thu gọn
+                        </button>
                     </div>
-                ))}
+                )}
             </div>
 
             {/* Footer */}
@@ -148,7 +236,9 @@ export default function StudyTimeline({ initialSchedule }: { initialSchedule: an
                     courseTitle: i.lesson.chapter?.course?.title,
                     courseId: i.lesson.chapter?.course?.id, // Ensure these are queried
                     chapterId: i.lesson.chapter?.id,
-                    isCompleted: i.isCompleted
+                    isCompleted: i.isCompleted,
+                    hasQuiz: i.hasQuiz,
+                    quizCompleted: i.quizCompleted
                 }))
             };
         });
@@ -208,7 +298,7 @@ export default function StudyTimeline({ initialSchedule }: { initialSchedule: an
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 bg-amber-50 text-[#C5A059] px-4 py-1.5 rounded-lg text-sm font-bold border border-amber-100">
                         <Trophy size={16} />
-                        <span>{sessions.filter(s => s.isCompleted).reduce((acc, s) => acc + s.topics.length * 3, 0)} cups</span>
+                        <span>{sessions.reduce((acc, s) => acc + getSessionCups(s), 0)} cups</span>
                     </div>
                     <div className="flex gap-1 pr-2">
                         <button

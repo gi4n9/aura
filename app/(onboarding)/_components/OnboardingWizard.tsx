@@ -38,7 +38,7 @@ export default function OnboardingWizard() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
-    
+
     // Navigation State
     const [step, setStep] = useState(1); // 1 = Parent, 2 = Children
     const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export default function OnboardingWizard() {
     };
 
     const toggleInterest = (slug: string) => {
-        setSelectedInterests(prev => 
+        setSelectedInterests(prev =>
             prev.includes(slug) ? prev.filter(i => i !== slug) : [...prev, slug]
         );
     };
@@ -79,7 +79,7 @@ export default function OnboardingWizard() {
     const selectedParent = categories.find(c => c.id === selectedParentId);
 
     return (
-        <div className="min-h-screen bg-background py-12 px-4">
+        <div className="min-h-screen bg-[#F9F8F4] py-12 px-4">
             <div className="max-w-4xl mx-auto mt-12">
                 <div className="text-center mb-12">
                     <motion.div
@@ -90,13 +90,13 @@ export default function OnboardingWizard() {
                         <Sparkles size={16} className="text-indigo-600" />
                         Thiết lập lộ trình
                     </motion.div>
-                    
+
                     <h1 className="text-4xl font-bold text-stone-900 mb-4 tracking-tight">
                         {step === 1 ? "Bạn quan tâm đến lĩnh vực nào nhất?" : "Chọn chuyên môn cụ thể"}
                     </h1>
-                    
+
                     <p className="text-stone-500 max-w-md mx-auto text-lg">
-                        {step === 1 
+                        {step === 1
                             ? "Hãy chọn một lĩnh vực lớn để bắt đầu hành trình của bạn."
                             : `Lựa chọn một hoặc nhiều chủ đề thuộc lĩnh vực ${selectedParent?.name} để cá nhân hóa lộ trình.`
                         }
@@ -122,7 +122,7 @@ export default function OnboardingWizard() {
                                     {categories.map((parent, idx) => {
                                         const Icon = getIconComponent(parent.icon);
                                         const colorClass = getColorClass(idx);
-                                        
+
                                         return (
                                             <button
                                                 key={parent.id}
@@ -161,24 +161,22 @@ export default function OnboardingWizard() {
                                     const isSelected = selectedInterests.includes(child.slug);
                                     const Icon = getIconComponent(child.icon || "code");
                                     const colorClass = getColorClass(idx + 3);
-                                    
+
                                     return (
                                         <button
                                             key={child.id}
                                             onClick={() => toggleInterest(child.slug)}
-                                            className={`p-6 rounded-2xl border-2 transition-all text-left group overflow-hidden ${
-                                                isSelected 
-                                                    ? "border-indigo-500 bg-indigo-50/50 shadow-md" 
-                                                    : "border-stone-200 bg-white hover:border-indigo-300 hover:shadow-sm"
-                                            }`}
+                                            className={`p-6 rounded-2xl border-2 transition-all text-left group overflow-hidden ${isSelected
+                                                ? "border-indigo-500 bg-indigo-50/50 shadow-md"
+                                                : "border-stone-200 bg-white hover:border-indigo-300 hover:shadow-sm"
+                                                }`}
                                         >
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className={`w-14 h-14 rounded-xl ${colorClass} text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
                                                     <Icon size={28} />
                                                 </div>
-                                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 mt-1 ${
-                                                    isSelected ? "border-indigo-500 bg-indigo-500" : "border-stone-300"
-                                                }`}>
+                                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 mt-1 ${isSelected ? "border-indigo-500 bg-indigo-500" : "border-stone-300"
+                                                    }`}>
                                                     {isSelected && <Check size={14} className="text-white" />}
                                                 </div>
                                             </div>
@@ -188,15 +186,15 @@ export default function OnboardingWizard() {
                                     );
                                 })}
                             </div>
-                            
+
                             <div className="flex justify-between items-center pt-8 border-t border-stone-100">
-                                <button 
+                                <button
                                     onClick={() => setStep(1)}
                                     className="flex items-center gap-2 text-stone-500 hover:text-stone-900 font-semibold transition-colors"
                                 >
                                     <ArrowLeft size={18} /> Quay lại
                                 </button>
-                                
+
                                 <button
                                     onClick={handleGenerateRoadmap}
                                     disabled={selectedInterests.length === 0 || loading}

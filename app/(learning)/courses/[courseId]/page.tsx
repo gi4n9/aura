@@ -2,10 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Clock, CheckCircle2, PlayCircle, Star, Users, Circle, CalendarRange } from "lucide-react";
-import LessonProgressBar from "@/app/components/courseComponents/LessonProgressBar";
+import { BookOpen, Clock, Users, PlayCircle, CheckCircle2 } from "lucide-react";
 import CourseDescription from "@/app/components/courseComponents/CourseDescription";
 import CourseActionButtons from "@/app/components/courseComponents/CourseActionButtons";
+import CourseSyllabusList from "@/app/components/courseComponents/CourseSyllabusList";
 import { createClient } from "@/utils/supabase/server";
 
 interface PageProps {
@@ -119,6 +119,21 @@ export default async function CoursePage({ params }: PageProps) {
 
     const firstLesson = course.chapters[0]?.lessons[0];
 
+    const lessonCompletionObj: { [key: string]: boolean } = {};
+    lessonCompletionMap.forEach((v, k) => {
+        lessonCompletionObj[k] = v;
+    });
+
+    const videoProgressObj: { [key: string]: number } = {};
+    videoProgressMap.forEach((v, k) => {
+        videoProgressObj[k] = v;
+    });
+
+    const quizPassObj: { [key: string]: boolean } = {};
+    quizPassMap.forEach((v, k) => {
+        quizPassObj[k] = v;
+    });
+
     return (
         <div className="min-h-screen bg-[#F9F8F4] text-stone-900 pb-20">
 
@@ -179,7 +194,7 @@ export default async function CoursePage({ params }: PageProps) {
                                     <div className="text-center py-2">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-stone-500 font-bold text-xs uppercase flex items-center gap-1">
-                                                <Clock size={14} /> 
+                                                <Clock size={14} />
                                                 {totalCourseDurationSeconds > 0 ? Math.floor(totalCourseDurationSeconds / 60) + " phút" : "N/A"}
                                             </span>
                                             <span className="text-stone-800 font-bold text-sm">Đã học {progressPercent}%</span>
@@ -225,80 +240,14 @@ export default async function CoursePage({ params }: PageProps) {
                         <div className="flex-1 h-[1px] bg-stone-200 mb-2"></div>
                     </div>
 
-                    <div className="space-y-6">
-                        {course.chapters.map((chapter) => {
-                            const chapterProgress = chapterProgressMap.get(chapter.id) || 0;
-
-                            return (
-                                <div key={chapter.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-                                    <div className="px-6 py-4 bg-[#F9F8F4] border-b border-stone-200 flex justify-between items-center">
-                                        <h3 className="font-serif text-lg font-bold text-stone-800">{chapter.title}</h3>
-
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className="text-[10px] font-bold tracking-widest text-stone-500 uppercase">
-                                                {chapter.lessons.length} Bài
-                                            </span>
-                                            {isEnrolled && (
-                                                <div className="w-20 h-1 bg-stone-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-green-500 transition-all duration-500"
-                                                        style={{ width: `${chapterProgress}%` }}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="divide-y divide-stone-100">
-                                        {chapter.lessons.map((lesson) => {
-                                            const isCompleted = lessonCompletionMap.get(lesson.id);
-
-                                            return (
-                                                <Link
-                                                    key={lesson.id}
-                                                    href={`/courses/${course.id}/lessons/${lesson.id}`}
-                                                    className="px-6 py-4 flex flex-col group hover:bg-stone-50 transition-colors cursor-pointer"
-                                                >
-                                                    <div className="flex items-center justify-between w-full">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center border transition-colors ${isCompleted
-                                                                ? "bg-green-100 text-green-600 border-green-200"
-                                                                : "bg-stone-100 text-[#C5A059] border-stone-200 group-hover:border-[#C5A059]"
-                                                                }`}>
-                                                                {isCompleted ? <CheckCircle2 size={16} /> : <PlayCircle size={16} />}
-                                                            </div>
-                                                            <span className={`font-medium transition-colors ${isCompleted ? "text-stone-400 line-through decoration-stone-300" : "text-stone-600 group-hover:text-stone-900"}`}>
-                                                                {lesson.title}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <span className="text-xs font-mono text-stone-400 flex items-center gap-1">
-                                                                <Clock size={12} />
-                                                                {lesson.duration ? Math.floor(lesson.duration / 60) + "p" : "--"}
-                                                            </span>
-                                                            <span className="text-xs font-bold text-[#C5A059] opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider">
-                                                                {isCompleted ? "Ôn tập" : "Học ngay"}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* [NEW] Progress Bar */}
-                                                    {isEnrolled && (
-                                                        <div className="mt-4 pl-12 pr-2">
-                                                            <LessonProgressBar 
-                                                                videoPercentage={videoProgressMap.get(lesson.id) || 0}
-                                                                hasQuiz={lesson._count.questions > 0}
-                                                                isQuizPassed={quizPassMap.get(lesson.id) || false}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <CourseSyllabusList
+                        courseId={course.id}
+                        chapters={course.chapters as any}
+                        lessonCompletionMap={lessonCompletionObj}
+                        videoProgressMap={videoProgressObj}
+                        quizPassMap={quizPassObj}
+                        isEnrolled={isEnrolled}
+                    />
                 </div>
 
                 {/* Sidebar Info */}

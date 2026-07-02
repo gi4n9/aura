@@ -1,9 +1,10 @@
-import StudyTimeline from "@/app/components/study-plan/StudyTimeline";
+import StudyTimeline from "@/app/components/study-plan/StudyTimelineClient";
 import ProgressCard from "@/app/components/study-plan/ProgressCard";
 import { getCachedStudyPlan } from "@/lib/cache";
 import { createClient } from "@/utils/supabase/server";
 import { differenceInDays } from "date-fns";
 import { redirect } from "next/navigation";
+import { db } from "@/lib/prisma";
 
 export default async function StudyPlanPage() {
     const supabase = await createClient();
@@ -14,6 +15,30 @@ export default async function StudyPlanPage() {
     // Sử dụng cached query
     const schedule = await getCachedStudyPlan(user.id);
 
+    // Lấy tiến độ xem video thực tế của user
+    const completedProgress = await db.videoProgress.findMany({
+        where: {
+            userId: user.id,
+            isCompleted: true
+        },
+        select: {
+            lessonId: true
+        }
+    });
+    const completedLessonIds = new Set(completedProgress.map(p => p.lessonId));
+
+    // Lấy tiến độ làm bài tập thực tế của user
+    const quizResults = await db.quizResult.findMany({
+        where: {
+            userId: user.id,
+            isPassed: true
+        },
+        select: {
+            lessonId: true
+        }
+    });
+    const completedQuizLessonIds = new Set(quizResults.map(q => q.lessonId));
+
     // Calculate Progress Stats
     let totalSessions = 0;
     let completedSessions = 0;
@@ -23,6 +48,14 @@ export default async function StudyPlanPage() {
     let expectedSessions = 0;
 
     if (schedule) {
+        // Cập nhật trạng thái isCompleted dựa trên video progress thực tế
+        schedule.items = schedule.items.map((i: any) => ({
+            ...i,
+            isCompleted: i.isCompleted || completedLessonIds.has(i.lessonId),
+            hasQuiz: (i.lesson?._count?.questions ?? 0) > 0,
+            quizCompleted: completedQuizLessonIds.has(i.lessonId)
+        }));
+
         totalSessions = schedule.items.length;
         completedSessions = schedule.items.filter((i: any) => i.isCompleted).length;
 

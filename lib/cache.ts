@@ -88,6 +88,9 @@ export const getCachedStudyPlan = unstable_cache(
                 id: true,
                 title: true,
                 duration: true,
+                _count: {
+                  select: { questions: true }
+                },
                 chapter: {
                   select: {
                     id: true,

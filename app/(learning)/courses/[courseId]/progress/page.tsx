@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { db } from "@/lib/prisma";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Circle, XCircle, FileQuestion, PlayCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import ProgressDetailsList from "@/app/components/courseComponents/ProgressDetailsList";
 
 export default async function CourseProgressPage({
     params,
@@ -20,7 +21,6 @@ export default async function CourseProgressPage({
         where: { id: courseId },
         include: {
             chapters: {
-                where: { status: "PUBLISHED" },
                 orderBy: { position: "asc" },
                 include: {
                     lessons: {
@@ -60,6 +60,31 @@ export default async function CourseProgressPage({
         }
     });
 
+    // 2.5 Fetch Video Progress for this Course
+    const videoProgresses = await db.videoProgress.findMany({
+        where: {
+            userId: user.id,
+            lesson: {
+                chapter: {
+                    courseId: courseId
+                }
+            }
+        },
+        select: {
+            lessonId: true,
+            isCompleted: true,
+            percentage: true
+        }
+    });
+
+    const videoProgressMap = new Map<string, { isCompleted: boolean; percentage: number }>();
+    videoProgresses.forEach(vp => {
+        videoProgressMap.set(vp.lessonId, {
+            isCompleted: vp.isCompleted,
+            percentage: vp.percentage
+        });
+    });
+
     // 3. Process Data
     // Create a map of LessonID -> { totalQuestions, correctAnswers, submittedCount }
     const lessonProgressMap = new Map<string, {
@@ -67,25 +92,26 @@ export default async function CourseProgressPage({
         correctCount: number;
         submittedCount: number;
         isCompleted: boolean;
+        videoCompleted: boolean;
+        videoPercentage: number;
     }>();
 
     // Initialize from structure
     course.chapters.forEach(chapter => {
         chapter.lessons.forEach(lesson => {
+            const videoProg = videoProgressMap.get(lesson.id);
             lessonProgressMap.set(lesson.id, {
                 totalQuestions: lesson._count.questions,
                 correctCount: 0,
                 submittedCount: 0,
-                isCompleted: false
+                isCompleted: false,
+                videoCompleted: videoProg?.isCompleted ?? false,
+                videoPercentage: videoProg?.percentage ?? 0
             });
         });
     });
 
     // Fill with submission data
-    // Note: A user might submit multiple times for one question? 
-    // Depending on DB unique constraints. Taking the latest status or just checking existence.
-    // Assuming 1 submission per question per user (or just counting unique questions answered).
-
     const answeredQuestions = new Set<string>(); // avoid double counting if multiple subs
 
     submissions.forEach(sub => {
@@ -102,11 +128,7 @@ export default async function CourseProgressPage({
         }
     });
 
-    // Determine Lesson Completion (Simple logic: if submitted > 0 OR video watched? I only have quiz data)
-    // Logic: If lesson has questions, must answer all? Or at least one?
-    // Let's say: If has Questions, progress = submitted / total.
-    // If no Questions, it's a Video lesson -> we don't track 'watched' yet so treat as 'Info'.
-
+    // Determine Lesson Completion
     let completedLessonsCount = 0;
     let totalLessonsCount = 0;
 
@@ -114,31 +136,36 @@ export default async function CourseProgressPage({
         chapter.lessons.forEach(lesson => {
             totalLessonsCount++;
             const stats = lessonProgressMap.get(lesson.id)!;
+            const hasQuiz = stats.totalQuestions > 0;
 
-            if (stats.totalQuestions > 0) {
-                // Complete if attempted all questions? Or just some?
-                // Let's say complete if submitted >= totalQuestions (Done all)
-                if (stats.submittedCount >= stats.totalQuestions) {
+            if (hasQuiz) {
+                // Done if video watched AND all questions submitted
+                if (stats.videoCompleted && stats.submittedCount >= stats.totalQuestions) {
                     stats.isCompleted = true;
-                    completedLessonsCount++;
                 }
             } else {
-                // No questions. How to mark complete? 
-                // Without 'UserProgress' table, we can't know if they watched.
-                // We'll mark as 'N/A' or 'Video Only'. I won't count it in 'Academic Progress' percentage for QUIZ.
-                // Or I just assume it's incomplete for now.
+                // Done if video watched (since no quiz)
+                if (stats.videoCompleted) {
+                    stats.isCompleted = true;
+                }
+            }
+
+            if (stats.isCompleted) {
+                completedLessonsCount++;
             }
         });
     });
 
-    // Calculate Percentage (of Quiz completion)
-    const quizEnsuredLessons = course.chapters.flatMap(c => c.lessons).filter(l => l._count.questions > 0).length;
-    const quizCompletedLessons = Array.from(lessonProgressMap.values()).filter(s => s.totalQuestions > 0 && s.isCompleted).length;
-
-    const progressPercent = quizEnsuredLessons > 0
-        ? Math.round((quizCompletedLessons / quizEnsuredLessons) * 100)
+    // Calculate Overall Percentage (all lessons completed / total lessons)
+    const progressPercent = totalLessonsCount > 0
+        ? Math.round((completedLessonsCount / totalLessonsCount) * 100)
         : 0;
 
+
+    const lessonProgressObj: { [key: string]: any } = {};
+    lessonProgressMap.forEach((v, k) => {
+        lessonProgressObj[k] = v;
+    });
 
     return (
         <div className="min-h-screen bg-[#F9F8F4] p-6 font-sans pt-[80px]">
@@ -177,94 +204,17 @@ export default async function CourseProgressPage({
                     <div className="flex-1 space-y-2 text-center md:text-left">
                         <h3 className="text-xl font-bold text-stone-700">Tổng quan kết quả</h3>
                         <p className="text-stone-500 text-sm">
-                            Bạn đã hoàn thành <strong>{quizCompletedLessons}</strong> trên tổng số <strong>{quizEnsuredLessons}</strong> bài học có bài tập kiểm tra.
+                            Bạn đã hoàn thành <strong>{completedLessonsCount}</strong> trên tổng số <strong>{totalLessonsCount}</strong> bài học của khóa học.
                             Hãy tiếp tục cố gắng!
                         </p>
                     </div>
                 </div>
 
-                {/* DETAILS LIST */}
-                <div className="space-y-6">
-                    {course.chapters.map((chapter) => (
-                        <div key={chapter.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-                            {/* Chapter Header */}
-                            <div className="bg-stone-50 px-6 py-4 border-b border-stone-100 flex items-center justify-between">
-                                <h2 className="font-bold text-stone-700 text-lg">{chapter.title}</h2>
-                                <span className="text-xs font-bold bg-white border border-stone-200 px-3 py-1 rounded-full text-stone-500">
-                                    {chapter.lessons.length} bài học
-                                </span>
-                            </div>
-
-                            {/* Lessons List */}
-                            <div className="divide-y divide-stone-100">
-                                {chapter.lessons.length === 0 ? (
-                                    <div className="p-6 text-center text-stone-400 italic text-sm">Chưa có bài học.</div>
-                                ) : (
-                                    chapter.lessons.map((lesson) => {
-                                        const stats = lessonProgressMap.get(lesson.id)!;
-                                        const hasQuiz = stats.totalQuestions > 0;
-
-                                        return (
-                                            <div key={lesson.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-stone-50/50 transition-colors">
-                                                {/* Lesson Info */}
-                                                <div className="flex items-start gap-4">
-                                                    <div className={`mt-1 ${stats.isCompleted ? "text-green-500" : "text-stone-300"}`}>
-                                                        {stats.isCompleted ? <CheckCircle2 size={24} /> : <Circle size={24} />}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-stone-800 mb-1">{lesson.title}</h4>
-                                                        <div className="flex items-center gap-3 text-xs text-stone-500">
-                                                            {hasQuiz ? (
-                                                                <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-medium">
-                                                                    <FileQuestion size={12} /> {stats.totalQuestions} Câu hỏi
-                                                                </span>
-                                                            ) : (
-                                                                <span className="flex items-center gap-1 text-stone-400 bg-stone-100 px-2 py-0.5 rounded font-medium">
-                                                                    <PlayCircle size={12} /> Bài giảng video
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Progress Result */}
-                                                {hasQuiz && (
-                                                    <div className="flex bg-stone-100 rounded-lg p-3 min-w-[140px] justify-between items-center sm:flex-col sm:items-end md:flex-row md:items-center">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Điểm số</span>
-                                                            <span className={`font-bold text-lg ${stats.correctCount === stats.totalQuestions ? "text-green-600" : "text-stone-700"
-                                                                }`}>
-                                                                {stats.correctCount}/{stats.totalQuestions}
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="h-8 w-[1px] bg-stone-200 hidden md:block mx-3"></div>
-
-                                                        <div className="text-right">
-                                                            <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider block">Trạng thái</span>
-                                                            {stats.isCompleted ? (
-                                                                <span className="text-xs font-bold text-green-600">Đã làm xong</span>
-                                                            ) : stats.submittedCount > 0 ? (
-                                                                <span className="text-xs font-bold text-amber-600">Đang học</span>
-                                                            ) : (
-                                                                <span className="text-xs font-bold text-stone-400">Chưa làm</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {!hasQuiz && (
-                                                    <div className="text-xs text-stone-400 italic">
-                                                        (Không có bài tập)
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                {/* DETAILS LIST WITH PAGINATION & CHAPTER SELECTOR */}
+                <ProgressDetailsList
+                    chapters={course.chapters as any}
+                    lessonProgress={lessonProgressObj}
+                />
             </div>
         </div>
     );

@@ -40,7 +40,7 @@ export default async function RoadmapPage() {
 
     if (!roadmap) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="min-h-screen bg-[#F9F8F4] flex items-center justify-center p-4">
                 <div className="text-center max-w-md bg-white p-10 rounded-3xl shadow-sm border border-stone-100">
                     <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
                         <Compass size={48} strokeWidth={1.5} />
@@ -100,7 +100,7 @@ export default async function RoadmapPage() {
                     />
 
                     <div className="flex justify-center py-6">
-                        <Link 
+                        <Link
                             href="/onboarding/study-plan/create"
                             className="bg-[#1a1a1a] text-white px-10 py-4 rounded-xl font-bold hover:bg-stone-800 transition-all shadow-xl hover:shadow-2xl flex items-center gap-3 text-lg hover:scale-105"
                         >
