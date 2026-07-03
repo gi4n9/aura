@@ -5,6 +5,7 @@ import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshol
 import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import Groq from "groq-sdk";
 import { prisma } from "@/lib/prisma";
+import { transcribeWithGemini } from "@/lib/transcript-gemini";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import fs from "fs";
@@ -447,10 +448,26 @@ async function runBackgroundVideoProcessing(
   let geminiFileName = "";
 
   try {
+    // Lấy thông tin khóa học và chương học để làm ngữ cảnh bóc băng
+    console.log(`🔍 Đang truy vấn ngữ cảnh khóa học cho chapterId: ${chapterId}...`);
+    const chapter = await prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: {
+        course: {
+          select: {
+            title: true,
+          }
+        }
+      }
+    });
+    const courseTitle = chapter?.course?.title || "";
+    const chapterTitle = chapter?.title || "";
+    console.log(`📚 Ngữ cảnh khóa học: "${courseTitle}" | Chương: "${chapterTitle}"`);
+
     // =========================================================
-    // BƯỚC 3: UPLOAD LÊN YOUTUBE & BÓC BĂNG TRANSCRIPT BẰNG GROQ (SONG SONG)
+    // BƯỚC 3: UPLOAD LÊN YOUTUBE & BÓC BĂNG TRANSCRIPT BẰNG GEMINI (SONG SONG)
     // =========================================================
-    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Groq...");
+    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Gemini-First...");
 
     // A. Upload YouTube (vẫn upload video gốc)
     const youtubeUploadPromise = youtube.videos.insert({
@@ -477,33 +494,30 @@ async function runBackgroundVideoProcessing(
       return ytRes.data.id;
     });
 
-    // B. Bóc băng audio bằng Groq Whisper API (whisper-large-v3)
-    const groqTranscriptionPromise = groq.audio.transcriptions.create({
-      file: fs.createReadStream(audioFilePath),
-      model: "whisper-large-v3",
-      language: "vi",
-      response_format: "json",
-    }).then((transRes) => {
-      console.log("✅ Groq Transcription OK.");
-      return transRes.text;
-    });
+    // B. Bóc băng audio bằng Gemini-First STT
+    const geminiTranscriptionPromise = transcribeWithGemini(
+      audioFilePath,
+      courseTitle,
+      chapterTitle,
+      title // lessonTitle
+    );
 
     // Đợi cả 2 hoàn tất an toàn
     const uploadResults = await Promise.allSettled([
       youtubeUploadPromise,
-      groqTranscriptionPromise,
+      geminiTranscriptionPromise,
     ]);
 
     if (uploadResults[0].status === "rejected") {
       throw new Error(`YouTube API Error: ${uploadResults[0].reason?.message || "Lỗi không xác định"}`);
     }
     if (uploadResults[1].status === "rejected") {
-      throw new Error(`Groq STT Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
+      throw new Error(`Gemini STT Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
     }
 
     youtubeId = uploadResults[0].value;
     const transcriptText = uploadResults[1].value;
-    console.log(`📝 Groq transcript length: ${transcriptText.length} characters`);
+    console.log(`📝 Gemini transcript length: ${transcriptText.length} characters`);
 
     // =========================================================
     // BƯỚC 4: GỬI GROQ PHÂN TÍCH VÀ SINH TIMELINE TỪ TRANSCRIPT TEXT

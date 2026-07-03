@@ -2,6 +2,7 @@ import Tesseract from "tesseract.js";
 import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 import * as xlsx from "xlsx";
 import Groq from "groq-sdk";
+import { getSha256, getCachedOcr, setCachedOcr } from "./ocr-cache";
 
 // Sửa lỗi DOMMatrix is not defined trên môi trường Node.js mới
 if (typeof global !== "undefined" && !global.DOMMatrix) {
@@ -624,7 +625,7 @@ function regexParser(rawText: string): ParsedQuestion[] {
     return questions;
 }
 
-export async function parseAnswerKeyFromImage(
+export async function parseAnswerKeyFromImageOld(
     buffer: Buffer,
     mimeType: string,
     targetExamCode: string | null,
@@ -925,4 +926,262 @@ function parseSingleQuestionText(rawContent: string, index: number): ParsedQuest
         content: rawContent,
         type: "ESSAY"
     };
+}
+
+export function cleanString(str: string): string {
+    return (str || "")
+        .trim()
+        .replace(/\r\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n");
+}
+
+export function normalizeForComparison(str: string): string {
+    return str
+        .toLowerCase()
+        .replace(/[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/g, "")
+        .trim();
+}
+
+export function mergeAnswersWithOverlap(existing: string, newVal: string): string {
+    const cleanExisting = cleanString(existing);
+    const cleanNew = cleanString(newVal);
+
+    if (!cleanExisting) return cleanNew;
+    if (!cleanNew) return cleanExisting;
+
+    // Check subset containment
+    if (cleanExisting.includes(cleanNew)) return cleanExisting;
+    if (cleanNew.includes(cleanExisting)) return cleanNew;
+
+    // Check tail/head overlap similarity line-by-line
+    const existingLines = cleanExisting.split("\n");
+    const newLines = cleanNew.split("\n");
+
+    const maxCheck = Math.min(existingLines.length, newLines.length, 10);
+    let overlapCount = 0;
+
+    for (let i = 1; i <= maxCheck; i++) {
+        const tail = existingLines.slice(-i).join("\n");
+        const head = newLines.slice(0, i).join("\n");
+        if (normalizeForComparison(tail) === normalizeForComparison(head)) {
+            overlapCount = i;
+        }
+    }
+
+    if (overlapCount > 0) {
+        console.log(`✂️ Detected overlap of ${overlapCount} lines between pages. Slicing overlap...`);
+        return cleanExisting + "\n" + newLines.slice(overlapCount).join("\n");
+    }
+
+    return cleanExisting + "\n" + cleanNew;
+}
+
+function formatQuestionsForPrompt(existingQuestions: { id: string; index: number; content: string; type: string }[]): string {
+    let readingCount = 0;
+    let essayCount = 0;
+    
+    return existingQuestions.map((q) => {
+        let partInfo = "";
+        if (q.type === "READING_COMPREHENSION" || q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE" || q.type === "FILL_IN_BLANK") {
+            readingCount++;
+            partInfo = `Phần I (Đọc hiểu) - Câu ${readingCount}`;
+        } else if (q.type === "ESSAY") {
+            essayCount++;
+            partInfo = `Phần II (Viết/Làm văn) - Câu ${essayCount}`;
+        } else {
+            partInfo = `Câu ${q.index}`;
+        }
+        
+        return `- ID: ${q.id} [${partInfo}] (Loại: ${q.type}): "${q.content.slice(0, 150)}..."`;
+    }).join("\n");
+}
+
+export async function parseAnswerKeyBatch(
+    files: { buffer: Buffer; mimeType: string }[],
+    targetExamCode: string | null,
+    existingQuestions?: { id: string; index: number; content: string; type: string }[]
+): Promise<Record<string, string>> {
+    if (files.length === 0) return {};
+
+    // 1. Calculate combined hash of all files for cache lookup
+    const hashes = files.map(f => getSha256(f.buffer));
+    hashes.sort();
+    const combinedHash = getSha256(Buffer.from(hashes.join("|") + `|code:${targetExamCode || ""}`));
+
+    // 2. Query OCR cache first
+    const cached = await getCachedOcr(combinedHash);
+    if (cached) {
+        console.log(`💾 Answer Key Batch Cache Hit for hash ${combinedHash}`);
+        try {
+            return JSON.parse(cached.text);
+        } catch (e) {
+            console.error("Failed to parse cached answer key JSON:", e);
+        }
+    }
+
+    console.log(`🆕 Cache Miss for combined hash ${combinedHash}. Requesting Gemini Vision Batch...`);
+
+    const examCodeInstruction = targetExamCode 
+        ? `LƯU Ý QUAN TRỌNG: Bạn chỉ được trích xuất đáp án cho Mã đề thi là "${targetExamCode}". Hãy tìm đúng cột hoặc phần văn bản của mã đề này.` 
+        : `Nếu ảnh/tài liệu có nhiều cột mã đề, hãy tự động chọn cột mã đề đầu tiên.`;
+
+    const formattedQuestionsInfo = existingQuestions && existingQuestions.length > 0
+        ? `\nDưới đây là danh sách các câu hỏi đã có trong đề thi (đã được sắp xếp tuần tự theo thứ tự xuất hiện từ trên xuống dưới):\n${formatQuestionsForPrompt(existingQuestions)}
+LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
+- Đề thi tự luận/Ngữ văn thường chia làm các phần (Ví dụ: Phần I Đọc hiểu có các Câu 1, 2, 3, 4 và Phần II Làm văn/Viết có các Câu 1, 2).
+- Tuy nhiên trong CSDL, toàn bộ các câu hỏi này được xếp tuần tự thành danh sách phẳng (ví dụ: các câu đọc hiểu là từ 1 đến 4, câu làm văn sẽ là câu thứ 5, 6...).
+- Do đó, hãy trích xuất các đáp án từ tài liệu tải lên theo thứ tự xuất hiện từ trên xuống dưới của chúng, rồi gán lần lượt cho các ID câu hỏi trong danh sách CSDL ở trên theo đúng thứ tự tuyến tính (ví dụ: đáp án đầu tiên tương ứng ID câu thứ 1, đáp án thứ hai tương ứng ID câu thứ 2... đáp án của Phần II Câu 1 tương ứng ID câu thứ 5).
+- Hãy đối khớp kỹ lưỡng nội dung câu hỏi và ngữ cảnh để gán chính xác ID câu hỏi dạng UUID làm khóa chính cho đáp án đó.
+- YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN (ESSAY/READING_COMPREHENSION):
+  * Bạn phải xây dựng Rubric chi tiết cho từng câu tự luận/đọc hiểu.
+  * Phải tách rõ yêu cầu chung (general) và các tiêu chí cụ thể (criteria) kèm điểm số của từng ý (ví dụ: Ý 1.1: 0.5đ, Ý 1.2: 1.0đ...).
+  * Phải bảo toàn toàn bộ ký tự xuống dòng (sử dụng định dạng danh sách liệt kê bằng Markdown) để nội dung hiển thị phân dòng rõ ràng, ngăn nắp.
+- YÊU CẦU BỎ QUA CÂU HỎI KHÔNG CÓ TRONG FILE:
+  * Nếu một câu hỏi KHÔNG xuất hiện đáp án trong tài liệu, bạn TUYỆT ĐỐI KHÔNG được đưa vào kết quả trả về (không tạo key JSON cho chúng).`
+        : "";
+
+    const answerKeyBatchSchema: Schema = {
+        type: SchemaType.OBJECT,
+        properties: {
+            answers: {
+                type: SchemaType.ARRAY,
+                description: "Danh sách đáp án trích xuất từ các trang tài liệu.",
+                items: {
+                    type: SchemaType.OBJECT,
+                    properties: {
+                        uuid: {
+                            type: SchemaType.STRING,
+                            description: "ID UUID của câu hỏi trong CSDL"
+                        },
+                        pageStart: {
+                            type: SchemaType.INTEGER,
+                            description: "Trang bắt đầu có đáp án của câu hỏi này (1-based)"
+                        },
+                        pageEnd: {
+                            type: SchemaType.INTEGER,
+                            description: "Trang kết thúc đáp án của câu hỏi này (1-based)"
+                        },
+                        answer: {
+                            type: SchemaType.STRING,
+                            description: "Nội dung đáp án đúng hoặc đáp án mẫu chi tiết. Giữ nguyên markdown, xuống dòng."
+                        },
+                        rubric: {
+                            type: SchemaType.OBJECT,
+                            description: "Rubric chấm điểm chi tiết (chỉ dành cho câu hỏi tự luận/đọc hiểu).",
+                            properties: {
+                                general: {
+                                    type: SchemaType.STRING,
+                                    description: "Yêu cầu chung về hình thức, ngôn ngữ, dung lượng..."
+                                },
+                                criteria: {
+                                    type: SchemaType.ARRAY,
+                                    description: "Danh sách các tiêu chí chấm điểm cụ thể.",
+                                    items: {
+                                        type: SchemaType.OBJECT,
+                                        properties: {
+                                            label: {
+                                                type: SchemaType.STRING,
+                                                description: "Nhãn tiêu chí (VD: 'Ý 1.1', 'Nội dung', 'Nghệ thuật')"
+                                            },
+                                            description: {
+                                                type: SchemaType.STRING,
+                                                description: "Mô tả chi tiết yêu cầu đạt điểm của tiêu chí này"
+                                            },
+                                            score: {
+                                                type: SchemaType.NUMBER,
+                                                description: "Điểm số tối đa của tiêu chí này"
+                                            }
+                                        },
+                                        required: ["label", "description", "score"]
+                                    }
+                                },
+                                totalScore: {
+                                    type: SchemaType.NUMBER,
+                                    description: "Tổng điểm của câu hỏi này"
+                                }
+                            },
+                            required: ["general", "criteria", "totalScore"]
+                        }
+                    },
+                    required: ["uuid", "answer"]
+                }
+            }
+        },
+        required: ["answers"]
+    };
+
+    try {
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: answerKeyBatchSchema,
+                temperature: 0.2
+            }
+        });
+
+        const prompt = `
+Bạn là chuyên gia nhận dạng đáp án đề thi giáo dục Việt Nam.
+Nhiệm vụ: Trích xuất các đáp án từ các trang hình ảnh/PDF đính kèm dưới đây (chúng là các trang liên tiếp của cùng một tài liệu đáp án) và ánh xạ chúng vào các ID câu hỏi thích hợp trong CSDL.
+LƯU Ý QUAN TRỌNG:
+- Đây là các trang liên tiếp. Hãy ghép nối nội dung liền mạch nếu đáp án của một câu kéo dài qua nhiều trang (ví dụ: bắt đầu ở cuối trang 2 và tiếp tục ở trang 3).
+- Không được coi mỗi trang là một tài liệu độc lập.
+- Nếu một câu hỏi không có đáp án xuất hiện, KHÔNG sinh nội dung cho câu đó. Nếu không chắc chắn, trả về null (hoặc bỏ qua). Không đoán bừa.
+${examCodeInstruction}
+${formattedQuestionsInfo}
+`;
+
+        const fileParts = files.map(f => ({
+            inlineData: {
+                data: f.buffer.toString("base64"),
+                mimeType: f.mimeType
+            }
+        }));
+
+        const result = await model.generateContent([prompt, ...fileParts]);
+        const responseText = result.response.text();
+        console.log("📊 Gemini Batch Answer Key Extraction Response:", responseText);
+
+        const parsedObj = JSON.parse(responseText);
+        const answersArray = Array.isArray(parsedObj.answers) ? parsedObj.answers : [];
+
+        const finalResult: Record<string, string> = {};
+        for (const item of answersArray) {
+            if (item.uuid && item.answer) {
+                const q = existingQuestions?.find(itemQ => itemQ.id === item.uuid);
+                if (q && (q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && item.rubric) {
+                    finalResult[item.uuid] = JSON.stringify({
+                        isRubric: true,
+                        pageStart: item.pageStart || null,
+                        pageEnd: item.pageEnd || null,
+                        answer: item.answer,
+                        rubric: item.rubric
+                    });
+                } else {
+                    finalResult[item.uuid] = item.answer;
+                }
+            }
+        }
+
+        // Lưu vào DB Cache
+        await setCachedOcr(combinedHash, "image", JSON.stringify(finalResult), {
+            textLength: responseText.length,
+            wordCount: answersArray.length,
+            vietnameseRatio: 1.0
+        });
+
+        return finalResult;
+    } catch (error: any) {
+        console.error("❌ parseAnswerKeyBatch error:", error);
+        throw error;
+    }
+}
+
+export async function parseAnswerKeyFromImage(
+    buffer: Buffer,
+    mimeType: string,
+    targetExamCode: string | null,
+    existingQuestions?: { id: string; index: number; content: string; type: string }[]
+): Promise<Record<string, string>> {
+    return parseAnswerKeyBatch([{ buffer, mimeType }], targetExamCode, existingQuestions);
 }

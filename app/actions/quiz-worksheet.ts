@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { parseQuestionsFromFile, parseQuestionsFromFilesBatch, parseAnswerKeyFromImage, parseAnswerKeyFromExcel, ParsedQuestion } from "@/lib/worksheet-parser";
+import { parseQuestionsFromFile, parseQuestionsFromFilesBatch, parseAnswerKeyFromImage, parseAnswerKeyBatch, parseAnswerKeyFromExcel, mergeAnswersWithOverlap, ParsedQuestion } from "@/lib/worksheet-parser";
 import { QuizSource, QuestionType, QuizDisplayMode } from "@prisma/client";
 import { parseFileUrls } from "@/app/utils/file-utils";
 
@@ -302,6 +302,8 @@ export async function processAnswerKeyUpload(lessonId: string, fileUrl: string, 
         }));
 
         let parsedAnswersCombined: Record<string, string> = {};
+        const imagePdfFiles: { buffer: Buffer; mimeType: string }[] = [];
+        const excelFiles: { buffer: Buffer }[] = [];
 
         for (const url of fileUrls) {
             console.log(`🌐 Fetching answer key file from URL: ${url}`);
@@ -314,7 +316,6 @@ export async function processAnswerKeyUpload(lessonId: string, fileUrl: string, 
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
-            // Tự động nhận diện content type của file
             let detectedType = response.headers.get("content-type") || "";
             detectedType = detectedType.split(";")[0].trim().toLowerCase();
 
@@ -323,23 +324,51 @@ export async function processAnswerKeyUpload(lessonId: string, fileUrl: string, 
                 detectedType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             } else if (["png", "jpg", "jpeg", "webp"].some(ext => pathPart.endsWith("." + ext))) {
                 detectedType = "image/png";
+            } else if (pathPart.endsWith(".pdf")) {
+                detectedType = "application/pdf";
             }
 
-            let parsedAnswers: Record<string, string> = {};
             if (detectedType.includes("excel") || detectedType.includes("spreadsheet") || detectedType.includes("sheet") || detectedType.includes("csv")) {
-                parsedAnswers = await parseAnswerKeyFromExcel(buffer, targetExamCode, existingQuestions);
-            } else if (detectedType.startsWith("image/")) {
-                parsedAnswers = await parseAnswerKeyFromImage(buffer, detectedType, targetExamCode, existingQuestions);
+                excelFiles.push({ buffer });
+            } else if (detectedType.startsWith("image/") || detectedType === "application/pdf") {
+                imagePdfFiles.push({ buffer, mimeType: detectedType });
             } else {
                 console.warn(`⚠️ Unsupported file type: ${detectedType} for URL: ${url}`);
-                continue;
             }
+        }
 
-            console.log(`📊 Extracted ${Object.keys(parsedAnswers).length} answers from ${url}`);
-            for (const [qId, answer] of Object.entries(parsedAnswers)) {
-                if (isValidAnswerValue(answer)) {
-                    parsedAnswersCombined[qId] = answer;
+        if (imagePdfFiles.length > 0) {
+            console.log(`🧠 Processing ${imagePdfFiles.length} image/PDF files in a single batch call...`);
+            try {
+                const batchResult = await parseAnswerKeyBatch(imagePdfFiles, targetExamCode, existingQuestions);
+                for (const [qId, answer] of Object.entries(batchResult)) {
+                    if (isValidAnswerValue(answer)) {
+                        if (parsedAnswersCombined[qId]) {
+                            parsedAnswersCombined[qId] = mergeAnswersWithOverlap(parsedAnswersCombined[qId], answer);
+                        } else {
+                            parsedAnswersCombined[qId] = answer;
+                        }
+                    }
                 }
+            } catch (err) {
+                console.error("❌ Batch processing failed:", err);
+            }
+        }
+
+        for (const excelFile of excelFiles) {
+            try {
+                const excelResult = await parseAnswerKeyFromExcel(excelFile.buffer, targetExamCode, existingQuestions);
+                for (const [qId, answer] of Object.entries(excelResult)) {
+                    if (isValidAnswerValue(answer)) {
+                        if (parsedAnswersCombined[qId]) {
+                            parsedAnswersCombined[qId] = mergeAnswersWithOverlap(parsedAnswersCombined[qId], answer);
+                        } else {
+                            parsedAnswersCombined[qId] = answer;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("❌ Excel processing failed:", err);
             }
         }
 

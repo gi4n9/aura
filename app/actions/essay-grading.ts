@@ -600,9 +600,39 @@ function buildAiGradingPrompt(params: {
         ? `\n**Ngữ liệu đọc hiểu:**\n${passageContent}\n`
         : "";
 
-    const modelAnswerSection = modelAnswer
-        ? `\n**Đáp án mẫu / Hướng dẫn chấm:**\n${modelAnswer}\n`
-        : "\n(Không có đáp án mẫu — hãy đánh giá dựa trên chất lượng nội dung.)\n";
+    let modelAnswerSection = "";
+    let rubricInstructions = "";
+
+    try {
+        if (modelAnswer && modelAnswer.trim().startsWith("{")) {
+            const parsed = JSON.parse(modelAnswer);
+            if (parsed.isRubric || parsed.rubric) {
+                const rubric = parsed.rubric || parsed;
+                const criteriaStr = rubric.criteria && rubric.criteria.length > 0
+                    ? rubric.criteria.map((c: any, idx: number) => `- **${c.label || `Tiêu chí ${idx + 1}`}** (Điểm tối đa: ${c.score}đ): ${c.description}`).join("\n")
+                    : "Chưa thiết lập tiêu chí chi tiết.";
+
+                modelAnswerSection = `\n**Đáp án mẫu:**\n${parsed.answer || "(Xem Rubric bên dưới)"}\n\n**RUBRIC CHẤM ĐIỂM CHI TIẾT (Tổng điểm tối đa của câu hỏi này là ${rubric.totalScore || rubric.score || 10}đ):**\n${criteriaStr}\n`;
+                if (rubric.general) {
+                    modelAnswerSection += `\n**Yêu cầu chung:**\n${rubric.general}\n`;
+                }
+
+                rubricInstructions = `
+LƯU Ý CHẤM ĐIỂM THEO RUBRIC:
+- Tổng điểm tối đa của câu hỏi này là ${rubric.totalScore || rubric.score || 10}đ. Tuy nhiên, thang điểm chấm cuối cùng của bạn phải được quy đổi về thang **10** khi trả về trong trường "score" của JSON (ví dụ: học sinh đạt 3.0đ trên tổng số 4.0đ của rubric này thì điểm quy đổi về thang 10 là (3.0/4.0) * 10 = 7.5 điểm).
+- Hãy đánh giá và cho điểm chi tiết cho từng tiêu chí trong Rubric trên. Trong phần nhận xét (feedback), hãy phân tích rõ học sinh đạt được điểm ở những tiêu chí nào và bị trừ điểm ở tiêu chí nào.
+`;
+            }
+        }
+    } catch (e) {
+        // Not a JSON, fallback to raw text
+    }
+
+    if (!modelAnswerSection) {
+        modelAnswerSection = modelAnswer
+            ? `\n**Đáp án mẫu / Hướng dẫn chấm:**\n${modelAnswer}\n`
+            : "\n(Không có đáp án mẫu — hãy đánh giá dựa trên chất lượng nội dung.)\n";
+    }
 
     return `
 Bạn là một giáo viên Ngữ văn dày dặn kinh nghiệm, đang chấm bài thi cho học sinh THPT Việt Nam.
@@ -618,13 +648,12 @@ ${studentAnswer}
 ---
 
 **Yêu cầu:**
-1. Chấm điểm trên thang **0-10** (có thể dùng số thập phân, VD: 7.5).
+1. Chấm điểm trên thang **0-10** (có thể dùng số thập phân, VD: 7.5). ${rubricInstructions}
 2. Đưa ra nhận xét chi tiết bằng tiếng Việt:
    - Điểm mạnh của bài làm
    - Điểm yếu / thiếu sót
    - Gợi ý cải thiện
-3. Nếu có đáp án mẫu, so sánh bài làm với đáp án mẫu.
-4. Đánh giá các tiêu chí: Nội dung (đúng/đủ ý), Diễn đạt (mạch lạc, logic), Sáng tạo, Chính tả/Ngữ pháp.
+3. Đánh giá các tiêu chí: Nội dung (đúng/đủ ý), Diễn đạt (mạch lạc, logic), Sáng tạo, Chính tả/Ngữ pháp.
 
 **Trả về JSON:**
 {
