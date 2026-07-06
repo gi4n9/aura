@@ -190,6 +190,10 @@ model Lesson {
   videoEmbeddings VideoEmbedding[]
   passages        Passage[]
 
+  contentType     LessonContentType @default(YOUTUBE_VIDEO)
+  lectureScript   LectureScript?
+  jarvisWarmup    Json? // Cache { greeting, suggestions }
+
   createdAt DateTime @default(now())
 }
 
@@ -633,3 +637,71 @@ model OcrCache {
   meta      Json     // Lưu { confidence, textLength, wordCount, vietnameseRatio }
   createdAt DateTime @default(now())
 }
+
+// ================= AI LECTURE GENERATION & ASSISTANT =================
+
+enum LessonContentType {
+  YOUTUBE_VIDEO
+  AI_GENERATED
+}
+
+enum ScriptStatus {
+  DRAFT
+  GENERATING
+  READY
+  ERROR
+}
+
+model LectureScript {
+  id        String       @id @default(uuid())
+  lessonId  String       @unique
+  lesson    Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  // Edge TTS Config  
+  voiceId       String   @default("vi-VN-HoaiMyNeural") // vi-VN-HoaiMyNeural (Nữ) | vi-VN-NamMinhNeural (Nam)
+  speed         String   @default("+0%")                // Tốc độ điều chỉnh bằng %
+  
+  // Template & Style
+  brandColor    String   @default("#C5A059")
+  fontFamily    String   @default("Inter")
+
+  // Generated Output
+  totalDuration Int?     
+  status        ScriptStatus @default(DRAFT)
+  errorMessage  String?
+
+  segments  LectureSegment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LectureSegment {
+  id        String        @id @default(uuid())
+  scriptId  String
+  script    LectureScript @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+
+  position  Int           
+
+  // Slide Content
+  slideTitle    String?
+  slideContent  String    @db.Text   
+  slideLayout   String    @default("TITLE_BODY")
+  slideImageUrl String?
+
+  // AI Narration
+  narrationText String    @db.Text   
+
+  // Generated Audio
+  audioUrl      String?              
+  audioDuration Float?               
+  audioStatus   String    @default("pending") 
+
+  // Animation
+  animation     String    @default("fade")
+
+  createdAt DateTime @default(now())
+
+  @@index([scriptId])
+}
+

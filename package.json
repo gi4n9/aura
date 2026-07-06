@@ -38,6 +38,7 @@
     "googleapis": "^170.0.0",
     "groq-sdk": "^0.37.0",
     "lucide-react": "^0.562.0",
+    "msedge-tts": "^2.0.6",
     "next": "16.0.10",
     "nextjs-toploader": "^3.9.17",
     "pdf-parse": "^2.4.5",

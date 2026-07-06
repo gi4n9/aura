@@ -3,7 +3,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { generateEmbedding } from "@/lib/ai/embedding";
 import { google } from "@ai-sdk/google";
-import { streamText } from "ai";
+import { streamText, generateText } from "ai";
+import Groq from "groq-sdk";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // TYPE DEFINITIONS
 interface VideoSegment {
@@ -288,3 +291,108 @@ function chunkText(text: string, duration: number): { text: string; start: numbe
 
     return chunks;
 }
+
+export async function getPromptForVideo3D(lessonId: string, query: string) {
+    const supabase = await createClient();
+    const queryEmbedding = await generateEmbedding(query);
+    if (!queryEmbedding || queryEmbedding.length === 0) {
+        throw new Error("Không thể tạo embedding cho câu hỏi");
+    }
+
+    const { data: segments, error } = await supabase.rpc('match_video_segments', {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.25,
+        match_count: 5,
+        filter_lesson_id: lessonId
+    });
+
+    if (error) throw error;
+    const matchedSegments = (segments as VideoSegment[]) || [];
+
+    const maxSimilarity = matchedSegments.length > 0 ? Math.max(...matchedSegments.map(s => s.similarity)) : 0;
+    const isFromCurriculum = maxSimilarity >= 0.45;
+
+    let contextText = "";
+    if (matchedSegments.length > 0) {
+        contextText = matchedSegments
+            .map(s => `[Thời điểm ${formatTime(s.start_time)} - ${formatTime(s.end_time)} (Độ tương đồng: ${s.similarity.toFixed(2)})]: ${s.content}`)
+            .join("\n\n");
+    }
+
+    const systemPrompt = `
+Bạn là Jarvis - Trợ lý ảo AI học tập thông minh tại Aura LMS.
+
+NGUỒN THÔNG TIN DUY NHẤT:
+- Dưới đây là nội dung giảng dạy trong video bài giảng:
+${contextText}
+
+QUY TẮC PHÒNG CHỐNG ẢO GIÁC (HALLUCINATION) CỰC KỲ NGHIÊM NGẶT:
+1. Bạn chỉ được khẳng định là đúng nếu thông tin đó xuất hiện trong nội dung video bài giảng phía trên.
+2. Nếu câu hỏi yêu cầu thông tin không có trong video bài giảng:
+   - Bạn PHẢI nói rõ: "📌 Giáo trình bài học hiện tại không đề cập đến thông tin này."
+   - Sau đó, bạn có thể trả lời ngắn gọn dựa trên kiến thức bên ngoài nhưng PHẢI nhấn mạnh đó là "Kiến thức mở rộng tham khảo". Tuyệt đối không được gán ghép kiến thức ngoài đó là của bài học.
+3. Luôn luôn trích dẫn timestamp dưới định dạng [MM:SS] (ví dụ: "[02:15]") khi nói về nội dung xuất hiện trong bài giảng.
+4. Trả lời bằng tiếng Việt, ngắn gọn, súc tích, đi thẳng vào vấn đề sinh viên thắc mắc.
+
+CẤU TRÚC PHẢN HỒI BẮT BUỘC:
+[Nội dung câu trả lời]
+💡 **Câu hỏi gợi ý tiếp theo:**
+* [Câu hỏi gợi ý 1]
+* [Câu hỏi gợi ý 2]
+`;
+
+    return {
+        systemPrompt,
+        isFromCurriculum,
+        maxSimilarity
+    };
+}
+
+export async function chatWithVideo3D(lessonId: string, query: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Unauthorized", status: 401 };
+
+    try {
+        const { systemPrompt, isFromCurriculum, maxSimilarity } = await getPromptForVideo3D(lessonId, query);
+
+        let resultText = "";
+        try {
+            const result = await generateText({
+                model: google('gemini-2.5-flash'),
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: query }
+                ]
+            });
+            resultText = result.text;
+        } catch (geminiError: any) {
+            console.warn("⚠️ Lỗi Gemini (Có thể do hết quota 429), chuyển sang dùng Groq (Llama 3.3):", geminiError.message);
+            try {
+                const chatCompletion = await groq.chat.completions.create({
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: query }
+                    ],
+                    model: "llama-3.3-70b-versatile",
+                    temperature: 0.4,
+                });
+                resultText = chatCompletion.choices[0].message.content || "";
+            } catch (groqError: any) {
+                console.error("❌ Lỗi cả Gemini và Groq:", groqError.message);
+                throw new Error(`Cả hai dịch vụ AI (Gemini & Groq) đều gặp sự cố: ${groqError.message}`);
+            }
+        }
+
+        return {
+            text: resultText,
+            isFromCurriculum,
+            maxSimilarity
+        };
+
+    } catch (e: any) {
+        console.error(e);
+        return { error: e.message };
+    }
+}
+

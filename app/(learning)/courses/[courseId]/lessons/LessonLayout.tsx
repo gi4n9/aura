@@ -24,7 +24,7 @@ import CourseSidebar from "@/app/components/CourseSidebar";
 import VideoPlayer, { VideoPlayerHandle } from "@/app/components/VideoPlayer";
 import QuizPlayer from "../../../../components/courseComponents/QuizPlayer";
 import TranscriptTimeline from "@/app/components/TranscriptTimeline";
-import VideoChat from "@/app/components/ai/VideoChat";
+import JarvisAssistant from "@/app/components/ai/JarvisAssistant";
 import MindmapView from "@/app/components/ai/MindmapView";
 import FlashcardDeck from "@/app/components/ai/FlashcardDeck";
 
@@ -362,9 +362,10 @@ export default function LessonLayout({
                         {activeTab === 'ai' && (
                             // Render AI Chat Logic
                             <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-3xl mx-auto w-full border-x border-stone-200" : ""}`}>
-                                <VideoChat
+                                <JarvisAssistant
                                     lessonId={lesson.id}
                                     onSeek={handleSeekToTime}
+                                    onOpenTab={setActiveTab}
                                 />
                             </div>
                         )}
