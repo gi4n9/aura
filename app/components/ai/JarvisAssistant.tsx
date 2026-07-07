@@ -76,7 +76,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 if (res.ok) {
                     const data = await res.json();
                     setWarmupData(data);
-                    
+
                     // Thêm câu chào của Jarvis vào lịch sử chat
                     setMessages([
                         {
@@ -99,18 +99,18 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         };
                         const cleaned = cleanTextForSpeech(data.greeting);
                         const sentences = cleaned.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
-                        
+
                         for (const s of sentences) {
                             fetch("/api/chat/tts", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ text: s, voice: voiceId, speed })
                             })
-                            .then(res => res.json())
-                            .then(d => {
-                                if (d.audioUrl) queueAudio(d.audioUrl);
-                            })
-                            .catch(err => console.error("Lỗi greeting tts:", err));
+                                .then(res => res.json())
+                                .then(d => {
+                                    if (d.audioUrl) queueAudio(d.audioUrl);
+                                })
+                                .catch(err => console.error("Lỗi greeting tts:", err));
                         }
                     }
                 }
@@ -131,16 +131,16 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
 
         const assistantMessages = messages.filter(m => m.role === "assistant");
         if (assistantMessages.length === 0) return;
-        
+
         const lastMsg = assistantMessages[assistantMessages.length - 1];
-        
+
         const changeVoiceAndSpeed = async () => {
             // Tạm thời dừng phát hiện tại và xóa hàng đợi
             setIsSpeaking(false);
             isSpeakingRef.current = false;
             setAudioUrl(null);
             audioQueueRef.current = [];
-            
+
             try {
                 const cleanTextForSpeech = (text: string) => {
                     return text
@@ -152,24 +152,24 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 };
                 const cleanedText = cleanTextForSpeech(lastMsg.content);
                 const sentences = cleanedText.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
-                
+
                 for (const s of sentences) {
                     fetch("/api/chat/tts", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ text: s, voice: voiceId, speed })
                     })
-                    .then(res => res.json())
-                    .then(d => {
-                        if (d.audioUrl) queueAudio(d.audioUrl);
-                    })
-                    .catch(err => console.error("Lỗi changeVoiceAndSpeed tts:", err));
+                        .then(res => res.json())
+                        .then(d => {
+                            if (d.audioUrl) queueAudio(d.audioUrl);
+                        })
+                        .catch(err => console.error("Lỗi changeVoiceAndSpeed tts:", err));
                 }
             } catch (err) {
                 console.error("Lỗi đổi giọng nói/tốc độ:", err);
             }
         };
-        
+
         changeVoiceAndSpeed();
     }, [voiceId, speed]);
 
@@ -334,7 +334,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             // Tạm thời dừng âm thanh nói của Jarvis để không bị nhiễu micro
             setIsSpeaking(false);
             setAudioUrl(null);
-            
+
             try {
                 recognitionRef.current.start();
             } catch (err) {
@@ -413,189 +413,250 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
         return parts.length > 0 ? parts : text;
     };
 
+    // State để toggle mở rộng panel lịch sử chat
+    const [showChat, setShowChat] = useState(false);
+
+    // Lấy tin nhắn cuối cùng của assistant để hiển thị dạng subtitle
+    const lastAssistantMsg = messages.filter(m => m.role === "assistant").slice(-1)[0];
+
     return (
-        <div className="flex flex-col h-full bg-[#F9F8F4] overflow-hidden">
-            {/* Cột 1: 3D Jarvis Visualizer (Pulsing Sphere) */}
-            <div className="h-[200px] w-full bg-[#111111] relative flex items-center justify-center border-b border-stone-800">
-                <AuraAvatar3D 
-                    audioUrl={audioUrl} 
-                    isSpeaking={isSpeaking} 
+        <div className="flex flex-col h-full bg-[#0A0A0A] overflow-hidden relative">
+            {/* ===== LAYER 1: 3D Sphere chiếm toàn bộ panel ===== */}
+            <div className="flex-1 relative flex items-center justify-center min-h-0">
+                <AuraAvatar3D
+                    audioUrl={audioUrl}
+                    isSpeaking={isSpeaking}
+                    isRecording={isRecording}
+                    isLoading={isLoading}
                     onSpeakEnd={handleSpeakEnd}
                     isMuted={isMuted}
                 />
-                
-                {/* Trạng thái hoạt động overlay */}
-                <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg text-[11px] text-white">
-                    <span className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${isSpeaking ? 'bg-amber-500 animate-ping' : 'bg-stone-500'}`} />
-                        {isSpeaking ? "Jarvis đang phát âm thanh..." : "Jarvis sẵn sàng"}
-                    </span>
-                    {confidenceWarning && (
-                        <span className="flex items-center gap-1 text-amber-400 font-bold">
-                            <AlertTriangle size={12} /> Kiến thức ngoài giáo trình
-                        </span>
-                    )}
+
+                {/* Gradient fade ở top */}
+                <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#0A0A0A] to-transparent pointer-events-none z-10" />
+
+                {/* Gradient fade ở bottom */}
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0A0A0A] to-transparent pointer-events-none z-10" />
+
+                {/* ===== Top bar: Controls ===== */}
+                <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-20">
+                    {/* Trạng thái hoạt động */}
+                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xl px-3 py-1.5 rounded-full text-[11px] text-white/70 border border-white/10">
+                        <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' :
+                                isSpeaking ? 'bg-amber-400 animate-pulse' :
+                                    isLoading ? 'bg-blue-400 animate-pulse' :
+                                        'bg-emerald-400'
+                            }`} />
+                        {isRecording ? "Đang lắng nghe..." :
+                            isSpeaking ? "Jarvis đang nói..." :
+                                isLoading ? "Đang suy nghĩ..." :
+                                    "Jarvis sẵn sàng"}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Cảnh báo ngoài giáo trình */}
+                        {confidenceWarning && (
+                            <span className="flex items-center gap-1 text-amber-400 bg-amber-400/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full text-[10px] font-bold border border-amber-400/20">
+                                <AlertTriangle size={11} /> Ngoài giáo trình
+                            </span>
+                        )}
+                        {/* Nút tắt âm */}
+                        <button
+                            onClick={() => setIsMuted(!isMuted)}
+                            className="p-2 bg-white/5 backdrop-blur-xl hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all border border-white/10"
+                            title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
+                        >
+                            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                        </button>
+                        {/* Nút toggle chat history */}
+                        <button
+                            onClick={() => setShowChat(!showChat)}
+                            className={`p-2 backdrop-blur-xl rounded-full transition-all border ${showChat
+                                    ? 'bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/30'
+                                    : 'bg-white/5 text-white/60 hover:text-white border-white/10 hover:bg-white/10'
+                                }`}
+                            title={showChat ? "Ẩn lịch sử chat" : "Xem lịch sử chat"}
+                        >
+                            <BookOpen size={14} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Nút điều khiển âm thanh */}
-                <button 
-                    onClick={() => setIsMuted(!isMuted)}
-                    className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 rounded-lg text-white transition-all"
-                    title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
-                >
-                    {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
-            </div>
+                {/* ===== Floating Info Overlay (Subtitle + Suggestions stacked) ===== */}
+                {!showChat && (
+                    <div className="absolute bottom-20 left-4 right-4 z-20 flex flex-col gap-3 pointer-events-none">
+                        {/* Subtitle - Tin nhắn assistant gần nhất */}
+                        {lastAssistantMsg && (
+                            <div className="bg-black/50 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/10 max-h-[140px] overflow-y-auto pointer-events-auto custom-scrollbar shadow-lg">
+                                <div className="text-white/90 text-xs leading-relaxed">
+                                    {renderContent(lastAssistantMsg.content)}
+                                </div>
+                            </div>
+                        )}
 
-            {/* Cột 2: Khung Chat */}
-            <div className="flex-1 flex flex-col min-h-0 bg-white relative">
-                {/* Chat History */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    {messages.map((m) => (
-                        <div key={m.id} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white ${m.role === 'user' ? 'bg-stone-600 order-2' : 'bg-[#C5A059]'}`}>
-                                {m.role === 'user' ? <User size={14} /> : <Bot size={14} />}
-                            </div>
-                            
-                            <div className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed overflow-x-hidden ${
-                                m.role === 'user' 
-                                    ? 'bg-stone-100 text-stone-800 rounded-tr-none' 
-                                    : 'bg-stone-50 border border-stone-100 rounded-tl-none shadow-sm'
-                            }`}>
-                                {m.role === 'user' ? m.content : renderContent(m.content)}
-                                
-                                {/* Nút hành động nhanh sau tin nhắn trợ lý */}
-                                {m.role === 'assistant' && (
-                                    <div className="mt-2.5 flex flex-wrap gap-1.5 pt-2 border-t border-stone-200/60">
-                                        <button 
-                                            onClick={() => onOpenTab("mindmap")}
-                                            className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-stone-100 text-stone-600 rounded-lg border border-stone-200 text-[10px] transition-all cursor-pointer"
+                        {/* Suggestions - Chỉ hiện khi chưa có tin nhắn của user và không đang load */}
+                        {warmupData && messages.filter(m => m.role === "user").length === 0 && !isLoading && (
+                            <div className="pointer-events-auto">
+                                <p className="text-[10px] text-white/40 font-bold mb-1.5 uppercase tracking-wider flex items-center gap-1 justify-center">
+                                    <Sparkles size={10} className="text-[#C5A059]" /> Câu hỏi đề xuất
+                                </p>
+                                <div className="flex flex-col gap-1.5">
+                                    {warmupData.suggestions.map((s, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleSendMessage(s)}
+                                            className="text-left text-[11px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 hover:border-[#C5A059]/50 hover:bg-[#C5A059]/10 hover:text-[#C5A059] transition-all text-white/70 font-medium w-full"
                                         >
-                                            <BookOpen size={10} /> Mindmap
+                                            {s}
                                         </button>
-                                        <button 
-                                            onClick={() => onOpenTab("flashcards")}
-                                            className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-stone-100 text-stone-600 rounded-lg border border-stone-200 text-[10px] transition-all cursor-pointer"
-                                        >
-                                            <Sparkles size={10} /> Flashcards
-                                        </button>
-                                        <button 
-                                            onClick={() => onOpenTab("quiz")}
-                                            className="flex items-center gap-1 px-2 py-1 bg-white hover:bg-stone-100 text-stone-600 rounded-lg border border-stone-200 text-[10px] transition-all cursor-pointer"
-                                        >
-                                            <Play size={10} /> Trắc nghiệm
-                                        </button>
-                                    </div>
-                                )}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                    
-                    {isLoading && (
-                        <div className="flex gap-3 justify-start">
-                            <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white bg-[#C5A059]">
-                                <Bot size={14} />
-                            </div>
-                            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-100 rounded-tl-none flex items-center gap-2">
-                                <Loader2 size={12} className="animate-spin text-[#C5A059]" />
-                                <span className="text-[11px] text-stone-400">Jarvis đang truy xuất thông tin...</span>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={chatEndRef} />
-                </div>
-
-                {/* Gợi ý thảo luận - Hóa giải Trang giấy trắng */}
-                {warmupData && messages.length <= 1 && (
-                    <div className="px-4 py-2 bg-stone-50 border-t border-stone-100 flex-shrink-0">
-                        <p className="text-[10px] text-stone-400 font-bold mb-1.5 uppercase tracking-wider flex items-center gap-1">
-                            <Sparkles size={11} className="text-[#C5A059]" /> Câu hỏi đề xuất cho bài học:
-                        </p>
-                        <div className="flex flex-col gap-1.5">
-                            {warmupData.suggestions.map((s, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleSendMessage(s)}
-                                    className="text-left text-[11px] bg-white border border-stone-200 rounded-lg px-3 py-1.5 hover:border-[#C5A059] hover:bg-amber-50/50 hover:text-[#C5A059] transition-all text-stone-700 font-medium"
-                                >
-                                    {s}
-                                </button>
-                            ))}
-                        </div>
+                        )}
                     </div>
                 )}
+            </div>
 
-                {/* Form nhập chat + Selector Giọng đọc */}
-                <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }} 
-                    className="p-3 border-t border-stone-100 bg-white flex-shrink-0"
+            {/* ===== LAYER 2: Bottom Control Bar - Mic + Input ===== */}
+            <div className="relative z-30 px-4 pb-3 pt-2">
+                {/* Cài đặt giọng nói / tốc độ */}
+                <div className="flex items-center justify-center gap-4 mb-2">
+                    <select
+                        value={voiceId}
+                        onChange={(e) => setVoiceId(e.target.value)}
+                        className="text-[10px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-1 outline-none focus:border-[#C5A059]/50 text-white/60 appearance-none cursor-pointer"
+                    >
+                        <option value="vi-VN-HoaiMyNeural">🇻🇳 Hoài Mỹ</option>
+                        <option value="vi-VN-NamMinhNeural">🇻🇳 Nam Minh</option>
+                        <option value="en-US-AriaNeural">🇺🇸 Aria</option>
+                        <option value="en-US-GuyNeural">🇺🇸 Guy</option>
+                    </select>
+                    <select
+                        value={speed}
+                        onChange={(e) => setSpeed(e.target.value)}
+                        className="text-[10px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-1 outline-none focus:border-[#C5A059]/50 text-white/60 appearance-none cursor-pointer"
+                    >
+                        <option value="0.8">0.8x</option>
+                        <option value="1.0">1.0x</option>
+                        <option value="1.2">1.2x</option>
+                        <option value="1.4">1.4x</option>
+                    </select>
+                </div>
+
+                {/* Input bar + Mic button */}
+                <form
+                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}
+                    className="flex items-center gap-2"
                 >
-                    <div className="flex flex-wrap items-center gap-4 mb-2">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-stone-400 font-medium">Ngôn ngữ & Giọng đọc:</span>
-                            <select 
-                                value={voiceId} 
-                                onChange={(e) => setVoiceId(e.target.value)}
-                                className="text-[10px] border border-stone-200 rounded px-1.5 py-0.5 outline-none focus:border-[#C5A059] text-stone-600 bg-white"
-                            >
-                                <option value="vi-VN-HoaiMyNeural">🇻🇳 Hoài Mỹ (Nữ Tiếng Việt)</option>
-                                <option value="vi-VN-NamMinhNeural">🇻🇳 Nam Minh (Nam Tiếng Việt)</option>
-                                <option value="en-US-AriaNeural">🇺🇸 Aria (Nữ Tiếng Anh)</option>
-                                <option value="en-US-GuyNeural">🇺🇸 Guy (Nam Tiếng Anh)</option>
-                            </select>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-stone-400 font-medium">Tốc độ đọc:</span>
-                            <select 
-                                value={speed} 
-                                onChange={(e) => setSpeed(e.target.value)}
-                                className="text-[10px] border border-stone-200 rounded px-1.5 py-0.5 outline-none focus:border-[#C5A059] text-stone-600 bg-white"
-                            >
-                                <option value="0.8">Chậm (0.8x)</option>
-                                <option value="1.0">Bình thường (1.0x)</option>
-                                <option value="1.2">Nhanh (1.2x)</option>
-                                <option value="1.4">Rất nhanh (1.4x)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={toggleSpeechRecognition}
-                            className={`p-2.5 rounded-xl border flex items-center justify-center transition-all ${
-                                isRecording 
-                                    ? 'bg-red-50 text-red-500 border-red-200 animate-pulse scale-105 shadow-inner' 
-                                    : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100 hover:text-stone-700'
+                    {/* Nút Mic lớn */}
+                    <button
+                        type="button"
+                        onClick={toggleSpeechRecognition}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${isRecording
+                                ? 'bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-110 animate-pulse'
+                                : 'bg-[#C5A059] text-white hover:bg-[#d4b569] shadow-[0_0_20px_rgba(197,160,89,0.3)]'
                             }`}
-                            title={isRecording ? "Dừng lắng nghe" : "Nói trực tiếp với Jarvis"}
-                            disabled={isLoading}
-                        >
-                            <Mic size={16} className={isRecording ? "animate-bounce" : ""} />
-                        </button>
+                        title={isRecording ? "Dừng lắng nghe" : "Nói trực tiếp với Jarvis"}
+                        disabled={isLoading}
+                    >
+                        <Mic size={20} />
+                    </button>
 
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder={isRecording ? "🎤 Jarvis đang lắng nghe... Hãy nói ngay!" : "Hỏi Jarvis về nội dung bài giảng..."}
-                            className={`flex-1 px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-[#C5A059] text-xs transition-all ${
-                                isRecording 
-                                    ? 'border-red-300 bg-red-50/20 placeholder-red-400 font-medium' 
-                                    : 'border-stone-200'
+                    {/* Ô nhập text */}
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder={isRecording ? "🎤 Đang lắng nghe..." : "Nhập câu hỏi..."}
+                        className={`flex-1 px-4 py-2.5 rounded-full border text-xs focus:outline-none transition-all bg-white/5 backdrop-blur-xl text-white placeholder-white/30 ${isRecording
+                                ? 'border-red-500/50 bg-red-500/5'
+                                : 'border-white/10 focus:border-[#C5A059]/50'
                             }`}
-                            disabled={isLoading || isRecording}
-                        />
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-[#C5A059] hover:bg-[#b08d4b] text-white font-bold rounded-xl text-xs transition-all disabled:opacity-50"
-                            disabled={isLoading || isRecording || !input.trim()}
-                        >
-                            Gửi
-                        </button>
-                    </div>
+                        disabled={isLoading || isRecording}
+                    />
+                    <button
+                        type="submit"
+                        className="w-10 h-10 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 text-white/60 hover:text-[#C5A059] hover:border-[#C5A059]/50 flex items-center justify-center transition-all flex-shrink-0 disabled:opacity-30"
+                        disabled={isLoading || isRecording || !input.trim()}
+                    >
+                        <Send size={16} />
+                    </button>
                 </form>
+            </div>
+
+            {/* ===== LAYER 3: Slide-up Chat History Panel ===== */}
+            <div className={`absolute inset-x-0 bottom-0 z-40 transition-all duration-300 ease-out ${showChat ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
+                }`}>
+                <div className="bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl max-h-[75%] h-[420px] flex flex-col pointer-events-auto">
+                    {/* Handle bar */}
+                    <div className="flex justify-center pt-3 pb-2">
+                        <div className="w-10 h-1 bg-white/20 rounded-full" />
+                    </div>
+
+                    <div className="flex items-center justify-between px-4 pb-2">
+                        <span className="text-[11px] text-white/50 font-bold uppercase tracking-wider">Lịch sử hội thoại</span>
+                        <button
+                            onClick={() => setShowChat(false)}
+                            className="text-[10px] text-white/40 hover:text-white/70 transition-all"
+                        >
+                            Đóng ✕
+                        </button>
+                    </div>
+
+                    {/* Chat messages */}
+                    <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 custom-scrollbar">
+                        {messages.map((m) => (
+                            <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white ${m.role === 'user' ? 'bg-white/10 order-2' : 'bg-[#C5A059]/20 text-[#C5A059]'}`}>
+                                    {m.role === 'user' ? <User size={12} /> : <Bot size={12} />}
+                                </div>
+
+                                <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${m.role === 'user'
+                                        ? 'bg-white/10 text-white/80 rounded-tr-none'
+                                        : 'bg-white/5 border border-white/10 rounded-tl-none text-white/80'
+                                    }`}>
+                                    {m.role === 'user' ? m.content : renderContent(m.content)}
+
+                                    {m.role === 'assistant' && (
+                                        <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                                            <button
+                                                onClick={() => onOpenTab("mindmap")}
+                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                            >
+                                                <BookOpen size={9} /> Mindmap
+                                            </button>
+                                            <button
+                                                onClick={() => onOpenTab("flashcards")}
+                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                            >
+                                                <Sparkles size={9} /> Flashcards
+                                            </button>
+                                            <button
+                                                onClick={() => onOpenTab("quiz")}
+                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                            >
+                                                <Play size={9} /> Trắc nghiệm
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+
+                        {isLoading && (
+                            <div className="flex gap-2.5 justify-start">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[#C5A059] bg-[#C5A059]/20">
+                                    <Bot size={12} />
+                                </div>
+                                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 rounded-tl-none flex items-center gap-2">
+                                    <Loader2 size={12} className="animate-spin text-[#C5A059]" />
+                                    <span className="text-[11px] text-white/40">Jarvis đang truy xuất...</span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+                </div>
             </div>
         </div>
     );

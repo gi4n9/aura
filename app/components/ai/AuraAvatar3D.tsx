@@ -1,240 +1,356 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-interface AvatarProps {
-    audioUrl: string | null;
-    isSpeaking: boolean;
-    onSpeakEnd: () => void;
+// ============================================================
+//  GLSL Shaders – Perlin 3D vertex displacement (Stefan Gustavson)
+//  Inspired by: github.com/spite/vertex-displacement-noise-3d-webgl-glsl-three-js
+// ============================================================
+
+const vertexShader = /* glsl */ `
+  // ---- Classic 3D Perlin Noise (Stefan Gustavson / ashima) ----
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+  vec3 fade(vec3 t) { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }
+
+  float cnoise(vec3 P) {
+    vec3 Pi0 = floor(P);
+    vec3 Pi1 = Pi0 + vec3(1.0);
+    Pi0 = mod289(Pi0);
+    Pi1 = mod289(Pi1);
+    vec3 Pf0 = fract(P);
+    vec3 Pf1 = Pf0 - vec3(1.0);
+    vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+    vec4 iy = vec4(Pi0.yy, Pi1.yy);
+    vec4 iz0 = Pi0.zzzz;
+    vec4 iz1 = Pi1.zzzz;
+
+    vec4 ixy  = permute(permute(ix) + iy);
+    vec4 ixy0 = permute(ixy + iz0);
+    vec4 ixy1 = permute(ixy + iz1);
+
+    vec4 gx0 = ixy0 / 7.0;
+    vec4 gy0 = fract(floor(gx0) / 7.0) - 0.5;
+    gx0 = fract(gx0);
+    vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
+    vec4 sz0 = step(gz0, vec4(0.0));
+    gx0 -= sz0 * (step(0.0, gx0) - 0.5);
+    gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+
+    vec4 gx1 = ixy1 / 7.0;
+    vec4 gy1 = fract(floor(gx1) / 7.0) - 0.5;
+    gx1 = fract(gx1);
+    vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
+    vec4 sz1 = step(gz1, vec4(0.0));
+    gx1 -= sz1 * (step(0.0, gx1) - 0.5);
+    gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+
+    vec3 g000 = vec3(gx0.x, gy0.x, gz0.x);
+    vec3 g100 = vec3(gx0.y, gy0.y, gz0.y);
+    vec3 g010 = vec3(gx0.z, gy0.z, gz0.z);
+    vec3 g110 = vec3(gx0.w, gy0.w, gz0.w);
+    vec3 g001 = vec3(gx1.x, gy1.x, gz1.x);
+    vec3 g101 = vec3(gx1.y, gy1.y, gz1.y);
+    vec3 g011 = vec3(gx1.z, gy1.z, gz1.z);
+    vec3 g111 = vec3(gx1.w, gy1.w, gz1.w);
+
+    vec4 norm0 = taylorInvSqrt(vec4(dot(g000,g000), dot(g010,g010), dot(g100,g100), dot(g110,g110)));
+    g000 *= norm0.x; g010 *= norm0.y; g100 *= norm0.z; g110 *= norm0.w;
+    vec4 norm1 = taylorInvSqrt(vec4(dot(g001,g001), dot(g011,g011), dot(g101,g101), dot(g111,g111)));
+    g001 *= norm1.x; g011 *= norm1.y; g101 *= norm1.z; g111 *= norm1.w;
+
+    float n000 = dot(g000, Pf0);
+    float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+    float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
+    float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+    float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
+    float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+    float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
+    float n111 = dot(g111, Pf1);
+
+    vec3 fade_xyz = fade(Pf0);
+    vec4 n_z  = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+    vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+    float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+    return 2.2 * n_xyz;
+  }
+  // ---- End Perlin noise ----
+
+  uniform float u_time;
+  uniform float u_audioLevel;   // 0..1, driven by Web Audio analyser
+  uniform float u_noiseSpeed;
+  uniform float u_noiseScale;
+  uniform float u_displacementStrength;
+  uniform vec3  u_colorA;
+  uniform vec3  u_colorB;
+
+  varying float v_displacement;
+  varying vec3  v_normal;
+
+  void main() {
+    // Sample 3D Perlin noise with animated time offset
+    float noise = cnoise(normal * u_noiseScale + u_time * u_noiseSpeed);
+
+    // Extra audio-reactive boost: audio pushes noise amplitude higher
+    float strength = u_displacementStrength * (1.0 + u_audioLevel * 2.5);
+    float displacement = noise * strength;
+
+    // Displace vertex along its normal
+    vec3 newPos = position + normal * displacement;
+
+    v_displacement = noise;
+    v_normal = normal;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+  }
+`;
+
+const fragmentShader = /* glsl */ `
+  uniform vec3  u_colorA;       // base color
+  uniform vec3  u_colorB;       // highlight color
+  uniform float u_audioLevel;
+  uniform float u_time;
+
+  varying float v_displacement;
+  varying vec3  v_normal;
+
+  void main() {
+    // Map displacement to color blend
+    float t = clamp(v_displacement * 0.5 + 0.5, 0.0, 1.0);
+
+    // Audio boost brightens the highlight color
+    float brightness = 1.0 + u_audioLevel * 0.8;
+    vec3 color = mix(u_colorA, u_colorB * brightness, t);
+
+    // Subtle rim / fresnel-like lighting using normal
+    float rim = 1.0 - abs(dot(normalize(v_normal), vec3(0.0, 0.0, 1.0)));
+    color += rim * rim * u_colorB * 0.4;
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+// ============================================================
+//  Orb mesh – uses the ShaderMaterial above
+// ============================================================
+interface OrbProps {
+  isSpeaking: boolean;
+  isRecording: boolean;
+  isLoading: boolean;
+  analyser: AnalyserNode | null;
 }
 
-// 1. Jarvis Holographic Core Component (Fallback & Main Theme)
-function JarvisCore({ isSpeaking, analyser }: { isSpeaking: boolean; analyser: AnalyserNode | null }) {
-    const meshRef = useRef<THREE.Mesh>(null);
-    const outerRingRef = useRef<THREE.Mesh>(null);
-    const particleRef = useRef<THREE.Points>(null);
+function OrbMesh({ isSpeaking, isRecording, isLoading, analyser }: OrbProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const smoothedAudio = useRef(0);
 
-    useFrame(({ clock }) => {
-        const t = clock.getElapsedTime();
-        
-        let audioFactor = 0;
-        if (analyser && isSpeaking) {
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(dataArray);
-            const sum = dataArray.reduce((a, b) => a + b, 0);
-            audioFactor = sum / dataArray.length / 255; // 0 to 1
-        }
+  // Uniforms memo so they aren't recreated every frame
+  const uniforms = useMemo(
+    () => ({
+      u_time: { value: 0 },
+      u_audioLevel: { value: 0 },
+      u_noiseSpeed: { value: 0.22 },
+      u_noiseScale: { value: 1.8 },
+      u_displacementStrength: { value: 0.38 },
+      u_colorA: { value: new THREE.Color("#C5853A") },
+      u_colorB: { value: new THREE.Color("#F0C060") },
+    }),
+    []
+  );
 
-        // Animate Inner Core
-        if (meshRef.current) {
-            meshRef.current.rotation.y = t * 0.5;
-            meshRef.current.rotation.x = t * 0.3;
-            // Pulsing scale based on audio
-            const scale = 1 + (isSpeaking ? audioFactor * 0.4 : Math.sin(t * 2) * 0.05);
-            meshRef.current.scale.set(scale, scale, scale);
-        }
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
 
-        // Animate Outer Hologram Ring
-        if (outerRingRef.current) {
-            outerRingRef.current.rotation.z = -t * 0.3;
-            outerRingRef.current.rotation.y = t * 0.2;
-            const ringScale = 1.4 + (isSpeaking ? audioFactor * 0.6 : Math.sin(t * 1.5) * 0.08);
-            outerRingRef.current.scale.set(ringScale, ringScale, ringScale);
-        }
+    // --- Audio analysis ---
+    let rawAudio = 0;
+    if (analyser && (isSpeaking || isRecording)) {
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      rawAudio = sum / data.length / 255;
+    }
+    smoothedAudio.current += (rawAudio - smoothedAudio.current) * 0.12;
+    const af = smoothedAudio.current;
 
-        // Animate Particles
-        if (particleRef.current) {
-            particleRef.current.rotation.y = t * 0.1;
-            const points = particleRef.current.geometry.attributes.position.array as Float32Array;
-            for (let i = 0; i < points.length; i += 3) {
-                // Wave distortion on particles based on audio
-                const wave = Math.sin(t * 3 + i) * (isSpeaking ? audioFactor * 0.15 : 0.02);
-                points[i + 1] += wave * 0.05; // distort Y axis slightly
-            }
-            particleRef.current.geometry.attributes.position.needsUpdate = true;
-        }
-    });
-
-    // Create particles array for rings
-    const particleCount = 120;
-    const positions = useMemo(() => {
-        const pos = new Float32Array(particleCount * 3);
-        for (let i = 0; i < particleCount; i++) {
-            const angle = (i / particleCount) * Math.PI * 2;
-            const radius = 1.8 + Math.random() * 0.2;
-            pos[i * 3] = Math.cos(angle) * radius;
-            pos[i * 3 + 1] = (Math.random() - 0.5) * 0.2;
-            pos[i * 3 + 2] = Math.sin(angle) * radius;
-        }
-        return pos;
-    }, []);
-
-    function useMemo(fn: () => any, deps: any[]) {
-        return useState(fn)[0];
+    // --- Choose theme per state ---
+    if (isRecording) {
+      // Cyan-blue when listening
+      uniforms.u_colorA.value.set("#1A8FAA");
+      uniforms.u_colorB.value.set("#60E0FF");
+      uniforms.u_noiseSpeed.value = 0.35 + af * 0.6;
+      uniforms.u_displacementStrength.value = 0.30 + af * 0.45;
+    } else if (isSpeaking) {
+      // Golden-amber when speaking
+      uniforms.u_colorA.value.set("#C5853A");
+      uniforms.u_colorB.value.set("#FFD060");
+      uniforms.u_noiseSpeed.value = 0.28 + af * 0.5;
+      uniforms.u_displacementStrength.value = 0.35 + af * 0.55;
+    } else if (isLoading) {
+      // Purple when thinking
+      const pulse = Math.sin(t * 3) * 0.5 + 0.5;
+      uniforms.u_colorA.value.set("#6030AA");
+      uniforms.u_colorB.value.set("#C080FF");
+      uniforms.u_noiseSpeed.value = 0.4 + pulse * 0.2;
+      uniforms.u_displacementStrength.value = 0.25 + pulse * 0.15;
+    } else {
+      // Idle – gentle golden pulse
+      const idlePulse = Math.sin(t * 1.4) * 0.5 + 0.5;
+      uniforms.u_colorA.value.set("#8A5C1E");
+      uniforms.u_colorB.value.set("#D4A040");
+      uniforms.u_noiseSpeed.value = 0.18 + idlePulse * 0.04;
+      uniforms.u_displacementStrength.value = 0.22 + idlePulse * 0.06;
     }
 
-    return (
-        <group>
-            {/* Pulsing inner sphere (hologram node) */}
-            <mesh ref={meshRef}>
-                <sphereGeometry args={[0.7, 32, 32]} />
-                <meshBasicMaterial 
-                    color="#C5A059" 
-                    wireframe 
-                    transparent 
-                    opacity={isSpeaking ? 0.75 : 0.4}
-                />
-            </mesh>
+    uniforms.u_time.value = t;
+    uniforms.u_audioLevel.value = af;
 
-            {/* Glowing outer shell */}
-            <mesh>
-                <sphereGeometry args={[0.68, 16, 16]} />
-                <meshPhysicalMaterial 
-                    color="#D4AF37" 
-                    emissive="#C5A059"
-                    emissiveIntensity={isSpeaking ? 1.5 : 0.5}
-                    transparent 
-                    opacity={0.15}
-                    roughness={0.1}
-                    metalness={0.9}
-                />
-            </mesh>
+    // Slow idle rotation
+    if (meshRef.current) {
+      meshRef.current.rotation.y = t * 0.12;
+      meshRef.current.rotation.x = Math.sin(t * 0.08) * 0.15;
+    }
+  });
 
-            {/* Outer wireframe shell ring */}
-            <mesh ref={outerRingRef}>
-                <torusGeometry args={[0.9, 0.04, 8, 48]} />
-                <meshBasicMaterial 
-                    color="#D4AF37" 
-                    wireframe 
-                    transparent 
-                    opacity={isSpeaking ? 0.9 : 0.5}
-                />
-            </mesh>
-
-            {/* Orbiting Particles */}
-            <points ref={particleRef}>
-                <bufferGeometry>
-                    <bufferAttribute 
-                        attach="attributes-position"
-                        args={[positions, 3]}
-                    />
-                </bufferGeometry>
-                <pointsMaterial 
-                    color="#C5A059" 
-                    size={0.04} 
-                    transparent 
-                    opacity={0.8}
-                />
-            </points>
-        </group>
-    );
+  return (
+    <mesh ref={meshRef}>
+      {/* High-res sphere so noise looks smooth */}
+      <sphereGeometry args={[1.1, 128, 128]} />
+      <shaderMaterial
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+        uniforms={uniforms}
+      />
+    </mesh>
+  );
 }
 
+// ============================================================
+//  Main exported component
+// ============================================================
 interface AvatarProps {
-    audioUrl: string | null;
-    isSpeaking: boolean;
-    onSpeakEnd: () => void;
-    isMuted: boolean;
+  audioUrl: string | null;
+  isSpeaking: boolean;
+  isRecording: boolean;
+  isLoading: boolean;
+  onSpeakEnd: () => void;
+  isMuted: boolean;
 }
 
-// 2. Main Avatar component with fallback
-export default function AuraAvatar3D({ audioUrl, isSpeaking, onSpeakEnd, isMuted }: AvatarProps) {
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const audioCtxRef = useRef<AudioContext | null>(null);
-    const lastPlayedUrlRef = useRef<string | null>(null);
+export default function AuraAvatar3D({
+  audioUrl,
+  isSpeaking,
+  isRecording,
+  isLoading,
+  onSpeakEnd,
+  isMuted,
+}: AvatarProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const lastPlayedUrlRef = useRef<string | null>(null);
 
-    // Đồng bộ trạng thái tắt âm của Audio element
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.muted = isMuted;
-        }
-    }, [isMuted]);
+  // Mic analyser refs
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micCtxRef = useRef<AudioContext | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
 
-    // Xử lý Audio phát ra và Web Audio Analyser
-    useEffect(() => {
-        if (!audioUrl || !isSpeaking) return;
+  // Single analyser passed to OrbMesh: speaker takes priority, else mic
+  const activeAnalyser = isSpeaking ? analyserRef.current : micAnalyserRef.current;
 
-        // Tránh tạo lại Audio nếu url đang được phát rồi
-        if (audioUrl === lastPlayedUrlRef.current) {
-            return;
-        }
-        
-        lastPlayedUrlRef.current = audioUrl;
+  // --- Mute sync ---
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = isMuted;
+  }, [isMuted]);
 
-        // Khởi tạo Audio và AudioContext
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        audio.crossOrigin = "anonymous"; // Cho phép CORS nếu load từ Supabase
-        audio.muted = isMuted; // Cấu hình trạng thái tắt tiếng ban đầu
+  // --- Playback + Web Audio analyser (Jarvis speaking) ---
+  useEffect(() => {
+    if (!audioUrl || !isSpeaking) return;
+    if (audioUrl === lastPlayedUrlRef.current) return;
+    lastPlayedUrlRef.current = audioUrl;
 
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioContextClass();
-        audioCtxRef.current = audioCtx;
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.crossOrigin = "anonymous";
+    audio.muted = isMuted;
 
-        const source = audioCtx.createMediaElementSource(audio);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 64; // Nhỏ cho nhẹ
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        analyserRef.current = analyser;
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+    const source = ctx.createMediaElementSource(audio);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 64;
+    analyser.smoothingTimeConstant = 0.8;
+    source.connect(analyser);
+    analyser.connect(ctx.destination);
+    analyserRef.current = analyser;
 
-        audio.play().catch(err => {
-            console.warn("Audio autoplay blocked or failed:", err);
-            // Fallback play khi có tương tác người dùng
-        });
+    audio.play().catch((e) => console.warn("Autoplay blocked:", e));
+    audio.onended = () => {
+      onSpeakEnd();
+      cleanup();
+    };
 
-        audio.onended = () => {
-            onSpeakEnd();
-            cleanupAudio();
-        };
+    const cleanup = () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      if (audioCtxRef.current?.state !== "closed") audioCtxRef.current?.close();
+      analyserRef.current = null;
+      lastPlayedUrlRef.current = null;
+    };
+    return cleanup;
+  }, [audioUrl, isSpeaking, isMuted, onSpeakEnd]);
 
-        const cleanupAudio = () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
-            if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-                audioCtxRef.current.close();
-            }
-            analyserRef.current = null;
-            lastPlayedUrlRef.current = null;
-        };
+  // --- Mic analyser (user speaking) ---
+  useEffect(() => {
+    if (!isRecording) {
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+      if (micCtxRef.current?.state !== "closed") micCtxRef.current?.close();
+      micAnalyserRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+      micStreamRef.current = stream;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioCtx();
+      micCtxRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.85;
+      source.connect(analyser); // intentionally NOT connected to destination
+      micAnalyserRef.current = analyser;
+    }).catch((e) => console.warn("Mic access denied:", e));
+    return () => { cancelled = true; };
+  }, [isRecording]);
 
-        return cleanupAudio;
-    }, [audioUrl, isSpeaking, onSpeakEnd]);
+  return (
+    <div className="w-full h-full">
+      <Canvas
+        camera={{ position: [0, 0, 3.2], fov: 45 }}
+        style={{ background: "transparent" }}
+        gl={{ alpha: true, antialias: true }}
+      >
+        {/* Lights to complement the shader colors */}
+        <ambientLight intensity={0.25} />
+        <pointLight position={[4, 4, 4]} intensity={1.8} color="#D4A040" />
+        <pointLight position={[-4, -3, -4]} intensity={0.7} color="#4040AA" />
 
-    return (
-        <div className="w-full h-full relative">
-            <Canvas camera={{ position: [0, 0, 3], fov: 45 }} className="w-full h-full">
-                <ambientLight intensity={0.2} />
-                <pointLight position={[10, 10, 10]} intensity={1.5} color="#C5A059" />
-                <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8A2BE2" />
-                
-                <JarvisCore isSpeaking={isSpeaking} analyser={analyserRef.current} />
-                
-                <OrbitControls enableZoom={false} enablePan={false} />
-            </Canvas>
-            
-            {/* Jarvis Visualizer Waveform overlay ở bottom */}
-            {isSpeaking && (
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-1.5 h-8">
-                    {Array.from({ length: 9 }).map((_, i) => (
-                        <div 
-                            key={i} 
-                            className="w-1 bg-[#C5A059] rounded-full animate-pulse"
-                            style={{
-                                height: `${Math.random() * 100}%`,
-                                animationDuration: `${0.3 + Math.random() * 0.4}s`,
-                                animationDelay: `${i * 0.05}s`
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+        <OrbMesh
+          isSpeaking={isSpeaking}
+          isRecording={isRecording}
+          isLoading={isLoading}
+          analyser={activeAnalyser}
+        />
+      </Canvas>
+    </div>
+  );
 }

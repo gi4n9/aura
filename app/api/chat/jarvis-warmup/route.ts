@@ -29,12 +29,22 @@ export async function GET(req: Request) {
             return Response.json({ error: "Lesson not found" }, { status: 404 });
         }
 
-        // 1. Nếu đã có dữ liệu cache trong DB -> Trả về ngay lập tức (0 token cost!)
+        // Helper kiểm tra chuỗi có chứa dấu tiếng Việt hay không
+        const isVietnamese = (text: string): boolean => {
+            const vietnameseDacritics = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+            return vietnameseDacritics.test(text);
+        };
+
+        // 1. Nếu đã có dữ liệu cache trong DB và là tiếng Việt -> Trả về ngay lập tức (0 token cost!)
         if (lesson.jarvisWarmup) {
-            return Response.json(lesson.jarvisWarmup);
+            const cachedData = lesson.jarvisWarmup as { greeting?: string; suggestions?: string[] };
+            if (cachedData.greeting && isVietnamese(cachedData.greeting)) {
+                return Response.json(lesson.jarvisWarmup);
+            }
+            console.log("Phát hiện câu chào cache bằng tiếng Anh hoặc không hợp lệ, tiến hành sinh lại bằng tiếng Việt...");
         }
 
-        // 2. Nếu chưa có -> Gọi Gemini sinh 1 lần duy nhất, bám sát theo transcript bài học
+        // 2. Nếu chưa có hoặc cache tiếng Anh -> Gọi Gemini sinh 1 lần duy nhất, bám sát theo transcript bài học
         const timeline = (lesson.timeline as unknown as TimelineItem[]) || [];
         const transcript = lesson.transcript || "";
 
@@ -58,22 +68,24 @@ export async function GET(req: Request) {
             return Response.json(defaultWarmup);
         }
 
-        // Dùng Gemini phân tích transcript đã được embedding để sinh câu hỏi thảo luận cốt lõi
+        // Dùng Gemini phân tích transcript đã được embedding để sinh câu hỏi thảo luận cốt lõi bằng tiếng Việt
         const response = await generateObject({
             model: google("gemini-2.5-flash"),
             schema: z.object({
-                greeting: z.string().describe("Lời chào ấm áp kiểu Jarvis tóm tắt ngắn 1-2 câu bài học và đặt câu hỏi gợi mở"),
-                suggestions: z.array(z.string()).length(3).describe("3 câu hỏi gợi ý cốt lõi, cụ thể dựa trực tiếp trên transcript của bài")
+                greeting: z.string().describe("Lời chào ấm áp kiểu Jarvis bằng tiếng Việt, tóm tắt ngắn 1-2 câu nội dung cốt lõi của bài học và đặt câu hỏi gợi mở"),
+                suggestions: z.array(z.string()).length(3).describe("3 câu hỏi gợi ý cốt lõi bằng tiếng Việt, cụ thể dựa trực tiếp trên transcript của bài")
             }),
             prompt: `Dưới đây là tiêu đề và transcript của bài giảng:
 Tiêu đề: ${lesson.title}
 Transcript: ${transcript.substring(0, 4000)}
 
 Nhiệm vụ:
-1. Hãy tạo ra 1 lời chào chủ động (Greeting) ấm áp kiểu trợ lý Jarvis, tóm tắt cực ngắn 1 câu nội dung của bài học và đặt 1 câu hỏi gợi mở (Socratic question) để khơi dậy tò mò.
-2. Tạo ra 3 câu hỏi gợi ý thông minh, cụ thể, không chung chung, dựa trực tiếp trên kiến thức và nội dung thực tế xuất hiện trong transcript của bài giảng để học sinh click vào hỏi luôn.
+1. Hãy tạo ra 1 lời chào chủ động (Greeting) ấm áp kiểu trợ lý Jarvis bằng tiếng Việt, tóm tắt cực ngắn 1 câu nội dung của bài học và đặt 1 câu hỏi gợi mở (Socratic question) bằng tiếng Việt để khơi dậy tò mò.
+2. Tạo ra 3 câu hỏi gợi ý thông minh, cụ thể, không chung chung, bằng tiếng Việt dựa trực tiếp trên kiến thức và nội dung thực tế xuất hiện trong transcript của bài giảng để học sinh click vào hỏi luôn.
 
-Ví dụ: Nếu transcript nói về Anthropic Agent Skills, gợi ý câu hỏi phải là "Agent Skills là gì và tại sao Anthropic lại đề xuất nó?" chứ không được hỏi chung chung là "Nội dung bài học là gì?".`
+Ví dụ: Nếu transcript nói về Anthropic Agent Skills, gợi ý câu hỏi phải là "Agent Skills là gì và tại sao Anthropic lại đề xuất nó?" chứ không được hỏi chung chung là "Nội dung bài học là gì?".
+
+Lưu ý đặc biệt quan trọng: Toàn bộ phản hồi bao gồm cả câu chào (greeting) và các gợi ý câu hỏi (suggestions) BẮT BUỘC phải được viết bằng tiếng Việt, kể cả khi tiêu đề bài học hoặc transcript là tiếng Anh.`
         });
 
         const generatedData = response.object;
