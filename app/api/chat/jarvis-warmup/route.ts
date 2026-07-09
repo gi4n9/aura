@@ -17,13 +17,15 @@ export async function GET(req: Request) {
     try {
         const lesson = await prisma.lesson.findUnique({
             where: { id: lessonId },
-            select: { 
-                title: true, 
+            select: {
+                title: true,
                 transcript: true,
                 timeline: true,
                 jarvisWarmup: true
             }
         });
+
+        //console.log("Lesson fetch response:", lesson);
 
         if (!lesson) {
             return Response.json({ error: "Lesson not found" }, { status: 404 });
@@ -58,7 +60,7 @@ export async function GET(req: Request) {
                     "Bài học này cung cấp những kiến thức thực tế nào?"
                 ]
             };
-            
+
             // Lưu cache lại luôn
             await prisma.lesson.update({
                 where: { id: lessonId },

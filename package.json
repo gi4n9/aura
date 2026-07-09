@@ -41,6 +41,7 @@
     "msedge-tts": "^2.0.6",
     "next": "16.0.10",
     "nextjs-toploader": "^3.9.17",
+    "node-edge-tts": "^1.2.10",
     "pdf-parse": "^2.4.5",
     "react": "19.2.1",
     "react-dom": "19.2.1",

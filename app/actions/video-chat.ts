@@ -307,11 +307,15 @@ export async function getPromptForVideo3D(lessonId: string, query: string) {
     });
 
     if (error) throw error;
+    // Phân đoạn phù hợp
     const matchedSegments = (segments as VideoSegment[]) || [];
 
+    // Tính độ tương đồng lớn nhất
     const maxSimilarity = matchedSegments.length > 0 ? Math.max(...matchedSegments.map(s => s.similarity)) : 0;
+    // Kiểm tra xem có từ giáo trình không
     const isFromCurriculum = maxSimilarity >= 0.45;
 
+    // Lấy context
     let contextText = "";
     if (matchedSegments.length > 0) {
         contextText = matchedSegments

@@ -6,7 +6,8 @@ import * as THREE from "three";
 
 // ============================================================
 //  GLSL Shaders – Perlin 3D vertex displacement (Stefan Gustavson)
-//  Inspired by: github.com/spite/vertex-displacement-noise-3d-webgl-glsl-three-js
+//  Enhanced with dual-octave noise, bass/treble separation,
+//  and Fresnel rim glow for AI Orb aesthetic
 // ============================================================
 
 const vertexShader = /* glsl */ `
@@ -15,7 +16,6 @@ const vertexShader = /* glsl */ `
   vec4 mod289(vec4 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
   vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
   vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
   vec3 fade(vec3 t) { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }
 
   float cnoise(vec3 P) {
@@ -82,144 +82,264 @@ const vertexShader = /* glsl */ `
   // ---- End Perlin noise ----
 
   uniform float u_time;
-  uniform float u_audioLevel;   // 0..1, driven by Web Audio analyser
+  uniform float u_bassLevel;     // Low-freq amplitude (0..1)
+  uniform float u_trebleLevel;   // High-freq amplitude (0..1)
   uniform float u_noiseSpeed;
   uniform float u_noiseScale;
   uniform float u_displacementStrength;
-  uniform vec3  u_colorA;
-  uniform vec3  u_colorB;
 
   varying float v_displacement;
   varying vec3  v_normal;
+  varying vec3  v_worldPos;
 
   void main() {
-    // Sample 3D Perlin noise with animated time offset
-    float noise = cnoise(normal * u_noiseScale + u_time * u_noiseSpeed);
+    // Octave 1: Large, slow undulation driven by bass
+    float noise1 = cnoise(normal * u_noiseScale + u_time * u_noiseSpeed);
+    // Octave 2: Fine, fast detail driven by treble
+    float noise2 = cnoise(normal * u_noiseScale * 2.5 + u_time * u_noiseSpeed * 1.8);
 
-    // Extra audio-reactive boost: audio pushes noise amplitude higher
-    float strength = u_displacementStrength * (1.0 + u_audioLevel * 2.5);
-    float displacement = noise * strength;
+    float combinedNoise = noise1 * 0.7 + noise2 * 0.3;
 
-    // Displace vertex along its normal
+    // Bass drives broad displacement, treble drives fine texture
+    float strength = u_displacementStrength
+                   * (1.0 + u_bassLevel * 2.8 + u_trebleLevel * 0.8);
+    float displacement = combinedNoise * strength;
+
     vec3 newPos = position + normal * displacement;
 
-    v_displacement = noise;
-    v_normal = normal;
+    v_displacement = combinedNoise;
+    v_normal = normalize(normalMatrix * normal);
+    v_worldPos = (modelMatrix * vec4(newPos, 1.0)).xyz;
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
   }
 `;
 
 const fragmentShader = /* glsl */ `
-  uniform vec3  u_colorA;       // base color
-  uniform vec3  u_colorB;       // highlight color
-  uniform float u_audioLevel;
+  uniform vec3  u_colorA;
+  uniform vec3  u_colorB;
+  uniform vec3  u_colorGlow;     // Rim / Fresnel glow color
+  uniform float u_bassLevel;
+  uniform float u_trebleLevel;
   uniform float u_time;
+  uniform float u_glowIntensity;
 
   varying float v_displacement;
   varying vec3  v_normal;
+  varying vec3  v_worldPos;
 
   void main() {
-    // Map displacement to color blend
     float t = clamp(v_displacement * 0.5 + 0.5, 0.0, 1.0);
 
-    // Audio boost brightens the highlight color
-    float brightness = 1.0 + u_audioLevel * 0.8;
+    // Audio brightens highlights
+    float brightness = 1.0 + u_bassLevel * 0.6 + u_trebleLevel * 0.3;
     vec3 color = mix(u_colorA, u_colorB * brightness, t);
 
-    // Subtle rim / fresnel-like lighting using normal
-    float rim = 1.0 - abs(dot(normalize(v_normal), vec3(0.0, 0.0, 1.0)));
-    color += rim * rim * u_colorB * 0.4;
+    // Fresnel rim glow – edge glow that reacts to audio
+    vec3 viewDir = normalize(cameraPosition - v_worldPos);
+    float fresnel = pow(1.0 - max(dot(v_normal, viewDir), 0.0), 3.0);
+    float glowStr = u_glowIntensity * (1.0 + u_bassLevel * 1.5);
+    color += fresnel * u_colorGlow * glowStr;
+
+    // Subtle inner shimmer using treble
+    float shimmer = sin(v_displacement * 12.0 + u_time * 3.0) * 0.5 + 0.5;
+    color += shimmer * u_trebleLevel * u_colorB * 0.15;
 
     gl_FragColor = vec4(color, 1.0);
   }
 `;
 
 // ============================================================
-//  Orb mesh – uses the ShaderMaterial above
+//  Spring-damped value smoother (vật lý lò xo)
+//  Produces smooth, bouncy transitions without abrupt jumps
+// ============================================================
+class SpringValue {
+  value: number;
+  velocity: number;
+  target: number;
+  stiffness: number; // "Spring constant" – higher = faster snap
+  damping: number;   // Damping ratio – 1.0 = critical, <1 = bouncy
+
+  constructor(initial: number, stiffness = 3.5, damping = 0.7) {
+    this.value = initial;
+    this.velocity = 0;
+    this.target = initial;
+    this.stiffness = stiffness;
+    this.damping = damping;
+  }
+
+  setTarget(t: number) { this.target = t; }
+
+  update(dt: number): number {
+    // Capped dt to avoid instability on tab-switch
+    const safeDt = Math.min(dt, 0.05);
+    const displacement = this.value - this.target;
+    const springForce = -this.stiffness * displacement;
+    const dampingForce = -2 * this.damping * Math.sqrt(this.stiffness) * this.velocity;
+    this.velocity += (springForce + dampingForce) * safeDt;
+    this.value += this.velocity * safeDt;
+    return this.value;
+  }
+}
+
+// Spring-damped color smoother
+class SpringColor {
+  r: SpringValue;
+  g: SpringValue;
+  b: SpringValue;
+
+  constructor(hex: string, stiffness = 3.0, damping = 0.75) {
+    const c = new THREE.Color(hex);
+    this.r = new SpringValue(c.r, stiffness, damping);
+    this.g = new SpringValue(c.g, stiffness, damping);
+    this.b = new SpringValue(c.b, stiffness, damping);
+  }
+
+  setTarget(hex: string) {
+    const c = new THREE.Color(hex);
+    this.r.setTarget(c.r);
+    this.g.setTarget(c.g);
+    this.b.setTarget(c.b);
+  }
+
+  update(dt: number, out: THREE.Color) {
+    out.setRGB(this.r.update(dt), this.g.update(dt), this.b.update(dt));
+  }
+}
+
+// ============================================================
+//  OrbMesh – renders the GLSL sphere inside the Canvas
 // ============================================================
 interface OrbProps {
   isSpeaking: boolean;
   isRecording: boolean;
   isLoading: boolean;
   analyser: AnalyserNode | null;
+  showChat?: boolean;
 }
 
-function OrbMesh({ isSpeaking, isRecording, isLoading, analyser }: OrbProps) {
+function OrbMesh({ isSpeaking, isRecording, isLoading, analyser, showChat }: OrbProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const smoothedAudio = useRef(0);
+  const lastTimeRef = useRef(0);
 
-  // Uniforms memo so they aren't recreated every frame
+  // Smoothed audio levels (lerp, not spring – audio must be responsive)
+  const smoothedBass = useRef(0);
+  const smoothedTreble = useRef(0);
+
+  // Spring-damped uniforms for buttery state transitions
+  const springNoiseSpeed = useRef(new SpringValue(0.18, 4, 0.65));
+  const springDisplacement = useRef(new SpringValue(0.22, 4, 0.65));
+  const springGlowIntensity = useRef(new SpringValue(0.35, 3.5, 0.7));
+  const springColorA = useRef(new SpringColor("#8A5C1E", 3.0, 0.75));
+  const springColorB = useRef(new SpringColor("#D4A040", 3.0, 0.75));
+  const springColorGlow = useRef(new SpringColor("#D4A040", 3.0, 0.75));
+
+  // Reusable freq data buffer
+  const freqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+
   const uniforms = useMemo(
     () => ({
-      u_time: { value: 0 },
-      u_audioLevel: { value: 0 },
-      u_noiseSpeed: { value: 0.22 },
-      u_noiseScale: { value: 1.8 },
-      u_displacementStrength: { value: 0.38 },
-      u_colorA: { value: new THREE.Color("#C5853A") },
-      u_colorB: { value: new THREE.Color("#F0C060") },
+      u_time:                 { value: 0 },
+      u_bassLevel:            { value: 0 },
+      u_trebleLevel:          { value: 0 },
+      u_noiseSpeed:           { value: 0.18 },
+      u_noiseScale:           { value: 1.8 },
+      u_displacementStrength: { value: 0.22 },
+      u_colorA:               { value: new THREE.Color("#8A5C1E") },
+      u_colorB:               { value: new THREE.Color("#D4A040") },
+      u_colorGlow:            { value: new THREE.Color("#D4A040") },
+      u_glowIntensity:        { value: 0.35 },
     }),
     []
   );
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
+    const dt = t - lastTimeRef.current;
+    lastTimeRef.current = t;
 
-    // --- Audio analysis ---
-    let rawAudio = 0;
+    // ========== FFT: Bass / Treble separation ==========
+    let rawBass = 0;
+    let rawTreble = 0;
     if (analyser && (isSpeaking || isRecording)) {
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(data);
-      let sum = 0;
-      for (let i = 0; i < data.length; i++) sum += data[i];
-      rawAudio = sum / data.length / 255;
+      if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
+        freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      }
+      analyser.getByteFrequencyData(freqDataRef.current);
+      const bins = freqDataRef.current;
+      const half = Math.floor(bins.length / 2);
+      let bassSum = 0, trebleSum = 0;
+      for (let i = 0; i < half; i++) bassSum += bins[i];
+      for (let i = half; i < bins.length; i++) trebleSum += bins[i];
+      rawBass = bassSum / half / 255;
+      rawTreble = trebleSum / (bins.length - half) / 255;
     }
-    smoothedAudio.current += (rawAudio - smoothedAudio.current) * 0.12;
-    const af = smoothedAudio.current;
+    // Smooth audio (fast lerp – audio needs to be responsive)
+    smoothedBass.current += (rawBass - smoothedBass.current) * 0.18;
+    smoothedTreble.current += (rawTreble - smoothedTreble.current) * 0.22;
+    const bass = smoothedBass.current;
+    const treble = smoothedTreble.current;
 
-    // --- Choose theme per state ---
+    // ========== Spring-damped state targets ==========
     if (isRecording) {
-      // Cyan-blue when listening
-      uniforms.u_colorA.value.set("#1A8FAA");
-      uniforms.u_colorB.value.set("#60E0FF");
-      uniforms.u_noiseSpeed.value = 0.35 + af * 0.6;
-      uniforms.u_displacementStrength.value = 0.30 + af * 0.45;
+      springColorA.current.setTarget("#1A8FAA");
+      springColorB.current.setTarget("#60E0FF");
+      springColorGlow.current.setTarget("#40D0FF");
+      springNoiseSpeed.current.setTarget(0.35 + bass * 0.6);
+      springDisplacement.current.setTarget(0.30 + bass * 0.45);
+      springGlowIntensity.current.setTarget(0.5 + bass * 0.5);
     } else if (isSpeaking) {
-      // Golden-amber when speaking
-      uniforms.u_colorA.value.set("#C5853A");
-      uniforms.u_colorB.value.set("#FFD060");
-      uniforms.u_noiseSpeed.value = 0.28 + af * 0.5;
-      uniforms.u_displacementStrength.value = 0.35 + af * 0.55;
+      springColorA.current.setTarget("#C5853A");
+      springColorB.current.setTarget("#FFD060");
+      springColorGlow.current.setTarget("#FFB040");
+      springNoiseSpeed.current.setTarget(0.28 + bass * 0.5);
+      springDisplacement.current.setTarget(0.35 + bass * 0.55);
+      springGlowIntensity.current.setTarget(0.45 + bass * 0.5);
     } else if (isLoading) {
-      // Purple when thinking
       const pulse = Math.sin(t * 3) * 0.5 + 0.5;
-      uniforms.u_colorA.value.set("#6030AA");
-      uniforms.u_colorB.value.set("#C080FF");
-      uniforms.u_noiseSpeed.value = 0.4 + pulse * 0.2;
-      uniforms.u_displacementStrength.value = 0.25 + pulse * 0.15;
+      springColorA.current.setTarget("#6030AA");
+      springColorB.current.setTarget("#C080FF");
+      springColorGlow.current.setTarget("#A060FF");
+      springNoiseSpeed.current.setTarget(0.4 + pulse * 0.2);
+      springDisplacement.current.setTarget(0.25 + pulse * 0.15);
+      springGlowIntensity.current.setTarget(0.4 + pulse * 0.3);
     } else {
-      // Idle – gentle golden pulse
       const idlePulse = Math.sin(t * 1.4) * 0.5 + 0.5;
-      uniforms.u_colorA.value.set("#8A5C1E");
-      uniforms.u_colorB.value.set("#D4A040");
-      uniforms.u_noiseSpeed.value = 0.18 + idlePulse * 0.04;
-      uniforms.u_displacementStrength.value = 0.22 + idlePulse * 0.06;
+      springColorA.current.setTarget("#8A5C1E");
+      springColorB.current.setTarget("#D4A040");
+      springColorGlow.current.setTarget("#D4A040");
+      springNoiseSpeed.current.setTarget(0.18 + idlePulse * 0.04);
+      springDisplacement.current.setTarget(0.22 + idlePulse * 0.06);
+      springGlowIntensity.current.setTarget(0.35);
     }
+
+    // ========== Update springs ==========
+    uniforms.u_noiseSpeed.value = springNoiseSpeed.current.update(dt);
+    uniforms.u_displacementStrength.value = springDisplacement.current.update(dt);
+    uniforms.u_glowIntensity.value = springGlowIntensity.current.update(dt);
+    springColorA.current.update(dt, uniforms.u_colorA.value);
+    springColorB.current.update(dt, uniforms.u_colorB.value);
+    springColorGlow.current.update(dt, uniforms.u_colorGlow.value);
 
     uniforms.u_time.value = t;
-    uniforms.u_audioLevel.value = af;
+    uniforms.u_bassLevel.value = bass;
+    uniforms.u_trebleLevel.value = treble;
 
-    // Slow idle rotation
+    // ========== Rotation + POV based on showChat ==========
     if (meshRef.current) {
       meshRef.current.rotation.y = t * 0.12;
       meshRef.current.rotation.x = Math.sin(t * 0.08) * 0.15;
+
+      const targetY = showChat ? 0.8 : 0;
+      const targetScale = showChat ? 0.65 : 1.0;
+      meshRef.current.position.y += (targetY - meshRef.current.position.y) * 0.08;
+      const curScale = meshRef.current.scale.x;
+      meshRef.current.scale.setScalar(curScale + (targetScale - curScale) * 0.08);
     }
   });
 
   return (
     <mesh ref={meshRef}>
-      {/* High-res sphere so noise looks smooth */}
       <sphereGeometry args={[1.1, 128, 128]} />
       <shaderMaterial
         vertexShader={vertexShader}
@@ -240,6 +360,7 @@ interface AvatarProps {
   isLoading: boolean;
   onSpeakEnd: () => void;
   isMuted: boolean;
+  showChat?: boolean;
 }
 
 export default function AuraAvatar3D({
@@ -249,6 +370,7 @@ export default function AuraAvatar3D({
   isLoading,
   onSpeakEnd,
   isMuted,
+  showChat,
 }: AvatarProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -260,7 +382,6 @@ export default function AuraAvatar3D({
   const micCtxRef = useRef<AudioContext | null>(null);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
 
-  // Single analyser passed to OrbMesh: speaker takes priority, else mic
   const activeAnalyser = isSpeaking ? analyserRef.current : micAnalyserRef.current;
 
   // --- Mute sync ---
@@ -284,8 +405,8 @@ export default function AuraAvatar3D({
     audioCtxRef.current = ctx;
     const source = ctx.createMediaElementSource(audio);
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 64;
-    analyser.smoothingTimeConstant = 0.8;
+    analyser.fftSize = 128; // More frequency bins for bass/treble split
+    analyser.smoothingTimeConstant = 0.82;
     source.connect(analyser);
     analyser.connect(ctx.destination);
     analyserRef.current = analyser;
@@ -324,9 +445,9 @@ export default function AuraAvatar3D({
       micCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
+      analyser.fftSize = 128;
       analyser.smoothingTimeConstant = 0.85;
-      source.connect(analyser); // intentionally NOT connected to destination
+      source.connect(analyser);
       micAnalyserRef.current = analyser;
     }).catch((e) => console.warn("Mic access denied:", e));
     return () => { cancelled = true; };
@@ -339,7 +460,6 @@ export default function AuraAvatar3D({
         style={{ background: "transparent" }}
         gl={{ alpha: true, antialias: true }}
       >
-        {/* Lights to complement the shader colors */}
         <ambientLight intensity={0.25} />
         <pointLight position={[4, 4, 4]} intensity={1.8} color="#D4A040" />
         <pointLight position={[-4, -3, -4]} intensity={0.7} color="#4040AA" />
@@ -349,6 +469,7 @@ export default function AuraAvatar3D({
           isRecording={isRecording}
           isLoading={isLoading}
           analyser={activeAnalyser}
+          showChat={showChat}
         />
       </Canvas>
     </div>

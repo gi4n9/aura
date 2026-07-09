@@ -5,9 +5,12 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+
+
 export async function POST(req: Request) {
     try {
         const { lessonId, query } = await req.json();
+        console.log("Jarvis 3D Request Received:", { lessonId, query });
 
         if (!lessonId || !query) {
             return Response.json({ error: "Missing parameters" }, { status: 400 });

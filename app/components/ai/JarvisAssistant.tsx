@@ -13,6 +13,30 @@ interface JarvisProps {
     onOpenTab: (tabId: "quiz" | "ai" | "mindmap" | "flashcards") => void;
 }
 
+type OptionsVoice = {
+    value: string;
+    label: string;
+};
+
+type OptionsSpeed = {
+    value: string;
+    label: string;
+};
+
+const voiceOptions: OptionsVoice[] = [
+    { value: "vi-VN-HoaiMyNeural", label: "🇻🇳 Hoài Mỹ" },
+    { value: "vi-VN-NamMinhNeural", label: "🇻🇳 Nam Minh" },
+    { value: "en-US-AriaNeural", label: "🇺🇸 Aria" },
+    { value: "en-US-GuyNeural", label: "🇺🇸 Guy" }
+];
+
+const speedOptions: OptionsSpeed[] = [
+    { value: "0.8", label: "0.8x" },
+    { value: "1.0", label: "1.0x" },
+    { value: "1.2", label: "1.2x" },
+    { value: "1.5", label: "1.5x" }
+];
+
 export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisProps) {
     const [messages, setMessages] = useState<any[]>([]);
     const [input, setInput] = useState("");
@@ -21,7 +45,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [confidenceWarning, setConfidenceWarning] = useState<boolean>(false);
-    const [voiceId, setVoiceId] = useState("vi-VN-HoaiMyNeural"); // default voice
+    const [voiceId, setVoiceId] = useState<string>("vi-VN-HoaiMyNeural"); // Giọng đọc mặc định
     const [speed, setSpeed] = useState("1.0"); // Tốc độ đọc
     const [isMuted, setIsMuted] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
@@ -29,12 +53,40 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     const hasFetchedRef = useRef<Record<string, boolean>>({});
     const prevSettingsRef = useRef({ voiceId, speed });
 
+
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     // Tự động scroll xuống khi có tin nhắn mới
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    //  ===== Hàm chuẩn bị text cho TTS =====
+    // Chuyển timestamp [MM:SS] thành lời nói tiếng Việt tự nhiên
+    // Loại bỏ markdown formatting không phát âm được
+    // const prepareTextForSpeech = useCallback((text: string): string => {
+    //     return text
+    //         // Chuyển [MM:SS] thành lời đọc tiếng Việt
+    //         .replace(/\[(\d{1,2}):(\d{2})\]/g, (_match, m, s) => {
+    //             const min = parseInt(m, 10);
+    //             const sec = parseInt(s, 10);
+    //             if (min > 0 && sec > 0) return `khoảng thời gian ${min} phút ${sec} giây trong video bài giảng`;
+    //             if (min > 0) return `khoảng thời gian ${min} phút trong video bài giảng`;
+    //             return `khoảng thời gian ${sec} giây trong video bài giảng`;
+    //         })
+    //         // Loại bỏ timestamp dạng (MM:SS)
+    //         .replace(/\(\d{1,2}:\d{2}(?::\d{2})?\)/g, "")
+    //         // Loại bỏ markdown bold/italic markers
+    //         .replace(/\*\*/g, "").replace(/\*/g, "").replace(/__/g, "")
+    //         // Loại bỏ markdown headers
+    //         .replace(/^#+\s*/gm, "")
+    //         // Loại bỏ emoji icons (giữ lại text)
+    //         .replace(/[📌💡⚠️✅❌🎯🔑📝🧠]/g, "")
+    //         // Loại bỏ bullet points
+    //         .replace(/^[\-\*]\s*/gm, "")
+    //         .replace(/\s+/g, " ")
+    //         .trim();
+    // }, []);
 
     // Hàng đợi phát âm thanh tuần tự (Sentence-by-Sentence queue)
     const isSpeakingRef = useRef(false);
@@ -73,6 +125,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
         const fetchWarmup = async () => {
             try {
                 const res = await fetch(`/api/chat/jarvis-warmup?lessonId=${lessonId}`);
+
                 if (res.ok) {
                     const data = await res.json();
                     setWarmupData(data);
@@ -87,31 +140,23 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         }
                     ]);
 
-                    // Luôn sinh và phát audio bằng queue phát tuần tự câu
                     if (data.greeting) {
-                        const cleanTextForSpeech = (t: string) => {
-                            return t
-                                .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
-                                .replace(/\(\d{1,2}:\d{2}(?::\d{2})?\)/g, "")
-                                .replace(/\b\d{1,2}:\d{2}\b/g, "")
-                                .replace(/\s+/g, " ")
-                                .trim();
-                        };
-                        const cleaned = cleanTextForSpeech(data.greeting);
-                        const sentences = cleaned.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
-
-                        for (const s of sentences) {
-                            fetch("/api/chat/tts", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ text: s, voice: voiceId, speed })
-                            })
-                                .then(res => res.json())
-                                .then(d => {
+                        const sentences = data.greeting.split(/(?<=[.?!。:\n])/).map((s: string) => s.trim()).filter(Boolean);
+                        (async () => {
+                            for (const s of sentences) {
+                                try {
+                                    const res = await fetch("/api/chat/tts", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ text: s, voice: voiceId, speed })
+                                    });
+                                    const d = await res.json();
                                     if (d.audioUrl) queueAudio(d.audioUrl);
-                                })
-                                .catch(err => console.error("Lỗi greeting tts:", err));
-                        }
+                                } catch (err) {
+                                    console.error("Lỗi greeting tts:", err);
+                                }
+                            }
+                        })();
                     }
                 }
             } catch (err) {
@@ -121,57 +166,50 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
         fetchWarmup();
     }, [lessonId]);
 
-    // 2. Tự động đọc lại tin nhắn cuối cùng khi thay đổi giọng nói hoặc tốc độ đọc
-    useEffect(() => {
-        // Chỉ kích hoạt phát lại khi người dùng thay đổi thực tế voiceId hoặc speed qua dropdown
-        const hasChanged = prevSettingsRef.current.voiceId !== voiceId || prevSettingsRef.current.speed !== speed;
-        prevSettingsRef.current = { voiceId, speed };
+    //2. Tự động đọc lại tin nhắn cuối cùng khi thay đổi giọng nói hoặc tốc độ đọc
+    // useEffect(() => {
+    //     // Chỉ kích hoạt phát lại khi người dùng thay đổi thực tế voiceId hoặc speed qua dropdown
+    //     const hasChanged = prevSettingsRef.current.voiceId !== voiceId || prevSettingsRef.current.speed !== speed;
+    //     prevSettingsRef.current = { voiceId, speed };
 
-        if (!hasChanged) return;
+    //     if (!hasChanged) return;
 
-        const assistantMessages = messages.filter(m => m.role === "assistant");
-        if (assistantMessages.length === 0) return;
+    //     const assistantMessages = messages.filter(m => m.role === "assistant");
+    //     if (assistantMessages.length === 0) return;
 
-        const lastMsg = assistantMessages[assistantMessages.length - 1];
+    //     const lastMsg = assistantMessages[assistantMessages.length - 1];
 
-        const changeVoiceAndSpeed = async () => {
-            // Tạm thời dừng phát hiện tại và xóa hàng đợi
-            setIsSpeaking(false);
-            isSpeakingRef.current = false;
-            setAudioUrl(null);
-            audioQueueRef.current = [];
+    //     const changeVoiceAndSpeed = async () => {
+    //         // Tạm thời dừng phát hiện tại và xóa hàng đợi
+    //         setIsSpeaking(false);
+    //         isSpeakingRef.current = false;
+    //         setAudioUrl(null);
+    //         audioQueueRef.current = [];
 
-            try {
-                const cleanTextForSpeech = (text: string) => {
-                    return text
-                        .replace(/\[\d{1,2}:\d{2}(?::\d{2})?\]/g, "")
-                        .replace(/\(\d{1,2}:\d{2}(?::\d{2})?\)/g, "")
-                        .replace(/\b\d{1,2}:\d{2}\b/g, "")
-                        .replace(/\s+/g, " ")
-                        .trim();
-                };
-                const cleanedText = cleanTextForSpeech(lastMsg.content);
-                const sentences = cleanedText.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
+    //         try {
+    //             const cleanedText = prepareTextForSpeech(lastMsg.content);
+    //             const sentences = cleanedText.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
 
-                for (const s of sentences) {
-                    fetch("/api/chat/tts", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text: s, voice: voiceId, speed })
-                    })
-                        .then(res => res.json())
-                        .then(d => {
-                            if (d.audioUrl) queueAudio(d.audioUrl);
-                        })
-                        .catch(err => console.error("Lỗi changeVoiceAndSpeed tts:", err));
-                }
-            } catch (err) {
-                console.error("Lỗi đổi giọng nói/tốc độ:", err);
-            }
-        };
+    //             for (const s of sentences) {
+    //                 try {
+    //                     const res = await fetch("/api/chat/tts", {
+    //                         method: "POST",
+    //                         headers: { "Content-Type": "application/json" },
+    //                         body: JSON.stringify({ text: s, voice: voiceId, speed })
+    //                     });
+    //                     const d = await res.json();
+    //                     if (d.audioUrl) queueAudio(d.audioUrl);
+    //                 } catch (err) {
+    //                     console.error("Lỗi changeVoiceAndSpeed tts:", err);
+    //                 }
+    //             }
+    //         } catch (err) {
+    //             console.error("Lỗi đổi giọng nói/tốc độ:", err);
+    //         }
+    //     };
 
-        changeVoiceAndSpeed();
-    }, [voiceId, speed]);
+    //     changeVoiceAndSpeed();
+    // }, [voiceId, speed]);
 
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
@@ -222,22 +260,25 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             let responseText = "";
             let sentenceBuffer = "";
 
-            // Hàm con xử lý gọi TTS cho từng câu ngầm
+            // Hàm con xử lý gọi TTS cho từng câu (chuyển đổi timestamp trước khi phát)
             const processSentence = async (sentence: string) => {
-                const trimmed = sentence.trim();
-                if (!trimmed) return;
+                // const prepared = prepareTextForSpeech(sentence);
+                // if (!prepared) return;
+                const textToSpeak = sentence.trim();
+                if (!textToSpeak) return;
+
                 try {
                     const ttsRes = await fetch("/api/chat/tts", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text: trimmed, voice: voiceId, speed })
+                        body: JSON.stringify({ text: textToSpeak, voice: voiceId, speed })
                     });
                     const d = await ttsRes.json();
                     if (d.audioUrl) {
                         queueAudio(d.audioUrl);
                     }
                 } catch (err) {
-                    console.error("Lỗi tts cho câu trong stream:", trimmed, err);
+                    console.error("Lỗi tts cho câu trong stream:", textToSpeak, err);
                 }
             };
 
@@ -245,7 +286,13 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value);
+                const rawChunk = decoder.decode(value, { stream: true });
+                const chunk = rawChunk.startsWith(responseText)
+                    ? rawChunk.slice(responseText.length)
+                    : rawChunk;
+
+                if (!chunk) continue;
+
                 responseText += chunk;
                 sentenceBuffer += chunk;
 
@@ -260,19 +307,19 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 });
 
                 // Phân tách câu
-                const sentences = sentenceBuffer.split(/(?<=[.?!。:\n])/);
-                if (sentences.length > 1) {
-                    sentenceBuffer = sentences.pop() || "";
-                    for (const s of sentences) {
-                        // Chạy song song không block stream
-                        processSentence(s);
-                    }
-                }
+                // const sentences = sentenceBuffer.split(/(?<=[.?!。:\n])/);
+                // if (sentences.length > 1) {
+                //     sentenceBuffer = sentences.pop() || "";
+                //     for (const s of sentences) {
+                //         processSentence(s);
+                //     }
+                // }
+                processSentence(sentenceBuffer);
             }
 
             // Xử lý nốt phần văn bản còn lại trong buffer
             if (sentenceBuffer.trim()) {
-                await processSentence(sentenceBuffer);
+                processSentence(sentenceBuffer);
             }
 
         } catch (error) {
@@ -312,6 +359,14 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             rec.onerror = (event: any) => {
                 console.error("Speech recognition error:", event.error);
                 setIsRecording(false);
+                if (event.error === "network") {
+                    setMessages(prev => [...prev, {
+                        id: String(Date.now()),
+                        role: "assistant",
+                        content: "⚠️ Lỗi kết nối mạng khi nhận diện giọng nói (Web Speech API). Vui lòng kiểm tra lại đường truyền internet của bạn hoặc tải lại trang.",
+                        isFromCurriculum: false
+                    }]);
+                }
             };
 
             rec.onend = () => {
@@ -422,7 +477,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     return (
         <div className="flex flex-col h-full bg-[#0A0A0A] overflow-hidden relative">
             {/* ===== LAYER 1: 3D Sphere chiếm toàn bộ panel ===== */}
-            <div className="flex-1 relative flex items-center justify-center min-h-0">
+            <div className="relative h-full min-h-[500px]">
                 <AuraAvatar3D
                     audioUrl={audioUrl}
                     isSpeaking={isSpeaking}
@@ -430,6 +485,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                     isLoading={isLoading}
                     onSpeakEnd={handleSpeakEnd}
                     isMuted={isMuted}
+                    showChat={showChat}
                 />
 
                 {/* Gradient fade ở top */}
@@ -443,9 +499,9 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                     {/* Trạng thái hoạt động */}
                     <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xl px-3 py-1.5 rounded-full text-[11px] text-white/70 border border-white/10">
                         <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' :
-                                isSpeaking ? 'bg-amber-400 animate-pulse' :
-                                    isLoading ? 'bg-blue-400 animate-pulse' :
-                                        'bg-emerald-400'
+                            isSpeaking ? 'bg-amber-400 animate-pulse' :
+                                isLoading ? 'bg-blue-400 animate-pulse' :
+                                    'bg-emerald-400'
                             }`} />
                         {isRecording ? "Đang lắng nghe..." :
                             isSpeaking ? "Jarvis đang nói..." :
@@ -463,7 +519,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         {/* Nút tắt âm */}
                         <button
                             onClick={() => setIsMuted(!isMuted)}
-                            className="p-2 bg-white/5 backdrop-blur-xl hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-all border border-white/10"
+                            className="p-2 bg-white/5 backdrop-blur-xl hover:bg-white/10 z-50 rounded-full text-white/60 hover:text-white transition-all border border-white/10"
                             title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
                         >
                             {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -472,8 +528,8 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         <button
                             onClick={() => setShowChat(!showChat)}
                             className={`p-2 backdrop-blur-xl rounded-full transition-all border ${showChat
-                                    ? 'bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/30'
-                                    : 'bg-white/5 text-white/60 hover:text-white border-white/10 hover:bg-white/10'
+                                ? 'bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/30'
+                                : 'bg-white/5 text-white/60 hover:text-white border-white/10 hover:bg-white/10'
                                 }`}
                             title={showChat ? "Ẩn lịch sử chat" : "Xem lịch sử chat"}
                         >
@@ -522,24 +578,26 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 {/* Cài đặt giọng nói / tốc độ */}
                 <div className="flex items-center justify-center gap-4 mb-2">
                     <select
-                        value={voiceId}
+                        value={voiceId ?? ""}
                         onChange={(e) => setVoiceId(e.target.value)}
                         className="text-[10px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-1 outline-none focus:border-[#C5A059]/50 text-white/60 appearance-none cursor-pointer"
                     >
-                        <option value="vi-VN-HoaiMyNeural">🇻🇳 Hoài Mỹ</option>
-                        <option value="vi-VN-NamMinhNeural">🇻🇳 Nam Minh</option>
-                        <option value="en-US-AriaNeural">🇺🇸 Aria</option>
-                        <option value="en-US-GuyNeural">🇺🇸 Guy</option>
+                        {voiceOptions.map((vo) => (
+                            <option className="text-black" key={vo.value} value={vo.value}>
+                                {vo.label}
+                            </option>
+                        ))}
                     </select>
                     <select
-                        value={speed}
+                        value={speed ?? ""}
                         onChange={(e) => setSpeed(e.target.value)}
                         className="text-[10px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-full px-2.5 py-1 outline-none focus:border-[#C5A059]/50 text-white/60 appearance-none cursor-pointer"
                     >
-                        <option value="0.8">0.8x</option>
-                        <option value="1.0">1.0x</option>
-                        <option value="1.2">1.2x</option>
-                        <option value="1.4">1.4x</option>
+                        {speedOptions.map((so) => (
+                            <option className="text-black" key={so.value} value={so.value}>
+                                {so.label}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
@@ -553,8 +611,8 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         type="button"
                         onClick={toggleSpeechRecognition}
                         className={`w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${isRecording
-                                ? 'bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-110 animate-pulse'
-                                : 'bg-[#C5A059] text-white hover:bg-[#d4b569] shadow-[0_0_20px_rgba(197,160,89,0.3)]'
+                            ? 'bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-110 animate-pulse'
+                            : 'bg-[#C5A059] text-white hover:bg-[#d4b569] shadow-[0_0_20px_rgba(197,160,89,0.3)]'
                             }`}
                         title={isRecording ? "Dừng lắng nghe" : "Nói trực tiếp với Jarvis"}
                         disabled={isLoading}
@@ -569,8 +627,8 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={isRecording ? "🎤 Đang lắng nghe..." : "Nhập câu hỏi..."}
                         className={`flex-1 px-4 py-2.5 rounded-full border text-xs focus:outline-none transition-all bg-white/5 backdrop-blur-xl text-white placeholder-white/30 ${isRecording
-                                ? 'border-red-500/50 bg-red-500/5'
-                                : 'border-white/10 focus:border-[#C5A059]/50'
+                            ? 'border-red-500/50 bg-red-500/5'
+                            : 'border-white/10 focus:border-[#C5A059]/50'
                             }`}
                         disabled={isLoading || isRecording}
                     />
@@ -604,7 +662,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                     </div>
 
                     {/* Chat messages */}
-                    <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3 custom-scrollbar">
+                    <div className="flex-1 text-white overflow-y-auto px-4 pb-4 space-y-3 custom-scrollbar">
                         {messages.map((m) => (
                             <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white ${m.role === 'user' ? 'bg-white/10 order-2' : 'bg-[#C5A059]/20 text-[#C5A059]'}`}>
@@ -612,13 +670,13 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                                 </div>
 
                                 <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${m.role === 'user'
-                                        ? 'bg-white/10 text-white/80 rounded-tr-none'
-                                        : 'bg-white/5 border border-white/10 rounded-tl-none text-white/80'
+                                    ? 'bg-white/10 text-white/80 rounded-tr-none'
+                                    : 'bg-white/5 border border-white/10 rounded-tl-none text-white/80'
                                     }`}>
                                     {m.role === 'user' ? m.content : renderContent(m.content)}
 
                                     {m.role === 'assistant' && (
-                                        <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                                        <div className="mt-2  flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
                                             <button
                                                 onClick={() => onOpenTab("mindmap")}
                                                 className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
