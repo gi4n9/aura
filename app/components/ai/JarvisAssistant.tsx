@@ -48,15 +48,18 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     const [isMuted, setIsMuted] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const recognitionRef = useRef<any>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const hasFetchedRef = useRef<Record<string, boolean>>({});
     const prevSettingsRef = useRef({ voiceId, speed });
 
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
-    // Tự động scroll xuống khi có tin nhắn mới
+    // Tự động scroll xuống khi có tin nhắn mới hoặc mở panel
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
     }, [messages]);
 
     //  ===== Hàm chuẩn bị text cho TTS =====
@@ -177,6 +180,12 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
 
+        // Huỷ stream cũ nếu đang chạy
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
         const userMsg = { id: String(Date.now()), role: "user", content: text };
         setMessages(prev => [...prev, userMsg]);
         setInput("");
@@ -194,7 +203,8 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             const res = await fetch("/api/chat/video-3d", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lessonId, query: text })
+                body: JSON.stringify({ lessonId, query: text }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!res.ok) throw new Error("API call failed");
@@ -328,7 +338,11 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 processTtsQueue();
             }
 
-        } catch (error) {
+        } catch (error: any) {
+            if (error.name === "AbortError") {
+                console.log("Stream aborted by new message");
+                return;
+            }
             console.error(error);
             setMessages(prev => [...prev, {
                 id: String(Date.now() + 1),
@@ -337,7 +351,9 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 isFromCurriculum: false
             }]);
         } finally {
-            setIsLoading(false);
+            if (!abortControllerRef.current?.signal.aborted) {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -502,8 +518,32 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
 
     return (
         <div className="flex flex-col h-full bg-[#0A0A0A] overflow-hidden relative">
+            {/* ===== Top bar: Controls ===== */}
+            <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-50 pointer-events-none">
+                {/* Trạng thái hoạt động */}
+                <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xl px-3 py-1.5 rounded-full text-[11px] text-white/70 border border-white/10 pointer-events-auto">
+                    <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' :
+                        isSpeaking ? 'bg-amber-400 animate-pulse' :
+                            isLoading ? 'bg-blue-400 animate-pulse' :
+                                'bg-emerald-400'
+                        }`} />
+                    {isRecording ? "Đang lắng nghe..." :
+                        isSpeaking ? "Jarvis đang nói..." :
+                            isLoading ? "Đang suy nghĩ..." :
+                                "Jarvis sẵn sàng"}
+                </div>
+
+                <div className="flex items-center gap-2 pointer-events-auto">
+                    {/* Cảnh báo ngoài giáo trình */}
+                    {confidenceWarning && (
+                        <span className="flex items-center gap-1 text-amber-400 bg-amber-400/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full text-[10px] font-bold border border-amber-400/20">
+                            <AlertTriangle size={11} /> Ngoài giáo trình
+                        </span>
+                    )}
+                </div>
+            </div>
             {/* ===== LAYER 1: 3D Sphere chiếm toàn bộ panel ===== */}
-            <div className="relative h-full min-h-[500px]">
+            <div className="relative flex-1 min-h-[500px] overflow-hidden">
                 <AuraAvatar3D
                     audioUrl={audioUrl}
                     isSpeaking={isSpeaking}
@@ -520,49 +560,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 {/* Gradient fade ở bottom */}
                 <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0A0A0A] to-transparent pointer-events-none z-10" />
 
-                {/* ===== Top bar: Controls ===== */}
-                <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-20">
-                    {/* Trạng thái hoạt động */}
-                    <div className="flex items-center gap-2 bg-white/5 backdrop-blur-xl px-3 py-1.5 rounded-full text-[11px] text-white/70 border border-white/10">
-                        <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' :
-                            isSpeaking ? 'bg-amber-400 animate-pulse' :
-                                isLoading ? 'bg-blue-400 animate-pulse' :
-                                    'bg-emerald-400'
-                            }`} />
-                        {isRecording ? "Đang lắng nghe..." :
-                            isSpeaking ? "Jarvis đang nói..." :
-                                isLoading ? "Đang suy nghĩ..." :
-                                    "Jarvis sẵn sàng"}
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Cảnh báo ngoài giáo trình */}
-                        {confidenceWarning && (
-                            <span className="flex items-center gap-1 text-amber-400 bg-amber-400/10 backdrop-blur-xl px-2.5 py-1.5 rounded-full text-[10px] font-bold border border-amber-400/20">
-                                <AlertTriangle size={11} /> Ngoài giáo trình
-                            </span>
-                        )}
-                        {/* Nút tắt âm */}
-                        <button
-                            onClick={() => setIsMuted(!isMuted)}
-                            className="p-2 bg-white/5 backdrop-blur-xl hover:bg-white/10 z-50 rounded-full text-white/60 hover:text-white transition-all border border-white/10"
-                            title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
-                        >
-                            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                        </button>
-                        {/* Nút toggle chat history */}
-                        <button
-                            onClick={() => setShowChat(!showChat)}
-                            className={`p-2 backdrop-blur-xl rounded-full transition-all border ${showChat
-                                ? 'bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/30'
-                                : 'bg-white/5 text-white/60 hover:text-white border-white/10 hover:bg-white/10'
-                                }`}
-                            title={showChat ? "Ẩn lịch sử chat" : "Xem lịch sử chat"}
-                        >
-                            <BookOpen size={14} />
-                        </button>
-                    </div>
-                </div>
 
                 {/* ===== Floating Info Overlay (Subtitle + Suggestions stacked) ===== */}
                 {!showChat && (
@@ -597,6 +595,70 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                         )}
                     </div>
                 )}
+
+                {/* ===== LAYER 3: Slide-up Chat History Panel (Neo vào đáy LAYER 1) ===== */}
+                <div className={`absolute inset-x-0 bottom-0 z-40 transition-transform duration-300 ease-out ${showChat ? 'translate-y-0' : 'translate-y-[calc(100%_-_28px)]'
+                    }`} style={{ pointerEvents: 'auto' }}>
+                    <div className="bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl max-h-[100%] h-[420px] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)] relative">
+                        {/* Handle bar (Nút mở rộng / thu nhỏ) */}
+                        <div 
+                            className="flex justify-center pt-3 pb-3 cursor-pointer hover:bg-white/5 transition-colors rounded-t-3xl group"
+                            onClick={() => setShowChat(!showChat)}
+                            title={showChat ? "Thu nhỏ lịch sử chat" : "Mở rộng lịch sử chat"}
+                        >
+                            <div className="w-12 h-1.5 bg-white/20 group-hover:bg-white/40 transition-colors rounded-full" />
+                        </div>
+
+                        {/* Nội dung chat */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
+                            {messages.filter(m => m.role !== "system").map((msg, i) => (
+                                <div key={i} className={`flex flex-col mb-4 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                                    <div className={`px-4 py-3 rounded-2xl max-w-[90%] text-[13px] leading-relaxed shadow-sm ${msg.role === "user"
+                                        ? "bg-gradient-to-br from-[#C5A059] to-[#d4b569] text-white rounded-br-sm"
+                                        : "bg-white/5 backdrop-blur-xl border border-white/10 text-white/90 rounded-bl-sm"
+                                        }`}>
+                                        {msg.role === "assistant" ? renderContent(msg.content) : msg.content}
+                                        {msg.role === 'assistant' && (
+                                            <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
+                                                <button
+                                                    onClick={() => onOpenTab("mindmap")}
+                                                    className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                                >
+                                                    <BookOpen size={9} /> Mindmap
+                                                </button>
+                                                <button
+                                                    onClick={() => onOpenTab("flashcards")}
+                                                    className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                                >
+                                                    <Sparkles size={9} /> Flashcards
+                                                </button>
+                                                <button
+                                                    onClick={() => onOpenTab("quiz")}
+                                                    className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
+                                                >
+                                                    <Play size={9} /> Trắc nghiệm
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] text-white/30 mt-1.5 px-1 font-medium tracking-wider uppercase">
+                                        {msg.role === "user" ? "Bạn" : "Jarvis"}
+                                    </span>
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div className="flex items-start mb-4">
+                                    <div className="px-5 py-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white/90 rounded-bl-sm flex gap-1.5 items-center">
+                                        <div className="w-1.5 h-1.5 bg-[#C5A059] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-[#C5A059] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-1.5 h-1.5 bg-[#C5A059] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* ===== LAYER 2: Bottom Control Bar - Mic + Input ===== */}
@@ -627,11 +689,23 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                     </select>
                 </div>
 
-                {/* Input bar + Mic button */}
+                {/* Input bar + Mic + Mute buttons */}
                 <form
                     onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}
                     className="flex items-center gap-2"
                 >
+                    {/* Nút tắt âm */}
+                    <button
+                        type="button"
+                        onClick={() => setIsMuted(!isMuted)}
+                        className={`w-12 h-12 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer ${
+                            isMuted ? 'text-red-400 border-red-500/30' : 'text-white/60 hover:text-white hover:border-white/20'
+                        }`}
+                        title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
+                    >
+                        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                    </button>
+
                     {/* Nút Mic lớn */}
                     <button
                         type="button"
@@ -668,80 +742,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 </form>
             </div>
 
-            {/* ===== LAYER 3: Slide-up Chat History Panel ===== */}
-            <div className={`absolute inset-x-0 bottom-0 z-40 transition-transform duration-300 ease-out ${showChat ? 'translate-y-0' : 'translate-y-full'
-                }`} style={{ pointerEvents: showChat ? 'auto' : 'none' }}>
-                <div className="bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl max-h-[75vh] h-[420px] flex flex-col pointer-events-auto shadow-[0_-10px_40px_rgba(0,0,0,0.5)] relative">
-                    {/* Handle bar */}
-                    <div className="flex justify-center pt-3 pb-2">
-                        <div className="w-10 h-1 bg-white/20 rounded-full" />
-                    </div>
 
-                    <div className="flex items-center justify-between px-4 pb-2">
-                        <span className="text-[11px] text-white/50 font-bold uppercase tracking-wider">Lịch sử hội thoại</span>
-                        <button
-                            onClick={() => setShowChat(false)}
-                            className="text-[10px] text-white/40 hover:text-white/70 transition-all"
-                        >
-                            Đóng ✕
-                        </button>
-                    </div>
-
-                    {/* Chat messages */}
-                    <div className="flex-1 text-white overflow-y-auto px-4 pb-4 space-y-3 custom-scrollbar">
-                        {messages.map((m) => (
-                            <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white ${m.role === 'user' ? 'bg-white/10 order-2' : 'bg-[#C5A059]/20 text-[#C5A059]'}`}>
-                                    {m.role === 'user' ? <User size={12} /> : <Bot size={12} />}
-                                </div>
-
-                                <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${m.role === 'user'
-                                    ? 'bg-white/10 text-white/80 rounded-tr-none'
-                                    : 'bg-white/5 border border-white/10 rounded-tl-none text-white/80'
-                                    }`}>
-                                    {m.role === 'user' ? m.content : renderContent(m.content)}
-
-                                    {m.role === 'assistant' && (
-                                        <div className="mt-2  flex flex-wrap gap-1.5 pt-2 border-t border-white/10">
-                                            <button
-                                                onClick={() => onOpenTab("mindmap")}
-                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
-                                            >
-                                                <BookOpen size={9} /> Mindmap
-                                            </button>
-                                            <button
-                                                onClick={() => onOpenTab("flashcards")}
-                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
-                                            >
-                                                <Sparkles size={9} /> Flashcards
-                                            </button>
-                                            <button
-                                                onClick={() => onOpenTab("quiz")}
-                                                className="flex items-center gap-1 px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/50 rounded-lg border border-white/10 text-[9px] transition-all cursor-pointer"
-                                            >
-                                                <Play size={9} /> Trắc nghiệm
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-
-                        {isLoading && (
-                            <div className="flex gap-2.5 justify-start">
-                                <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[#C5A059] bg-[#C5A059]/20">
-                                    <Bot size={12} />
-                                </div>
-                                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 rounded-tl-none flex items-center gap-2">
-                                    <Loader2 size={12} className="animate-spin text-[#C5A059]" />
-                                    <span className="text-[11px] text-white/40">Jarvis đang truy xuất...</span>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={chatEndRef} />
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

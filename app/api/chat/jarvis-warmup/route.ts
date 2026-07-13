@@ -2,6 +2,9 @@ import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import Groq from "groq-sdk";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 type TimelineItem = {
     time: number;
@@ -71,13 +74,7 @@ export async function GET(req: Request) {
         }
 
         // Dùng Gemini phân tích transcript đã được embedding để sinh câu hỏi thảo luận cốt lõi bằng tiếng Việt
-        const response = await generateObject({
-            model: google("gemini-2.5-flash"),
-            schema: z.object({
-                greeting: z.string().describe("Lời chào ấm áp kiểu Jarvis bằng tiếng Việt, tóm tắt ngắn 1-2 câu nội dung cốt lõi của bài học và đặt câu hỏi gợi mở"),
-                suggestions: z.array(z.string()).length(3).describe("3 câu hỏi gợi ý cốt lõi bằng tiếng Việt, cụ thể dựa trực tiếp trên transcript của bài")
-            }),
-            prompt: `Dưới đây là tiêu đề và transcript của bài giảng:
+        const promptText = `Dưới đây là tiêu đề và transcript của bài giảng:
 Tiêu đề: ${lesson.title}
 Transcript: ${transcript.substring(0, 4000)}
 
@@ -87,10 +84,38 @@ Nhiệm vụ:
 
 Ví dụ: Nếu transcript nói về Anthropic Agent Skills, gợi ý câu hỏi phải là "Agent Skills là gì và tại sao Anthropic lại đề xuất nó?" chứ không được hỏi chung chung là "Nội dung bài học là gì?".
 
-Lưu ý đặc biệt quan trọng: Toàn bộ phản hồi bao gồm cả câu chào (greeting) và các gợi ý câu hỏi (suggestions) BẮT BUỘC phải được viết bằng tiếng Việt, kể cả khi tiêu đề bài học hoặc transcript là tiếng Anh.`
-        });
+Lưu ý đặc biệt quan trọng: Toàn bộ phản hồi bao gồm cả câu chào (greeting) và các gợi ý câu hỏi (suggestions) BẮT BUỘC phải được viết bằng tiếng Việt, kể cả khi tiêu đề bài học hoặc transcript là tiếng Anh.`;
 
-        const generatedData = response.object;
+        let generatedData;
+
+        try {
+            // Dùng Gemini phân tích transcript đã được embedding để sinh câu hỏi thảo luận cốt lõi bằng tiếng Việt
+            const response = await generateObject({
+                model: google("gemini-2.5-flash"),
+                maxRetries: 0,
+                schema: z.object({
+                    greeting: z.string().describe("Lời chào ấm áp kiểu Jarvis bằng tiếng Việt, tóm tắt ngắn 1-2 câu nội dung cốt lõi của bài học và đặt câu hỏi gợi mở"),
+                    suggestions: z.array(z.string()).length(3).describe("3 câu hỏi gợi ý cốt lõi bằng tiếng Việt, cụ thể dựa trực tiếp trên transcript của bài")
+                }),
+                prompt: promptText
+            });
+
+            generatedData = response.object;
+        } catch (geminiError: any) {
+            console.warn("⚠️ Gemini Stream Quota Exceeded (jarvis-warmup). Falling back to Groq...", geminiError.message);
+            
+            const groqRes = await groq.chat.completions.create({
+                model: "llama-3.3-70b-versatile",
+                messages: [{ 
+                    role: "user", 
+                    content: promptText + "\n\nTRẢ LỜI ĐÚNG ĐỊNH DẠNG JSON với cấu trúc: { \"greeting\": \"...\", \"suggestions\": [\"...\", \"...\", \"...\"] }" 
+                }],
+                response_format: { type: "json_object" },
+                temperature: 0.4
+            });
+            
+            generatedData = JSON.parse(groqRes.choices[0].message?.content || "{}");
+        }
 
         // 3. Lưu dữ liệu đã sinh vào database để cache cho các lần tải sau
         await prisma.lesson.update({

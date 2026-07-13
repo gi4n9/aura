@@ -102,7 +102,7 @@ const vertexShader = /* glsl */ `
 
     // Bass drives broad displacement, treble drives fine texture
     float strength = u_displacementStrength
-                   * (1.0 + u_bassLevel * 2.8 + u_trebleLevel * 0.8);
+                   * (1.0 + u_bassLevel * 1.2 + u_trebleLevel * 0.4);
     float displacement = combinedNoise * strength;
 
     vec3 newPos = position + normal * displacement;
@@ -392,6 +392,8 @@ export default function AuraAvatar3D({
     }
   }, [isMuted]);
 
+  const gainNodeRef = useRef<GainNode | null>(null);
+
   // --- Khởi tạo hệ thống Web Audio 1 lần duy nhất ---
   // Giúp tránh lỗi quá tải AudioContext (trình duyệt giới hạn tối đa 6 context)
   useEffect(() => {
@@ -402,14 +404,28 @@ export default function AuraAvatar3D({
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 128;
     analyser.smoothingTimeConstant = 0.82;
-    
-    analyser.connect(ctx.destination);
     analyserRef.current = analyser;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = isMuted ? 0 : 1;
+    gainNodeRef.current = gainNode;
+    
+    // Nối pipeline: Analyser -> Gain (Mute) -> Loa (Destination)
+    analyser.connect(gainNode);
+    gainNode.connect(ctx.destination);
 
     return () => {
       if (ctx.state !== "closed") ctx.close();
     };
-  }, []);
+  }, []); // Note: Khởi tạo 1 lần
+
+  // --- Đồng bộ trạng thái Mute (tức thời) ---
+  useEffect(() => {
+    if (gainNodeRef.current && audioCtxRef.current) {
+      // Dùng setTargetAtTime để tăng giảm âm lượng mượt mà, tránh tiếng click khó chịu
+      gainNodeRef.current.gain.setTargetAtTime(isMuted ? 0 : 1, audioCtxRef.current.currentTime, 0.05);
+    }
+  }, [isMuted]);
 
   // --- Xử lý phát audio khi có URL mới ---
   useEffect(() => {
@@ -466,13 +482,8 @@ export default function AuraAvatar3D({
         sourceNode = ctx.createBufferSource();
         sourceNode.buffer = audioBuffer;
         
-        // Connect vào Analyser
+        // Connect vào Analyser (Âm thanh đi qua Analyser để tạo hoạt ảnh 3D, sau đó tới GainNode để xử lý Mute, rồi mới ra Loa)
         sourceNode.connect(analyserRef.current!);
-
-        // Xử lý câm (Mute) bằng cách không kết nối vào Destination,
-        // Nhưng trong kiến trúc này Analyser đã nối sẵn vào Destination.
-        // Để mute, ta chỉ cần chỉnh GainNode hoặc mute trên tổng thể.
-        // Nhưng vì yêu cầu đơn giản, ta tạm bỏ qua mute cho Jarvis (trên thực tế Jarvis luôn nói ra tiếng).
 
         sourceNode.onended = () => {
           cleanupAudio();
@@ -525,10 +536,10 @@ export default function AuraAvatar3D({
   }, [isRecording]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full pointer-events-none">
       <Canvas
         camera={{ position: [0, 0, 3.2], fov: 45 }}
-        style={{ background: "transparent" }}
+        style={{ background: "transparent", pointerEvents: "none" }}
         gl={{ alpha: true, antialias: true }}
       >
         <ambientLight intensity={0.25} />
