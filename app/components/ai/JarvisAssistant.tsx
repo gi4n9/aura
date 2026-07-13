@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Sparkles, Play, BookOpen, AlertTriangle, User, Bot, Loader2, Send, Mic, Volume2, VolumeX } from "lucide-react";
 import AuraAvatar3D from "./AuraAvatar3D";
 import ReactMarkdown from "react-markdown";
-
-import { generateSpeech } from "@/app/actions/tts-speak";
 
 interface JarvisProps {
     lessonId: string;
@@ -64,29 +62,39 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     //  ===== Hàm chuẩn bị text cho TTS =====
     // Chuyển timestamp [MM:SS] thành lời nói tiếng Việt tự nhiên
     // Loại bỏ markdown formatting không phát âm được
-    // const prepareTextForSpeech = useCallback((text: string): string => {
-    //     return text
-    //         // Chuyển [MM:SS] thành lời đọc tiếng Việt
-    //         .replace(/\[(\d{1,2}):(\d{2})\]/g, (_match, m, s) => {
-    //             const min = parseInt(m, 10);
-    //             const sec = parseInt(s, 10);
-    //             if (min > 0 && sec > 0) return `khoảng thời gian ${min} phút ${sec} giây trong video bài giảng`;
-    //             if (min > 0) return `khoảng thời gian ${min} phút trong video bài giảng`;
-    //             return `khoảng thời gian ${sec} giây trong video bài giảng`;
-    //         })
-    //         // Loại bỏ timestamp dạng (MM:SS)
-    //         .replace(/\(\d{1,2}:\d{2}(?::\d{2})?\)/g, "")
-    //         // Loại bỏ markdown bold/italic markers
-    //         .replace(/\*\*/g, "").replace(/\*/g, "").replace(/__/g, "")
-    //         // Loại bỏ markdown headers
-    //         .replace(/^#+\s*/gm, "")
-    //         // Loại bỏ emoji icons (giữ lại text)
-    //         .replace(/[📌💡⚠️✅❌🎯🔑📝🧠]/g, "")
-    //         // Loại bỏ bullet points
-    //         .replace(/^[\-\*]\s*/gm, "")
-    //         .replace(/\s+/g, " ")
-    //         .trim();
-    // }, []);
+    const prepareTextForSpeech = useCallback((text: string): string => {
+        return text
+            // Chuyển [MM:SS] hoặc (MM:SS) hoặc các khoảng thời gian thành lời đọc tiếng Việt
+            .replace(/[\[\(](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*-\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?[\]\)]/g, (_match, g1, g2, g3, g4, g5, g6) => {
+                const hours1 = g3 ? parseInt(g1, 10) : 0;
+                const min1 = g3 ? parseInt(g2, 10) : parseInt(g1, 10);
+                const sec1 = g3 ? parseInt(g3, 10) : parseInt(g2, 10);
+                let text1 = hours1 > 0 ? `${hours1} giờ ` : "";
+                text1 += min1 > 0 ? (sec1 > 0 ? `${min1} phút ${sec1} giây` : `${min1} phút`) : `${sec1} giây`;
+                
+                if (g4 && g5) {
+                    const hours2 = g6 ? parseInt(g4, 10) : 0;
+                    const min2 = g6 ? parseInt(g5, 10) : parseInt(g4, 10);
+                    const sec2 = g6 ? parseInt(g6, 10) : parseInt(g5, 10);
+                    let text2 = hours2 > 0 ? `${hours2} giờ ` : "";
+                    text2 += min2 > 0 ? (sec2 > 0 ? `${min2} phút ${sec2} giây` : `${min2} phút`) : `${sec2} giây`;
+                    return `khoảng thời gian từ ${text1} đến ${text2}`;
+                }
+                
+                return `khoảng thời gian ${text1}`;
+            })
+            // Xóa các cụm từ hướng dẫn không cần đọc
+            .replace(/\b(trong video|ở bài giảng|tại phút|tại giây)\b/gi, "")
+            .replace(/\*\*/g, "").replace(/\*/g, "").replace(/__/g, "")
+            // Loại bỏ markdown headers
+            .replace(/^#+\s*/gm, "")
+            // Loại bỏ emoji icons (giữ lại text)
+            .replace(/[📌💡⚠️✅❌🎯🔑📝🧠]/g, "")
+            // Loại bỏ bullet points
+            .replace(/^[\-\*]\s*/gm, "")
+            .replace(/\s+/g, " ")
+            .trim();
+    }, []);
 
     // Hàng đợi phát âm thanh tuần tự (Sentence-by-Sentence queue)
     const isSpeakingRef = useRef(false);
@@ -166,51 +174,6 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
         fetchWarmup();
     }, [lessonId]);
 
-    //2. Tự động đọc lại tin nhắn cuối cùng khi thay đổi giọng nói hoặc tốc độ đọc
-    // useEffect(() => {
-    //     // Chỉ kích hoạt phát lại khi người dùng thay đổi thực tế voiceId hoặc speed qua dropdown
-    //     const hasChanged = prevSettingsRef.current.voiceId !== voiceId || prevSettingsRef.current.speed !== speed;
-    //     prevSettingsRef.current = { voiceId, speed };
-
-    //     if (!hasChanged) return;
-
-    //     const assistantMessages = messages.filter(m => m.role === "assistant");
-    //     if (assistantMessages.length === 0) return;
-
-    //     const lastMsg = assistantMessages[assistantMessages.length - 1];
-
-    //     const changeVoiceAndSpeed = async () => {
-    //         // Tạm thời dừng phát hiện tại và xóa hàng đợi
-    //         setIsSpeaking(false);
-    //         isSpeakingRef.current = false;
-    //         setAudioUrl(null);
-    //         audioQueueRef.current = [];
-
-    //         try {
-    //             const cleanedText = prepareTextForSpeech(lastMsg.content);
-    //             const sentences = cleanedText.split(/(?<=[.?!。:\n])/).map(s => s.trim()).filter(Boolean);
-
-    //             for (const s of sentences) {
-    //                 try {
-    //                     const res = await fetch("/api/chat/tts", {
-    //                         method: "POST",
-    //                         headers: { "Content-Type": "application/json" },
-    //                         body: JSON.stringify({ text: s, voice: voiceId, speed })
-    //                     });
-    //                     const d = await res.json();
-    //                     if (d.audioUrl) queueAudio(d.audioUrl);
-    //                 } catch (err) {
-    //                     console.error("Lỗi changeVoiceAndSpeed tts:", err);
-    //                 }
-    //             }
-    //         } catch (err) {
-    //             console.error("Lỗi đổi giọng nói/tốc độ:", err);
-    //         }
-    //     };
-
-    //     changeVoiceAndSpeed();
-    // }, [voiceId, speed]);
-
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
 
@@ -260,11 +223,27 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             let responseText = "";
             let sentenceBuffer = "";
 
+            // Hàng đợi xử lý TTS ngầm (giúp không block quá trình render text lên UI)
+            const ttsQueue: string[] = [];
+            let isProcessingTts = false;
+
+            const processTtsQueue = async () => {
+                if (isProcessingTts) return;
+                isProcessingTts = true;
+                while (ttsQueue.length > 0) {
+                    const sentence = ttsQueue.shift();
+                    if (sentence) {
+                        await processSentence(sentence);
+                    }
+                }
+                isProcessingTts = false;
+            };
+
             // Hàm con xử lý gọi TTS cho từng câu (chuyển đổi timestamp trước khi phát)
             const processSentence = async (sentence: string) => {
-                // const prepared = prepareTextForSpeech(sentence);
-                // if (!prepared) return;
-                const textToSpeak = sentence.trim();
+                const prepared = prepareTextForSpeech(sentence);
+                if (!prepared) return;
+                const textToSpeak = prepared.trim();
                 if (!textToSpeak) return;
 
                 try {
@@ -287,14 +266,16 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 if (done) break;
 
                 const rawChunk = decoder.decode(value, { stream: true });
-                const chunk = rawChunk.startsWith(responseText)
-                    ? rawChunk.slice(responseText.length)
-                    : rawChunk;
+                let chunkText = rawChunk;
+                // Nếu server trả về toàn bộ text (thay vì delta), ta chỉ lấy phần mới
+                if (responseText.length > 0 && rawChunk.length > responseText.length && rawChunk.startsWith(responseText)) {
+                    chunkText = rawChunk.slice(responseText.length);
+                }
 
-                if (!chunk) continue;
+                if (!chunkText) continue;
 
-                responseText += chunk;
-                sentenceBuffer += chunk;
+                responseText += chunkText;
+                sentenceBuffer += chunkText;
 
                 // Cập nhật UI ngay lập tức khi nhận token text mới
                 setMessages(prev => {
@@ -306,20 +287,45 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                     });
                 });
 
-                // Phân tách câu
-                // const sentences = sentenceBuffer.split(/(?<=[.?!。:\n])/);
-                // if (sentences.length > 1) {
-                //     sentenceBuffer = sentences.pop() || "";
-                //     for (const s of sentences) {
-                //         processSentence(s);
-                //     }
-                // }
-                processSentence(sentenceBuffer);
+                // Phân tách câu thông minh: Gom các câu ngắn lại với nhau để giọng đọc tự nhiên và liền mạch hơn
+                while (true) {
+                    let splitIndex = -1;
+                    const regex = /([.?!。:]+['"”’\)\]*_]*[\s]+)|(\n+)/g;
+                    let match;
+
+                    // Duyệt qua các dấu ngắt câu trong buffer
+                    while ((match = regex.exec(sentenceBuffer)) !== null) {
+                        splitIndex = match.index + match[0].length;
+
+                        // Nếu đã gom đủ độ dài (> 60 ký tự) HOẶC gặp đoạn xuống dòng, thì chốt vị trí cắt
+                        if (splitIndex >= 60 || match[0].includes('\n')) {
+                            break;
+                        }
+                    }
+
+                    // Nếu không tìm thấy dấu ngắt câu nào, hoặc đoạn cắt được quá ngắn (và không phải xuống dòng)
+                    // -> Ta break để chờ thêm text từ stream truyền về
+                    if (splitIndex === -1 || (splitIndex < 60 && !sentenceBuffer.substring(0, splitIndex).includes('\n'))) {
+                        // Ngoại lệ: Nếu buffer đã rất dài (quá 120 ký tự) mà không có dấu câu nào thoả mãn, ta vẫn cắt ở dấu câu cuối cùng tìm được để tránh kẹt
+                        if (sentenceBuffer.length > 120 && splitIndex !== -1) {
+                            // Cắt tạm ở đây
+                        } else {
+                            break;
+                        }
+                    }
+
+                    const sentence = sentenceBuffer.substring(0, splitIndex);
+                    sentenceBuffer = sentenceBuffer.substring(splitIndex); // Xoá phần đã đọc khỏi buffer, đảm bảo KHÔNG BAO GIỜ đọc lại
+
+                    ttsQueue.push(sentence);
+                    processTtsQueue(); // Kích hoạt xử lý ngầm (không await để không block stream text)
+                }
             }
 
             // Xử lý nốt phần văn bản còn lại trong buffer
             if (sentenceBuffer.trim()) {
-                processSentence(sentenceBuffer);
+                ttsQueue.push(sentenceBuffer);
+                processTtsQueue();
             }
 
         } catch (error) {
@@ -398,6 +404,24 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
         }
     };
 
+    // Helper function để xử lý đệ quy qua các children của ReactMarkdown
+    const processChildren = (children: React.ReactNode): React.ReactNode => {
+        if (typeof children === 'string') {
+            return parseTimestamps(children);
+        }
+        if (Array.isArray(children)) {
+            return children.map((child, index) => (
+                <span key={index}>{processChildren(child)}</span>
+            ));
+        }
+        if (React.isValidElement(children)) {
+            return React.cloneElement(children as React.ReactElement<any>, {
+                children: processChildren((children.props as any).children)
+            });
+        }
+        return children;
+    };
+
     // Render markdown với clickable timestamps
     const renderContent = (content: string) => {
         return (
@@ -405,7 +429,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 components={{
                     p: ({ children }) => (
                         <p className="mb-2 last:mb-0">
-                            {typeof children === 'string' ? parseTimestamps(children) : children}
+                            {processChildren(children)}
                         </p>
                     ),
                     code: ({ inline, children, className, ...props }: any) => {
@@ -422,9 +446,10 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                             </code>
                         );
                     },
-                    ul: ({ children }) => <ul className="list-disc list-outside space-y-1 my-2 ml-4">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-outside space-y-1 my-2 ml-4">{children}</ol>,
-                    strong: ({ children }) => <strong className="font-bold text-stone-900">{children}</strong>,
+                    ul: ({ children }) => <ul className="list-disc list-outside space-y-1 my-2 ml-4">{processChildren(children)}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-outside space-y-1 my-2 ml-4">{processChildren(children)}</ol>,
+                    li: ({ children }) => <li>{processChildren(children)}</li>,
+                    strong: ({ children }) => <strong className="font-semibold text-[#C5A059]">{processChildren(children)}</strong>,
                 }}
             >
                 {content}
@@ -433,7 +458,7 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
     };
 
     const parseTimestamps = (text: string) => {
-        const regex = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]/g;
+        const regex = /[\[\(](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*-\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?[\]\)]/g;
         const parts: (string | React.ReactNode)[] = [];
         let lastIndex = 0;
         let match;
@@ -452,8 +477,9 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
                 <button
                     key={match.index}
                     onClick={() => onSeek(totalSeconds)}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 bg-[#C5A059]/10 text-[#C5A059] rounded font-mono text-xs hover:bg-[#C5A059]/20 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 bg-[#C5A059]/10 text-[#C5A059] rounded font-mono text-xs hover:bg-[#C5A059]/20 transition-colors cursor-pointer whitespace-nowrap"
                 >
+                    <Play size={12} className="fill-current" />
                     {match[0].slice(1, -1)}
                 </button>
             );
@@ -643,9 +669,9 @@ export default function JarvisAssistant({ lessonId, onSeek, onOpenTab }: JarvisP
             </div>
 
             {/* ===== LAYER 3: Slide-up Chat History Panel ===== */}
-            <div className={`absolute inset-x-0 bottom-0 z-40 transition-all duration-300 ease-out ${showChat ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
-                }`}>
-                <div className="bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl max-h-[75%] h-[420px] flex flex-col pointer-events-auto">
+            <div className={`absolute inset-x-0 bottom-0 z-40 transition-transform duration-300 ease-out ${showChat ? 'translate-y-0' : 'translate-y-full'
+                }`} style={{ pointerEvents: showChat ? 'auto' : 'none' }}>
+                <div className="bg-[#0A0A0A]/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl max-h-[75vh] h-[420px] flex flex-col pointer-events-auto shadow-[0_-10px_40px_rgba(0,0,0,0.5)] relative">
                     {/* Handle bar */}
                     <div className="flex justify-center pt-3 pb-2">
                         <div className="w-10 h-1 bg-white/20 rounded-full" />

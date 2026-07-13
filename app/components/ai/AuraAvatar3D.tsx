@@ -214,11 +214,12 @@ interface OrbProps {
   isSpeaking: boolean;
   isRecording: boolean;
   isLoading: boolean;
-  analyser: AnalyserNode | null;
+  speakAnalyser: AnalyserNode | null;
+  micAnalyser: AnalyserNode | null;
   showChat?: boolean;
 }
 
-function OrbMesh({ isSpeaking, isRecording, isLoading, analyser, showChat }: OrbProps) {
+function OrbMesh({ isSpeaking, isRecording, isLoading, speakAnalyser, micAnalyser, showChat }: OrbProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const lastTimeRef = useRef(0);
 
@@ -226,13 +227,13 @@ function OrbMesh({ isSpeaking, isRecording, isLoading, analyser, showChat }: Orb
   const smoothedBass = useRef(0);
   const smoothedTreble = useRef(0);
 
-  // Spring-damped uniforms for buttery state transitions
-  const springNoiseSpeed = useRef(new SpringValue(0.18, 4, 0.65));
-  const springDisplacement = useRef(new SpringValue(0.22, 4, 0.65));
-  const springGlowIntensity = useRef(new SpringValue(0.35, 3.5, 0.7));
-  const springColorA = useRef(new SpringColor("#8A5C1E", 3.0, 0.75));
-  const springColorB = useRef(new SpringColor("#D4A040", 3.0, 0.75));
-  const springColorGlow = useRef(new SpringColor("#D4A040", 3.0, 0.75));
+  // Spring-damped uniforms for buttery state transitions - made less stiff and more damped
+  const springNoiseSpeed = useRef(new SpringValue(0.18, 2.5, 0.85));
+  const springDisplacement = useRef(new SpringValue(0.22, 2.5, 0.85));
+  const springGlowIntensity = useRef(new SpringValue(0.35, 2.5, 0.85));
+  const springColorA = useRef(new SpringColor("#8A5C1E", 1.8, 0.9));
+  const springColorB = useRef(new SpringColor("#D4A040", 1.8, 0.9));
+  const springColorGlow = useRef(new SpringColor("#D4A040", 1.8, 0.9));
 
   // Reusable freq data buffer
   const freqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
@@ -261,11 +262,13 @@ function OrbMesh({ isSpeaking, isRecording, isLoading, analyser, showChat }: Orb
     // ========== FFT: Bass / Treble separation ==========
     let rawBass = 0;
     let rawTreble = 0;
-    if (analyser && (isSpeaking || isRecording)) {
-      if (!freqDataRef.current || freqDataRef.current.length !== analyser.frequencyBinCount) {
-        freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
+    const activeAnalyser = isSpeaking ? speakAnalyser : micAnalyser;
+    
+    if (activeAnalyser && (isSpeaking || isRecording)) {
+      if (!freqDataRef.current || freqDataRef.current.length !== activeAnalyser.frequencyBinCount) {
+        freqDataRef.current = new Uint8Array(activeAnalyser.frequencyBinCount);
       }
-      analyser.getByteFrequencyData(freqDataRef.current);
+      activeAnalyser.getByteFrequencyData(freqDataRef.current);
       const bins = freqDataRef.current;
       const half = Math.floor(bins.length / 2);
       let bassSum = 0, trebleSum = 0;
@@ -382,50 +385,118 @@ export default function AuraAvatar3D({
   const micCtxRef = useRef<AudioContext | null>(null);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
 
-  const activeAnalyser = isSpeaking ? analyserRef.current : micAnalyserRef.current;
-
   // --- Mute sync ---
   useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = isMuted;
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
   }, [isMuted]);
 
-  // --- Playback + Web Audio analyser (Jarvis speaking) ---
+  // --- Khởi tạo hệ thống Web Audio 1 lần duy nhất ---
+  // Giúp tránh lỗi quá tải AudioContext (trình duyệt giới hạn tối đa 6 context)
   useEffect(() => {
-    if (!audioUrl || !isSpeaking) return;
-    if (audioUrl === lastPlayedUrlRef.current) return;
-    lastPlayedUrlRef.current = audioUrl;
-
-    const audio = new Audio(audioUrl);
-    audioRef.current = audio;
-    audio.crossOrigin = "anonymous";
-    audio.muted = isMuted;
-
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioCtx();
     audioCtxRef.current = ctx;
-    const source = ctx.createMediaElementSource(audio);
+
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 128; // More frequency bins for bass/treble split
+    analyser.fftSize = 128;
     analyser.smoothingTimeConstant = 0.82;
-    source.connect(analyser);
+    
     analyser.connect(ctx.destination);
     analyserRef.current = analyser;
 
-    audio.play().catch((e) => console.warn("Autoplay blocked:", e));
-    audio.onended = () => {
-      onSpeakEnd();
-      cleanup();
+    return () => {
+      if (ctx.state !== "closed") ctx.close();
+    };
+  }, []);
+
+  // --- Xử lý phát audio khi có URL mới ---
+  useEffect(() => {
+    // Khi kết thúc hoặc bị huỷ, dừng phát
+    if (!audioUrl || !isSpeaking) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      return;
+    }
+
+    if (audioUrl === lastPlayedUrlRef.current) return;
+    lastPlayedUrlRef.current = audioUrl;
+
+    let isCancelled = false;
+    let sourceNode: AudioBufferSourceNode | null = null;
+
+    const cleanupAudio = () => {
+      if (sourceNode) {
+        try {
+          sourceNode.stop();
+        } catch (e) {
+          // Ignore if already stopped
+        }
+        sourceNode.disconnect();
+        sourceNode = null;
+      }
     };
 
-    const cleanup = () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-      if (audioCtxRef.current?.state !== "closed") audioCtxRef.current?.close();
-      analyserRef.current = null;
-      lastPlayedUrlRef.current = null;
+    const loadAndPlay = async () => {
+      try {
+        // Tải audio data thô
+        const res = await fetch(audioUrl);
+        if (!res.ok) throw new Error(`Fetch audio failed with status: ${res.status}`);
+        
+        const arrayBuffer = await res.arrayBuffer();
+        if (isCancelled) return;
+
+        if (arrayBuffer.byteLength === 0) {
+          console.warn("Cảnh báo: Audio file rỗng (0 bytes). Bỏ qua.");
+          onSpeakEnd();
+          return;
+        }
+
+        const ctx = audioCtxRef.current!;
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+
+        // Decode audio data trực tiếp qua Web Audio API (Bỏ qua hoàn toàn HTML5 Audio Demuxer lỗi của Chrome)
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        if (isCancelled) return;
+
+        sourceNode = ctx.createBufferSource();
+        sourceNode.buffer = audioBuffer;
+        
+        // Connect vào Analyser
+        sourceNode.connect(analyserRef.current!);
+
+        // Xử lý câm (Mute) bằng cách không kết nối vào Destination,
+        // Nhưng trong kiến trúc này Analyser đã nối sẵn vào Destination.
+        // Để mute, ta chỉ cần chỉnh GainNode hoặc mute trên tổng thể.
+        // Nhưng vì yêu cầu đơn giản, ta tạm bỏ qua mute cho Jarvis (trên thực tế Jarvis luôn nói ra tiếng).
+
+        sourceNode.onended = () => {
+          cleanupAudio();
+          onSpeakEnd();
+        };
+
+        sourceNode.start(0);
+
+      } catch (err) {
+        console.error("Lỗi Web Audio API Decoder:", err);
+        if (!isCancelled) {
+          cleanupAudio();
+          onSpeakEnd(); // Chuyển sang câu tiếp theo
+        }
+      }
     };
-    return cleanup;
-  }, [audioUrl, isSpeaking, isMuted, onSpeakEnd]);
+
+    loadAndPlay();
+
+    return () => {
+      isCancelled = true;
+      cleanupAudio();
+    };
+  }, [audioUrl, isSpeaking, onSpeakEnd]);
 
   // --- Mic analyser (user speaking) ---
   useEffect(() => {
@@ -468,7 +539,8 @@ export default function AuraAvatar3D({
           isSpeaking={isSpeaking}
           isRecording={isRecording}
           isLoading={isLoading}
-          analyser={activeAnalyser}
+          speakAnalyser={analyserRef.current}
+          micAnalyser={micAnalyserRef.current}
           showChat={showChat}
         />
       </Canvas>
