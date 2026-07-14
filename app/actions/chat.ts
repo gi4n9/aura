@@ -75,6 +75,13 @@ export async function getMessages(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { messages: [], nextCursor: null };
 
+    const conversation = await db.conversation.findUnique({
+        where: { id: conversationId },
+        select: { isPublic: true }
+    });
+
+    if (!conversation) return { messages: [], nextCursor: null };
+
     // Kiểm tra xem user có trong hội thoại này không (bảo mật)
     const isParticipant = await db.conversationParticipant.findUnique({
         where: {
@@ -85,7 +92,7 @@ export async function getMessages(
         }
     });
 
-    if (!isParticipant) return { messages: [], nextCursor: null };
+    if (!isParticipant && !conversation.isPublic) return { messages: [], nextCursor: null };
 
     const limit = options?.limit || 30;
     const cursor = options?.cursor;
@@ -215,4 +222,21 @@ export async function getOrCreateConversation(targetUserId: string) {
     });
 
     return { success: true, conversationId: newConv.id };
+}
+
+// 5. Lấy chi tiết một tin nhắn (dùng cho Realtime update)
+export async function getMessageById(messageId: string) {
+    const message = await db.directMessage.findUnique({
+        where: { id: messageId },
+        include: {
+            sender: {
+                select: {
+                    id: true,
+                    fullName: true,
+                    avatarUrl: true
+                }
+            }
+        }
+    });
+    return message;
 }

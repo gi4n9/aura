@@ -95,6 +95,10 @@ model Profile {
   // NEW: Study Schedules Config
   studySchedules StudySchedule[]
   
+  // Community / Gamification
+  userStats      UserStats?
+  groupQuestions GroupQuestion[]
+  
   // Payment History
   purchases      Purchase[]
 
@@ -150,6 +154,10 @@ model Course {
   prerequisitesFor CoursePrerequisite[] @relation("PrerequisiteToCourse")
   prerequisites    CoursePrerequisite[] @relation("CourseToPrerequisite")
   roadmapNodes     UserRoadmapNode[]
+  faqs             CourseFaq[]
+  
+  // Community Groups
+  conversations    Conversation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -527,12 +535,23 @@ model Message {
 // ================= 5. USER CHAT (MESSENGER STYLE) =================
 
 model Conversation {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  isGroup     Boolean  @default(false)
+  name        String?
+  avatarUrl   String?
+  description String?
+  maxMembers  Int      @default(50)
+  isPublic    Boolean  @default(false)
+  courseId    String?  // Removed @unique to allow multiple groups per course
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   participants ConversationParticipant[]
   messages     DirectMessage[]
+  summaries    ConversationSummary[]
+  goals        GroupGoal[]
+  questions    GroupQuestion[]
 }
 
 model ConversationParticipant {
@@ -542,6 +561,8 @@ model ConversationParticipant {
   userId         String
   user           Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  role           String       @default("MEMBER") // 'OWNER', 'ADMIN', 'MEMBER', 'BOT'
+  lastReadAt     DateTime     @default(now()) // Cho Smart Catch-up
   hasSeenLatest  Boolean      @default(false)
   
   @@unique([conversationId, userId])
@@ -558,6 +579,15 @@ model DirectMessage {
   senderId       String
   sender         Profile      @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
+  // Bot-specific
+  isBotResponse    Boolean @default(false)
+  replyToMessageId String?
+  sources          Json?
+  isResolved       Boolean @default(false)
+  
+  // Embedding cho search
+  embedding Unsupported("vector(3072)")?
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   
@@ -565,6 +595,92 @@ model DirectMessage {
 
   @@index([conversationId])
   @@index([senderId])
+}
+
+model ConversationSummary {
+  id             String   @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  period         String   @default("DAILY")
+  startAt        DateTime
+  endAt          DateTime
+  
+  summary        String   @db.Text
+  keyTopics      Json
+  sharedLinks    Json
+  hotQuestions   Json
+  activeMembers  Int
+  messageCount   Int
+  
+  createdAt      DateTime @default(now())
+  
+  @@unique([conversationId, period, startAt])
+  @@index([conversationId, createdAt])
+}
+
+model CourseFaq {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  question  String   @db.Text
+  answer    String   @db.Text
+  askCount  Int      @default(1)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([courseId])
+}
+
+model GroupGoal {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  title          String       // Tên mục tiêu (VD: Đạt 10.000 XP tuần này)
+  description    String?
+  targetXp       Int?
+  isActive       Boolean      @default(true)
+  startDate      DateTime     @default(now())
+  endDate        DateTime?
+  
+  createdAt      DateTime     @default(now())
+}
+
+model UserStats {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Streak
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastStudyDate  DateTime?
+  
+  // Leaderboard data
+  totalXp        Int      @default(0)
+  totalPomodoros Int      @default(0)
+  totalStudyMins Int      @default(0)
+  
+  updatedAt      DateTime @updatedAt
+}
+
+model GroupQuestion {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  authorId       String
+  author         Profile      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  title          String
+  content        String       @db.Text
+  isResolved     Boolean      @default(false)
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 // ================= 6. VECTOR SEARCH =================

@@ -11,6 +11,10 @@ import { format } from "date-fns";
 // Types
 type ConversationInfo = {
     id: string;
+    isGroup?: boolean;
+    name?: string | null;
+    avatarUrl?: string | null;
+    courseId?: string | null;
     otherUser: {
         id: string;
         fullName: string | null;
@@ -33,6 +37,8 @@ type Message = {
     senderId: string;
     createdAt: Date;
     status?: MessageStatus; // For outgoing messages
+    isBotResponse?: boolean;
+    sources?: any[];
     sender: {
         id: string;
         fullName: string | null;
@@ -71,6 +77,9 @@ export default function MessagesInterface({
 
     // Derived state
     const selectedConversation = conversations.find(c => c.id === selectedConvId);
+
+    const [summaryData, setSummaryData] = useState<any>(null);
+    const [loadingSummary, setLoadingSummary] = useState(false);
 
     // Scroll to bottom
     const scrollToBottom = () => {
@@ -117,6 +126,8 @@ export default function MessagesInterface({
                         content: newMsg.content,
                         senderId: newMsg.senderId,
                         createdAt: new Date(newMsg.createdAt),
+                        isBotResponse: newMsg.isBotResponse,
+                        sources: newMsg.sources,
                         sender: senderInfo
                     }];
                 });
@@ -364,6 +375,7 @@ export default function MessagesInterface({
         });
 
         // Send to server via Edge Function (faster) with Server Action fallback
+        // Send to server via Edge Function (faster) with Server Action fallback
         const sendWithRetry = async (retries = 2): Promise<void> => {
             try {
                 console.log('[Chat] Sending via Edge Function...', { convId, content: content.substring(0, 20) });
@@ -397,13 +409,27 @@ export default function MessagesInterface({
                             : m
                     ));
                 }
+
+                // IF message mentions @AuraBot AND it's a group, trigger the bot
+                if (content.includes('@AuraBot') && selectedConversation?.isGroup) {
+                    fetch('/api/chat/group-bot', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            conversationId: selectedConvId,
+                            courseId: selectedConversation.courseId,
+                            query: content.replace('@AuraBot', '').trim(),
+                            senderId: currentUserId
+                        })
+                    }).catch(console.error);
+                }
+
             } catch (error) {
                 if (retries > 0) {
                     // Retry after short delay
                     await new Promise(r => setTimeout(r, 500));
                     return sendWithRetry(retries - 1);
                 }
-
+                
                 // All retries failed - mark as failed (show error indicator)
                 setMessages(prev => prev.map(m =>
                     m.id === tempId
@@ -461,19 +487,19 @@ export default function MessagesInterface({
                                 {/* Avatar */}
                                 <div className="relative w-12 h-12 flex-shrink-0">
                                     <Image
-                                        src={conv.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U"}
+                                        src={conv.isGroup ? (conv.avatarUrl || "https://placehold.co/100x100?text=G") : (conv.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U")}
                                         alt="Avatar"
                                         fill
                                         className="rounded-full object-cover border border-stone-200"
                                     />
                                     {/* Online indicator (Future) */}
-                                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                                    {!conv.isGroup && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>}
                                 </div>
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-baseline mb-1">
-                                        <h4 className="font-bold text-stone-800 truncate text-sm">{conv.otherUser?.fullName || "Người dùng"}</h4>
+                                        <h4 className="font-bold text-stone-800 truncate text-sm">{conv.isGroup ? conv.name : (conv.otherUser?.fullName || "Người dùng")}</h4>
                                         <span className="text-[10px] text-stone-400 flex-shrink-0">
                                             {conv.updatedAt ? format(new Date(conv.updatedAt), 'HH:mm') : ''}
                                         </span>
@@ -506,7 +532,7 @@ export default function MessagesInterface({
 
                                 <div className="relative w-10 h-10">
                                     <Image
-                                        src={selectedConversation.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U"}
+                                        src={selectedConversation.isGroup ? (selectedConversation.avatarUrl || "https://placehold.co/100x100?text=G") : (selectedConversation.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U")}
                                         alt="Avatar"
                                         fill
                                         className="rounded-full object-cover"
@@ -514,20 +540,53 @@ export default function MessagesInterface({
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-stone-800 leading-tight">
-                                        {selectedConversation.otherUser?.fullName || "Người dùng"}
+                                        {selectedConversation.isGroup ? selectedConversation.name : (selectedConversation.otherUser?.fullName || "Người dùng")}
                                     </h3>
                                     <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                                        Active now
+                                        {selectedConversation.isGroup ? 'Group Chat' : 'Active now'}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2 text-[#C5A059]">
+                                {selectedConversation.isGroup && (
+                                    <button 
+                                        onClick={async () => {
+                                            setLoadingSummary(true);
+                                            try {
+                                                const res = await fetch('/api/chat/group-summary', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({ conversationId: selectedConvId, userId: currentUserId })
+                                                });
+                                                const data = await res.json();
+                                                setSummaryData(data);
+                                            } catch (e) {
+                                                console.error(e);
+                                            } finally {
+                                                setLoadingSummary(false);
+                                            }
+                                        }}
+                                        className="text-xs font-bold px-3 py-1.5 bg-stone-100 hover:bg-stone-200 rounded-full flex items-center gap-1"
+                                    >
+                                        {loadingSummary ? <Loader2 size={14} className="animate-spin" /> : "Tóm tắt từ lần cuối online"}
+                                    </button>
+                                )}
                                 <button className="p-2 hover:bg-stone-50 rounded-full"><Phone size={20} /></button>
                                 <button className="p-2 hover:bg-stone-50 rounded-full"><Video size={20} /></button>
                                 <button className="p-2 hover:bg-stone-50 rounded-full text-stone-400"><Info size={20} /></button>
                             </div>
                         </div>
+
+                        {/* Summary Alert */}
+                        {summaryData && (
+                            <div className="mx-4 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl relative">
+                                <button onClick={() => setSummaryData(null)} className="absolute top-2 right-2 text-stone-400 hover:text-stone-600">✕</button>
+                                <h4 className="font-bold text-yellow-800 flex items-center gap-2 mb-2">
+                                    <CheckCheck size={16}/> Tóm tắt tin nhắn bị lỡ
+                                </h4>
+                                <p className="text-sm text-yellow-900 whitespace-pre-wrap">{summaryData.summary}</p>
+                            </div>
+                        )}
 
                         {/* Messages Area */}
                         <div
@@ -581,9 +640,22 @@ export default function MessagesInterface({
                                             <div className={`max-w-[70%] break-words px-4 py-2 rounded-2xl text-sm shadow-sm
                                                 ${isMe
                                                     ? 'bg-[#1a1a1a] text-white rounded-br-none'
-                                                    : 'bg-white border border-stone-200 text-stone-800 rounded-bl-none'}
+                                                    : msg.isBotResponse 
+                                                        ? 'bg-blue-50 border border-blue-200 text-blue-900 rounded-bl-none'
+                                                        : 'bg-white border border-stone-200 text-stone-800 rounded-bl-none'}
                                             `}>
-                                                {msg.content}
+                                                {msg.isBotResponse && <div className="font-bold text-xs text-blue-600 mb-1 flex items-center gap-1"><Info size={12}/> AuraBot</div>}
+                                                <div className="whitespace-pre-wrap">{msg.content}</div>
+                                                {msg.sources && msg.sources.length > 0 && (
+                                                    <div className="mt-2 pt-2 border-t border-blue-200 text-xs">
+                                                        <span className="font-semibold">Nguồn: </span>
+                                                        {msg.sources.map((s: any, i: number) => (
+                                                            <span key={i} className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-200 inline-block mr-1 mb-1">
+                                                                {s.type === 'video' ? `🎥 ${s.title} [${Math.floor(s.startTime)}s]` : `💬 Q&A`}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Message Status (only for my messages) */}

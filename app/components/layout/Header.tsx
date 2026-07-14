@@ -84,6 +84,7 @@ export default function Header() {
             {[
               { label: "Khóa học", href: "/courses" },
               { label: "Lĩnh vực", href: "/categories" },
+              { label: "Cộng đồng", href: "/community" },
               { label: "Về chúng tôi", href: "/about" },
               { label: "Liên hệ", href: "/contact" },
             ].map((link) => (
@@ -190,6 +191,7 @@ export default function Header() {
               {[
                 { label: "Khóa học", href: "/courses" },
                 { label: "Danh mục", href: "/categories" },
+                { label: "Cộng đồng", href: "/community" },
                 { label: "Về chúng tôi", href: "/about" },
                 { label: "Liên hệ", href: "/contact" },
               ].map((link) => (
