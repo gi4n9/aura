@@ -1006,7 +1006,8 @@ export async function parseAnswerKeyBatch(
     // 1. Calculate combined hash of all files for cache lookup
     const hashes = files.map(f => getSha256(f.buffer));
     hashes.sort();
-    const combinedHash = getSha256(Buffer.from(hashes.join("|") + `|code:${targetExamCode || ""}`));
+    const questionIdsStr = existingQuestions ? existingQuestions.map(q => q.id).join(",") : "";
+    const combinedHash = getSha256(Buffer.from(hashes.join("|") + `|code:${targetExamCode || ""}|qIds:${questionIdsStr}`));
 
     // 2. Query OCR cache first
     const cached = await getCachedOcr(combinedHash);
