@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Facebook, Github, Youtube, Mail } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer className="bg-nobel-dark text-stone-400 py-20 border-t border-stone-800">
       <div className="container mx-auto px-6">
@@ -18,7 +23,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-sm font-light leading-relaxed opacity-80 mb-6">
-              Nền tảng giáo dục lập trình hiện đại, tập trung vào tư duy cốt lõi và ứng dụng thực tế.
+              {t("footer.description")}
             </p>
             <div className="flex gap-4">
               {[Facebook, Github, Youtube, Mail].map((Icon, idx) => (
@@ -31,47 +36,49 @@ export default function Footer() {
 
           {/* Links Column 1 */}
           <div>
-            <h4 className="text-white font-serif font-bold mb-6">Khám phá</h4>
+            <h4 className="text-white font-serif font-bold mb-6">{t("footer.quickLinks")}</h4>
             <ul className="space-y-4 text-sm">
-              {['Lộ trình Frontend', 'Lộ trình Backend', 'Fullstack Master', 'DevOps Basic'].map(item => (
-                <li key={item}><Link href="#" className="hover:text-nobel-gold transition-colors">{item}</Link></li>
-              ))}
+              <li><Link href="/courses" className="hover:text-nobel-gold transition-colors">{t("nav.courses")}</Link></li>
+              <li><Link href="/categories" className="hover:text-nobel-gold transition-colors">{t("nav.categories")}</Link></li>
+              <li><Link href="/community" className="hover:text-nobel-gold transition-colors">{t("nav.community")}</Link></li>
+              <li><Link href="/roadmap" className="hover:text-nobel-gold transition-colors">{t("nav.roadmap")}</Link></li>
             </ul>
           </div>
 
           {/* Links Column 2 */}
           <div>
-            <h4 className="text-white font-serif font-bold mb-6">Về Aura</h4>
+            <h4 className="text-white font-serif font-bold mb-6">{t("footer.support")}</h4>
             <ul className="space-y-4 text-sm">
-              {['Câu chuyện', 'Đội ngũ', 'Liên hệ', 'Điều khoản'].map(item => (
-                <li key={item}><Link href="#" className="hover:text-nobel-gold transition-colors">{item}</Link></li>
-              ))}
+              <li><Link href="/about" className="hover:text-nobel-gold transition-colors">{t("nav.about")}</Link></li>
+              <li><Link href="/contact" className="hover:text-nobel-gold transition-colors">{t("nav.contact")}</Link></li>
+              <li><Link href="#" className="hover:text-nobel-gold transition-colors">{t("footer.privacy")}</Link></li>
+              <li><Link href="#" className="hover:text-nobel-gold transition-colors">{t("footer.terms")}</Link></li>
             </ul>
           </div>
 
           {/* Newsletter */}
           <div>
-            <h4 className="text-stone-800 font-serif font-bold mb-6">Đăng ký nhận tin</h4>
-            <p className="text-xs mb-4 opacity-70">Nhận bài viết mới nhất về công nghệ hàng tuần.</p>
-            <form className="flex flex-col gap-2">
+            <h4 className="text-white font-serif font-bold mb-6">{t("footer.contact")}</h4>
+            <p className="text-xs mb-4 opacity-70">Aura Learning AI Platform</p>
+            <form className="flex flex-col gap-2" onSubmit={(e) => e.preventDefault()}>
               <input
                 type="email"
-                placeholder="Email của bạn"
+                placeholder="Email..."
                 className="bg-stone-800 border border-stone-700 text-white px-4 py-3 rounded-lg text-sm focus:outline-none focus:border-nobel-gold transition-colors"
               />
               <button className="bg-nobel-gold text-nobel-dark font-bold uppercase text-xs tracking-wider py-3 rounded-lg hover:bg-white transition-colors">
-                Đăng ký
+                {t("hero.searchBtn")}
               </button>
             </form>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold tracking-widest uppercase text-stone-600">
-          <p>© 2026 Aura Inc. All rights reserved.</p>
+        <div className="pt-8 border-t border-stone-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold tracking-widest uppercase text-stone-500">
+          <p>{t("footer.copyright")}</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-nobel-gold">Privacy Policy</a>
-            <a href="#" className="hover:text-nobel-gold">Terms of Service</a>
+            <a href="#" className="hover:text-nobel-gold">{t("footer.privacy")}</a>
+            <a href="#" className="hover:text-nobel-gold">{t("footer.terms")}</a>
           </div>
         </div>
       </div>

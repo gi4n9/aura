@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Be_Vietnam_Pro, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
@@ -8,11 +8,21 @@ import { ClientToaster } from "@/app/components/ClientToaster";
 import { db } from "@/lib/prisma";
 import ChatBot from "@/app/components/chat/ChatBot";
 
-const inter = Inter({
-  subsets: ["latin"],
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   display: 'swap',
-  preload: true,
+  variable: '--font-be-vietnam',
 });
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+});
+
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
   title: "Aura Learning",
@@ -47,8 +57,8 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="vi">
-      <body className={inter.className}>
+    <html lang="vi" className={`${beVietnamPro.variable} ${plusJakartaSans.variable}`}>
+      <body className={`${beVietnamPro.className} antialiased`}>
 
         <NextTopLoader
           color="#C5A059"
@@ -62,11 +72,13 @@ export default async function RootLayout({
           shadow="0 0 10px #C5A059,0 0 5px #C5A059"
         />
 
-        <AuthProvider initialUser={user} initialProfile={userProfile}>
-          {children}
-          <ChatBot />
-          <ClientToaster />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider initialUser={user} initialProfile={userProfile}>
+            {children}
+            <ChatBot />
+            <ClientToaster />
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

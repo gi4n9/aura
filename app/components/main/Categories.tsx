@@ -1,15 +1,20 @@
+"use client";
+
 import { ArrowRight, Cpu, Microscope, Building2, Server } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function Categories() {
+  const { t } = useLanguage();
+
   return (
     <section className="py-24 px-4 md:px-10 bg-stone-50/50 border-y border-stone-200">
       <div className="max-w-[1280px] mx-auto">
         
         {/* Section Header */}
         <div className="text-center mb-16 max-w-2xl mx-auto">
-          <h3 className="font-serif text-[40px] font-bold text-stone-900 mb-4">Curated Disciplines</h3>
+          <h3 className="font-serif text-[40px] font-bold text-stone-900 mb-4">{t("categories.title")}</h3>
           <p className="text-stone-600 leading-relaxed text-lg">
-            Select your focus area. Our AI constructs a bespoke curriculum blending foundational theory with bleeding-edge application.
+            {t("categories.subtitle")}
           </p>
         </div>
         
@@ -24,13 +29,13 @@ export default function Categories() {
                 <Cpu size={28} />
               </div>
               <div>
-                <h4 className="font-serif text-[32px] font-bold text-stone-900 mb-2 leading-tight">Artificial Intelligence & ML</h4>
+                <h4 className="font-serif text-[28px] md:text-[32px] font-bold text-stone-900 mb-2 leading-tight">{t("categories.aiTitle")}</h4>
                 <p className="text-stone-600 max-w-md leading-relaxed text-[15px]">
-                  Master the algorithms shaping the future. From neural networks to advanced generative models, curated for rapid comprehension.
+                  {t("categories.aiDesc")}
                 </p>
               </div>
               <div className="mt-6 flex items-center text-[#C5A059] text-[12px] font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform">
-                Explore Curriculum <ArrowRight size={16} className="ml-2" />
+                {t("categories.exploreCurriculum")} <ArrowRight size={16} className="ml-2" />
               </div>
             </div>
           </div>
@@ -40,8 +45,8 @@ export default function Categories() {
             <div className="relative z-10 flex flex-col h-full justify-between">
               <Building2 className="text-[#C5A059]" size={32} />
               <div>
-                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">Economics</h4>
-                <p className="text-sm text-stone-600">Macro & Micro theories modernized.</p>
+                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">{t("categories.econTitle")}</h4>
+                <p className="text-sm text-stone-600">{t("categories.econDesc")}</p>
               </div>
             </div>
           </div>
@@ -52,8 +57,8 @@ export default function Categories() {
             <div className="relative z-10 flex flex-col h-full justify-between">
               <Microscope className="text-[#C5A059]" size={32} />
               <div>
-                <h4 className="font-serif text-2xl font-bold text-white mb-1">Bio-Engineering</h4>
-                <p className="text-sm text-stone-400">The intersection of life and tech.</p>
+                <h4 className="font-serif text-2xl font-bold text-white mb-1">{t("categories.bioTitle")}</h4>
+                <p className="text-sm text-stone-400">{t("categories.bioDesc")}</p>
               </div>
             </div>
           </div>
@@ -63,8 +68,8 @@ export default function Categories() {
             <div className="relative z-10 flex items-center justify-between w-full">
               <div>
                 <Server className="text-[#C5A059] mb-4 block" size={32} />
-                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">System Design</h4>
-                <p className="text-sm text-stone-600">Architecting scalable, resilient digital infrastructures.</p>
+                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">{t("categories.sysTitle")}</h4>
+                <p className="text-sm text-stone-600">{t("categories.sysDesc")}</p>
               </div>
               <div className="w-12 h-12 rounded-full border border-[#C5A059]/30 flex items-center justify-center group-hover:bg-[#C5A059] group-hover:text-white transition-colors">
                 <ArrowRight size={20} className="-rotate-45" />

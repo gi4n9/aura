@@ -9,9 +9,12 @@ import { signOut } from "@/app/actions/auth";
 import LoginModal from "../auth/LoginModal";
 import RegisterModal from "../auth/RegisterModal";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import LanguageSwitcher from "../LanguageSwitcher";
 
 export default function Header() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -82,11 +85,11 @@ export default function Header() {
           {/* DESKTOP NAV */}
           <nav className="hidden md:flex items-center gap-2">
             {[
-              { label: "Khóa học", href: "/courses" },
-              { label: "Lĩnh vực", href: "/categories" },
-              { label: "Cộng đồng", href: "/community" },
-              { label: "Về chúng tôi", href: "/about" },
-              { label: "Liên hệ", href: "/contact" },
+              { label: t("nav.courses"), href: "/courses" },
+              { label: t("nav.categories"), href: "/categories" },
+              { label: t("nav.community"), href: "/community" },
+              { label: t("nav.about"), href: "/about" },
+              { label: t("nav.contact"), href: "/contact" },
             ].map((link) => (
               <Link key={link.href} href={link.href} className="px-4 py-2 rounded-full text-[11px] lg:text-xs font-bold tracking-[0.15em] uppercase text-stone-500 transition-all duration-300 hover:bg-stone-700 hover:text-white hover:shadow-md">
                 {link.label}
@@ -94,14 +97,16 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* AUTH & SEARCH */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* AUTH, LANGUAGE & SEARCH */}
+          <div className="hidden md:flex items-center gap-3">
+            <LanguageSwitcher />
+
             <button className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200">
               <Search size={18} />
             </button>
 
             {user && (
-              <Link href="/messages" className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200 relative" title="Tin nhắn">
+              <Link href="/messages" className="text-stone-400 hover:text-nobel-dark transition-colors p-2 rounded-full hover:bg-stone-200 relative" title={t("nav.messages")}>
                 <MessageCircle size={20} />
               </Link>
             )}
@@ -109,16 +114,16 @@ export default function Header() {
             {user ? (
               <div className="relative" ref={dropdownRef}>
                 {/* AVATAR BUTTON */}
-                <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 pl-4 border-l border-stone-200 focus:outline-none">
+                <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 pl-3 border-l border-stone-200 focus:outline-none">
                   <div className="text-right hidden xl:block">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Account</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">{t("nav.account")}</p>
                   </div>
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-serif font-bold text-sm border shadow-sm transition-all ${isDropdownOpen ? 'bg-nobel-dark border-nobel-dark scale-105' : 'bg-[#1a1a1a] border-[#C5A059]'}`}>
                     {userInitial}
                   </div>
                 </button>
 
-                {/* DROPDOWN MENU (CHỈ DÀNH CHO USER) */}
+                {/* DROPDOWN MENU */}
                 <AnimatePresence>
                   {isDropdownOpen && (
                     <motion.div
@@ -131,20 +136,20 @@ export default function Header() {
                       <div className="p-4 bg-[#F9F8F4] border-b border-stone-100">
                         <p className="font-bold text-stone-800 truncate text-sm">{user.email}</p>
                         <p className="text-xs text-stone-500 font-serif italic">
-                          {profile?.role === "INSTRUCTOR" ? "Giảng viên" : profile?.role === "ADMIN" ? "Quản trị viên" : "Học viên"}
+                          {profile?.role === "INSTRUCTOR" ? t("nav.instructor") : profile?.role === "ADMIN" ? t("nav.admin") : "Learner"}
                         </p>
                       </div>
 
                       <div className="p-2 flex flex-col gap-1">
                         <Link href="/roadmap" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
-                          <Map size={16} /> Lộ Trình Học Tập
+                          <Map size={16} /> {t("nav.roadmap")}
                         </Link>
                         <Link href="/setting" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
-                          <Settings size={16} /> Cài đặt
+                          <Settings size={16} /> {t("nav.settings")}
                         </Link>
                         {(profile?.role === "INSTRUCTOR" || profile?.role === "ADMIN") && (
                           <Link href="/instructor" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-[#C5A059] transition-colors">
-                            <LayoutDashboard size={16} /> Trang Giảng viên
+                            <LayoutDashboard size={16} /> {t("nav.instructor")}
                           </Link>
                         )}
                       </div>
@@ -156,7 +161,7 @@ export default function Header() {
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-stone-400 hover:bg-stone-100 hover:text-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <LogOut size={16} />
-                          {isPendingLogout ? "Đang xử lý..." : "Đăng xuất"}
+                          {isPendingLogout ? t("common.loading") : t("nav.logout")}
                         </button>
                       </div>
                     </motion.div>
@@ -164,21 +169,24 @@ export default function Header() {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button onClick={() => setIsLoginModalOpen(true)} className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider text-stone-600 hover:bg-stone-200 transition-all focus:outline-none">
-                  Đăng nhập
+                  {t("nav.login")}
                 </button>
                 <button onClick={() => setIsRegisterModalOpen(true)} className="px-5 py-2 bg-stone-700 text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-stone-600 hover:shadow-md transition-all focus:outline-none">
-                  Đăng ký
+                  {t("nav.register")}
                 </button>
               </div>
             )}
           </div>
 
-          {/* MOBILE TOGGLE */}
-          <button className="md:hidden text-nobel-dark p-2 rounded-md hover:bg-stone-100 transition-colors relative z-50" onClick={toggleMenu}>
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* MOBILE TOGGLE & LANG */}
+          <div className="md:hidden flex items-center gap-2 relative z-50">
+            <LanguageSwitcher />
+            <button className="text-nobel-dark p-2 rounded-md hover:bg-stone-100 transition-colors" onClick={toggleMenu}>
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -189,11 +197,11 @@ export default function Header() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="relative bg-[#F9F8F4] border-t border-stone-200 shadow-xl p-6 flex flex-col gap-2 h-auto max-h-[80vh] overflow-y-auto rounded-b-2xl">
               {[
-                { label: "Khóa học", href: "/courses" },
-                { label: "Danh mục", href: "/categories" },
-                { label: "Cộng đồng", href: "/community" },
-                { label: "Về chúng tôi", href: "/about" },
-                { label: "Liên hệ", href: "/contact" },
+                { label: t("nav.courses"), href: "/courses" },
+                { label: t("nav.categories"), href: "/categories" },
+                { label: t("nav.community"), href: "/community" },
+                { label: t("nav.about"), href: "/about" },
+                { label: t("nav.contact"), href: "/contact" },
               ].map((link) => (
                 <Link key={link.href} href={link.href} className="text-stone-800 font-serif text-xl font-medium hover:text-nobel-gold border-b border-stone-100 py-3 block" onClick={() => setIsMenuOpen(false)}>
                   {link.label}
@@ -209,7 +217,7 @@ export default function Header() {
                       </div>
                       <div className="overflow-hidden">
                         <p className="font-medium text-nobel-dark text-sm truncate">{user.email}</p>
-                        <Link href="/profile" className="text-xs text-[#C5A059] hover:underline block">Hồ sơ cá nhân</Link>
+                        <Link href="/profile" className="text-xs text-[#C5A059] hover:underline block">{t("nav.profile")}</Link>
                       </div>
                     </div>
                     <button
@@ -218,16 +226,16 @@ export default function Header() {
                       className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <LogOut size={16} />
-                      {isPendingLogout ? "Đang xử lý..." : "Đăng xuất"}
+                      {isPendingLogout ? t("common.loading") : t("nav.logout")}
                     </button>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
                     <button onClick={() => { setIsLoginModalOpen(true); setIsMenuOpen(false); }} className="w-full py-3 border border-stone-300 rounded-lg text-stone-600 font-bold uppercase text-[10px] tracking-wider hover:bg-stone-50 transition-colors flex items-center justify-center">
-                      Đăng nhập
+                      {t("nav.login")}
                     </button>
                     <button onClick={() => { setIsRegisterModalOpen(true); setIsMenuOpen(false); }} className="w-full py-3 bg-stone-700 text-white rounded-lg font-bold uppercase text-[10px] tracking-wider hover:bg-stone-600 transition-colors flex items-center justify-center">
-                      Đăng ký
+                      {t("nav.register")}
                     </button>
                   </div>
                 )}

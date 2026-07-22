@@ -1,8 +1,11 @@
 "use client";
 
 import { ArrowRight, PlayCircle, Sparkles, TrendingUp } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function HeroSection() {
+  const { t } = useLanguage();
+
   return (
     <section className="min-h-[870px] flex items-center justify-center relative overflow-hidden px-4 md:px-10 bg-nobel-cream pt-16">
       {/* Background Glow */}
@@ -14,26 +17,26 @@ export default function HeroSection() {
         <div className="md:col-span-6 flex flex-col items-start gap-8 z-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/40 backdrop-blur-md border border-[#C5A059]/30 rounded-full shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse"></span>
-            <span className="text-[12px] font-bold text-stone-900 uppercase tracking-wider">AI-Powered Education</span>
+            <span className="text-[12px] font-bold text-stone-900 uppercase tracking-wider">{t("hero.badge")}</span>
           </div>
           
-          <h2 className="font-serif text-[40px] md:text-[56px] lg:text-[64px] font-bold text-stone-900 leading-[1.1] tracking-tight">
-            Illuminate Your <br/>
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#C5A059] to-[#e9c176] font-bold">Intelligence</span>
+          <h2 className="font-serif text-[42px] md:text-[60px] lg:text-[68px] font-bold text-stone-900 leading-[1.08] tracking-tight">
+            {t("hero.titlePrefix")} <br/>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#C5A059] to-[#e9c176] font-bold">{t("hero.titleSuffix")}</span>
           </h2>
           
-          <p className="text-lg text-stone-600 max-w-lg leading-relaxed">
-            Experience a premium, personalized learning journey. Our AI-driven roadmaps adapt to your unique pace, bridging the gap between traditional prestige and future-forward efficiency.
+          <p className="text-base md:text-lg text-stone-600 max-w-lg leading-relaxed">
+            {t("hero.subtitle")}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
             <button className="px-8 py-4 bg-[#C5A059] text-white rounded-[4px] text-xs font-bold uppercase tracking-widest hover:scale-[0.98] transition-transform shadow-lg shadow-[#C5A059]/20 flex items-center justify-center gap-2">
-              Start Journey
+              {t("hero.exploreBtn")}
               <ArrowRight size={18} />
             </button>
             <button className="px-8 py-4 bg-white/50 backdrop-blur-md border border-[#C5A059]/50 text-stone-900 rounded-[4px] text-xs font-bold uppercase tracking-widest hover:bg-white/80 transition-colors flex items-center justify-center gap-2">
               <PlayCircle size={18} />
-              View Demo
+              {t("hero.aiStudyPlanBtn")}
             </button>
           </div>
         </div>
@@ -57,7 +60,7 @@ export default function HeroSection() {
               <TrendingUp size={20} />
             </div>
             <div>
-              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">Progress</p>
+              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">{t("hero.progress")}</p>
               <p className="font-serif text-2xl font-bold text-stone-900">+42%</p>
             </div>
           </div>
@@ -67,8 +70,8 @@ export default function HeroSection() {
               <Sparkles size={20} />
             </div>
             <div>
-              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">AI Insight</p>
-              <p className="text-sm text-stone-900 font-semibold">Path Optimized</p>
+              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">{t("hero.aiInsight")}</p>
+              <p className="text-sm text-stone-900 font-semibold">{t("hero.pathOptimized")}</p>
             </div>
           </div>
           

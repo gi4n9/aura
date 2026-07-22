@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { login } from '@/app/actions/auth';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalProps) {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -30,11 +32,10 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
       if (res?.error) {
         setErrorMsg(res.error);
       } else if (res?.success) {
-        // Đăng nhập thành công: Đóng modal, làm mới data và chuyển hướng ở Client
         onClose();
-        router.refresh(); // Cập nhật lại Header và các component khác
+        router.refresh();
         if (res.redirectTo) {
-          router.push(res.redirectTo); // Chuyển trang mượt mà không có 303
+          router.push(res.redirectTo);
         }
       }
     });
@@ -53,6 +54,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
           />
 
           <motion.div
+            key={language}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -62,6 +64,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
             <button
               onClick={onClose}
               className="absolute top-4 right-4 z-20 p-2 text-stone-400 hover:text-stone-800 transition-colors rounded-full hover:bg-stone-100"
+              aria-label="Close modal"
             >
               <X size={20} />
             </button>
@@ -70,12 +73,14 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
             <div className="relative z-10 p-8 sm:p-10 flex flex-col items-center">
 
               {/* Brand Identity */}
-              <div className="mb-10 text-center flex flex-col items-center">
-                <div className="w-12 h-12 mb-5 bg-[#A88849] rounded-xl flex items-center justify-center shadow-md">
+              <div className="mb-8 text-center flex flex-col items-center">
+                <div className="w-12 h-12 mb-4 bg-[#A88849] rounded-xl flex items-center justify-center shadow-md">
                   <Sparkles className="text-white" size={22} />
                 </div>
                 <h2 className="font-serif text-3xl text-stone-900 tracking-tight font-bold">Aura Learning</h2>
-                <p className="text-xs text-stone-500 mt-2 font-sans">Illuminated Intelligence.</p>
+                <p className="text-xs text-stone-500 mt-1 font-sans">
+                  {t("auth.loginSubtitle", "Trí tuệ Nhân tạo làm chủ tri thức")}
+                </p>
               </div>
 
               {/* Form */}
@@ -89,7 +94,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                 {/* Email Input */}
                 <div className="flex flex-col gap-1.5 sm:gap-2 relative">
                   <label className="text-[10px] sm:text-xs font-bold text-stone-600 uppercase tracking-wider sm:tracking-widest" htmlFor="email">
-                    Email Address
+                    {t("auth.email", "Địa chỉ Email")}
                   </label>
                   <div className="relative flex items-center border-b border-stone-200 focus-within:border-[#A88849] transition-colors duration-300 pb-2">
                     <Mail size={16} className="absolute left-0 text-stone-600 pointer-events-none" />
@@ -97,7 +102,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                       className="w-full bg-transparent border-none py-0 pl-9 pr-0 text-sm text-stone-800 focus:ring-0 placeholder:text-stone-300 outline-none focus:outline-none focus:ring-0 shadow-none"
                       id="email"
                       name="email"
-                      placeholder="scholar@example.com"
+                      placeholder={t("auth.emailPlaceholder", "scholar@example.com")}
                       required
                       type="email"
                     />
@@ -107,7 +112,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                 {/* Password Input */}
                 <div className="flex flex-col gap-1.5 sm:gap-2 relative">
                   <label className="text-[10px] sm:text-xs font-bold text-stone-600 uppercase tracking-wider sm:tracking-widest" htmlFor="password">
-                    Password
+                    {t("auth.password", "Mật khẩu")}
                   </label>
                   <div className="relative flex items-center border-b border-stone-200 focus-within:border-[#A88849] transition-colors duration-300 pb-2">
                     <Lock size={16} className="absolute left-0 text-stone-600 pointer-events-none" />
@@ -133,10 +138,12 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                 <div className="flex items-center justify-between mt-2">
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input className="w-3.5 h-3.5 rounded border-stone-300 text-[#C5A059] focus:ring-[#C5A059]" type="checkbox" />
-                    <span className="text-xs text-stone-500">Remember me</span>
+                    <span className="text-xs text-stone-500">
+                      {t("auth.rememberMe", "Ghi nhớ đăng nhập")}
+                    </span>
                   </label>
                   <Link className="text-xs text-[#C5A059] hover:text-[#A88849] transition-colors" href="#">
-                    Forgot password?
+                    {t("auth.forgotPassword", "Quên mật khẩu?")}
                   </Link>
                 </div>
 
@@ -152,11 +159,11 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      ĐANG XỬ LÝ...
+                      {t("auth.processing", "ĐANG XỬ LÝ...")}
                     </span>
                   ) : (
                     <>
-                      <span>Đăng nhập</span>
+                      <span>{t("auth.loginBtn", "Đăng nhập ngay")}</span>
                       <ArrowRight size={14} />
                     </>
                   )}
@@ -164,9 +171,11 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
               </form>
 
               {/* Divider */}
-              <div className="w-full flex items-center gap-4 mt-8 mb-8">
+              <div className="w-full flex items-center gap-4 mt-6 mb-6">
                 <div className="flex-1 h-px bg-stone-200"></div>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest whitespace-nowrap">Or continue with</span>
+                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest whitespace-nowrap">
+                  {t("auth.orContinueWith", "Hoặc tiếp tục với")}
+                </span>
                 <div className="flex-1 h-px bg-stone-200"></div>
               </div>
 
@@ -183,10 +192,10 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
               </div>
 
               {/* Footer Link */}
-              <p className="mt-8 text-xs text-stone-500 text-center">
-                Don't have an account?{' '}
-                <button type="button" className="text-[#C5A059] hover:text-[#A88849] transition-colors font-semibold" onClick={onSwitchToRegister}>
-                  Register here
+              <p className="mt-6 text-xs text-stone-500 text-center">
+                {t("auth.dontHaveAccount", "Chưa có tài khoản?")}{' '}
+                <button type="button" className="text-[#C5A059] hover:text-[#A88849] transition-colors font-semibold ml-1" onClick={onSwitchToRegister}>
+                  {t("auth.registerHere", "Đăng ký ngay")}
                 </button>
               </p>
             </div>
