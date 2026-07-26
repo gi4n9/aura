@@ -88,24 +88,13 @@ export default function Categories() {
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className={`${cat.span} relative rounded-2xl p-6 overflow-hidden group cursor-pointer border transition-all duration-500 ${
+              className={`${cat.span} relative rounded-2xl p-6 overflow-hidden group cursor-pointer transition-all duration-500 hover:-translate-y-1 ${
+                cat.accent ? "liquid-glass-gold" : "liquid-glass"
+              } ${
                 isDark
-                  ? cat.accent
-                    ? "border-[#C5A059]/20 hover:border-[#C5A059]/50"
-                    : "bg-white/2 border-white/6 hover:border-white/15"
-                  : cat.accent
-                    ? "border-[#C5A059]/40 hover:border-[#C5A059] bg-white shadow-md hover:shadow-xl"
-                    : "bg-white border-stone-200/90 hover:border-[#C5A059]/40 shadow-sm hover:shadow-md"
+                  ? "text-white hover:shadow-[0_20px_50px_rgba(197,160,89,0.15)]"
+                  : "text-stone-900 shadow-md hover:shadow-xl"
               }`}
-              style={
-                isDark && cat.accent
-                  ? {
-                      background:
-                        "linear-gradient(135deg, rgba(197,160,89,0.12) 0%, rgba(255,255,255,0.02) 100%)",
-                      backdropFilter: "blur(8px)",
-                    }
-                  : { backdropFilter: "blur(8px)" }
-              }
             >
               {/* Hover glow */}
               <div className={`absolute inset-0 bg-gradient-to-br from-[#C5A059]/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />

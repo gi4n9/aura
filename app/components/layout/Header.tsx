@@ -109,8 +109,8 @@ export default function Header() {
                 href={link.href}
                 className={`px-4 py-2 rounded-full text-[11px] lg:text-xs font-bold tracking-[0.15em] uppercase transition-all duration-300 ${
                   isDark
-                    ? "text-stone-400 hover:bg-white/10 hover:text-white"
-                    : "text-stone-600 hover:bg-stone-200/70 hover:text-stone-900"
+                    ? "text-stone-300 hover:bg-[#C5A059] hover:text-[#080808]"
+                    : "text-stone-700 hover:bg-stone-900 hover:text-white"
                 }`}
               >
                 {link.label}
@@ -124,7 +124,7 @@ export default function Header() {
             <LanguageSwitcher />
 
             <button className={`transition-colors p-2 rounded-full ${
-              isDark ? "text-stone-500 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-stone-900 hover:bg-stone-200/70"
+              isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
             }`}>
               <Search size={18} />
             </button>
@@ -133,7 +133,7 @@ export default function Header() {
               <Link
                 href="/messages"
                 className={`transition-colors p-2 rounded-full relative ${
-                  isDark ? "text-stone-500 hover:text-white hover:bg-white/10" : "text-stone-500 hover:text-stone-900 hover:bg-stone-200/70"
+                  isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
                 }`}
                 title={t("nav.messages")}
               >

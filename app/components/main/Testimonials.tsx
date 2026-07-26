@@ -77,12 +77,11 @@ export default function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative rounded-2xl p-6 border transition-all duration-400 overflow-hidden group ${
+              className={`relative rounded-2xl p-6 transition-all duration-400 overflow-hidden group liquid-glass hover:-translate-y-1 ${
                 isDark
-                  ? "border-white/6 bg-white/2 hover:border-[#C5A059]/20"
-                  : "border-stone-200 bg-white hover:border-[#C5A059]/40 shadow-sm hover:shadow-md"
+                  ? "text-white hover:shadow-[0_20px_50px_rgba(197,160,89,0.1)]"
+                  : "text-stone-900 shadow-md hover:shadow-xl"
               }`}
-              style={{ backdropFilter: "blur(8px)" }}
             >
               {/* Quote mark */}
               <div

@@ -7,6 +7,7 @@ import CourseDescription from "@/app/components/courseComponents/CourseDescripti
 import CourseActionButtons from "@/app/components/courseComponents/CourseActionButtons";
 import CourseSyllabusList from "@/app/components/courseComponents/CourseSyllabusList";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
 
 interface CourseDetailClientProps {
     course: any;
@@ -30,19 +31,27 @@ export default function CourseDetailClient({
     quizPassObj,
 }: CourseDetailClientProps) {
     const { t } = useLanguage();
+    const { theme } = useTheme();
+    const isDark = theme === "dark";
 
     return (
-        <div className="min-h-screen bg-[#F9F8F4] text-stone-900 pb-20">
+        <div className={`min-h-screen pb-20 transition-colors duration-500 ${
+            isDark ? "bg-[#080808] text-white" : "bg-[#F9F8F4] text-stone-900"
+        }`}>
 
             {/* Hero Section */}
-            <div className="bg-white border-b border-stone-200 pb-24 pt-20">
+            <div className={`border-b pb-24 pt-20 ${
+                isDark ? "bg-[#0e0e0e]/80 border-white/10" : "bg-white border-stone-200"
+            }`}>
                 <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                     <div className="lg:col-span-7">
                         {/* Title & Desc */}
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-stone-100 text-stone-600 text-xs font-bold tracking-widest uppercase rounded-full mb-6 border border-stone-200">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 text-[#C5A059] text-xs font-bold tracking-widest uppercase rounded-full mb-6 liquid-glass">
                             {course.organization?.name || t("courseDetail.proCourse", "Khóa học chuyên nghiệp")}
                         </div>
-                        <h1 className="font-serif text-4xl md:text-6xl text-stone-900 mb-6 leading-tight">
+                        <h1 className={`font-serif text-4xl md:text-6xl mb-6 leading-tight ${
+                            isDark ? "text-white" : "text-stone-900"
+                        }`}>
                             {course.title}
                         </h1>
                         <CourseDescription description={course.description || "Khóa học chuyên sâu giúp bạn làm chủ kiến thức từ cơ bản đến nâng cao."} />

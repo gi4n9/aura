@@ -20,15 +20,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setThemeState(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else {
-      // Default to dark mode for cinematic feel
-      setThemeState("dark");
-      document.documentElement.classList.add("dark");
-    }
+    const savedTheme = (localStorage.getItem(STORAGE_KEY) as Theme) || "dark";
+    setThemeState(savedTheme);
+    document.documentElement.classList.toggle("dark", savedTheme === "dark");
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && (e.newValue === "light" || e.newValue === "dark")) {
+        setThemeState(e.newValue);
+        document.documentElement.classList.toggle("dark", e.newValue === "dark");
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const setTheme = (newTheme: Theme) => {

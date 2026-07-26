@@ -74,10 +74,10 @@ export default function CTASection() {
             </Link>
             <Link
               href="/courses"
-              className={`px-10 py-4 rounded-full border text-[11px] font-bold tracking-[0.18em] uppercase transition-all duration-300 backdrop-blur-sm ${
+              className={`px-10 py-4 rounded-full text-[11px] font-bold tracking-[0.18em] uppercase transition-all duration-300 liquid-glass-strong ${
                 isDark
-                  ? "border-white/10 bg-white/4 text-white hover:bg-white/8 hover:border-white/20"
-                  : "border-[#C5A059]/40 bg-white/80 text-stone-900 hover:bg-white hover:border-[#C5A059] shadow-sm"
+                  ? "text-white hover:bg-white/10"
+                  : "text-stone-900 hover:bg-white/80 shadow-sm"
               }`}
             >
               {t("cta.pricingTiers")}

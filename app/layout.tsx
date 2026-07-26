@@ -58,8 +58,26 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="vi" className={`${beVietnamPro.variable} ${plusJakartaSans.variable}`}>
-      <body className={`${beVietnamPro.className} antialiased`}>
+    <html lang="vi" suppressHydrationWarning className={`${beVietnamPro.variable} ${plusJakartaSans.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('aura_learning_theme');
+                  if (saved === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className={`${beVietnamPro.className} antialiased transition-colors duration-300 bg-[var(--background)] text-[var(--foreground)]`}>
 
         <NextTopLoader
           color="#C5A059"

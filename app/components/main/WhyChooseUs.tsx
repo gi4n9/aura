@@ -81,12 +81,11 @@ export default function WhyChooseUs() {
                 duration: 0.7,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className={`group relative p-8 rounded-2xl border transition-all duration-500 overflow-hidden ${
+              className={`group relative p-8 rounded-2xl transition-all duration-500 overflow-hidden liquid-glass hover:-translate-y-1 ${
                 isDark
-                  ? "border-white/6 bg-white/2 hover:border-[#C5A059]/25 hover:bg-white/4"
-                  : "border-stone-200 bg-white hover:border-[#C5A059]/40 shadow-sm hover:shadow-md"
+                  ? "text-white hover:shadow-[0_20px_50px_rgba(197,160,89,0.1)]"
+                  : "text-stone-900 shadow-md hover:shadow-xl"
               }`}
-              style={{ backdropFilter: "blur(8px)" }}
             >
               {/* Hover ambient */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#C5A059]/6 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />

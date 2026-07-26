@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Sparkles, Play, BookOpen, Users, Award } from "lucide-react";
+import { ArrowRight, Sparkles, Play, BookOpen, Users, Award, Clock, Globe } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useTheme } from "@/lib/theme/ThemeContext";
 import { motion, type Variants } from "framer-motion";
@@ -24,10 +24,25 @@ export default function HeroSection() {
     <section className={`relative min-h-screen flex items-center justify-center overflow-hidden transition-colors duration-500 ${
       isDark ? "bg-[#080808]" : "bg-[#F9F8F4]"
     }`}>
+      {/* Cinematic Looping Background Video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className={`absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0 w-[120%] h-[120%] pointer-events-none transition-all duration-700 ${
+          isDark ? "opacity-35 mix-blend-screen" : "opacity-30 mix-blend-multiply"
+        }`}
+        style={{
+          filter: isDark ? "none" : "invert(0.92) contrast(1.1) brightness(1.15)",
+        }}
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4"
+      />
+
       {/* Ambient background glows */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className={`absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] ${
-          isDark ? "bg-[#C5A059]/8" : "bg-[#C5A059]/15"
+          isDark ? "bg-[#C5A059]/10" : "bg-[#C5A059]/15"
         }`} />
         <div className={`absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[80px] ${
           isDark ? "bg-[#C5A059]/5" : "bg-[#C5A059]/10"
@@ -58,10 +73,10 @@ export default function HeroSection() {
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border ${
+              className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full liquid-glass ${
                 isDark
-                  ? "border-[#C5A059]/30 bg-[#C5A059]/8 backdrop-blur-sm text-[#C5A059]"
-                  : "border-[#C5A059]/40 bg-white/70 backdrop-blur-sm text-stone-900 shadow-sm"
+                  ? "text-[#C5A059]"
+                  : "text-stone-900 shadow-sm"
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" />
@@ -99,7 +114,7 @@ export default function HeroSection() {
               initial="hidden"
               animate="visible"
               className={`text-base md:text-lg max-w-xl leading-relaxed font-light ${
-                isDark ? "text-stone-400" : "text-stone-600"
+                isDark ? "text-stone-300" : "text-stone-700"
               }`}
             >
               {t("hero.subtitle")}
@@ -115,17 +130,17 @@ export default function HeroSection() {
             >
               <Link
                 href="/courses"
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#C5A059] text-white rounded-full text-[11px] font-bold uppercase tracking-[0.18em] hover:bg-[#b08d47] transition-all duration-300 shadow-[0_0_30px_rgba(197,160,89,0.3)] hover:shadow-[0_0_50px_rgba(197,160,89,0.5)]"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#C5A059] text-[#080808] rounded-full text-[11px] font-bold uppercase tracking-[0.18em] hover:bg-[#e9c176] transition-all duration-300 shadow-[0_0_30px_rgba(197,160,89,0.35)] hover:shadow-[0_0_50px_rgba(197,160,89,0.55)]"
               >
                 {t("hero.exploreBtn")}
                 <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/onboarding/study-plan"
-                className={`inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-300 backdrop-blur-sm ${
+                className={`inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-300 liquid-glass-strong ${
                   isDark
-                    ? "border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20"
-                    : "border-[#C5A059]/40 bg-white/80 text-stone-900 hover:bg-white hover:border-[#C5A059] shadow-sm"
+                    ? "text-white hover:bg-white/10"
+                    : "text-stone-900 hover:bg-white/80 shadow-sm"
                 }`}
               >
                 <Play size={14} fill="currentColor" />
@@ -140,7 +155,7 @@ export default function HeroSection() {
               initial="hidden"
               animate="visible"
               className={`flex items-center gap-8 pt-4 border-t w-full ${
-                isDark ? "border-white/5" : "border-stone-200"
+                isDark ? "border-white/10" : "border-stone-300/60"
               }`}
             >
               {[
@@ -152,14 +167,14 @@ export default function HeroSection() {
                   <span className="text-[#C5A059]">{stat.icon}</span>
                   <div>
                     <p className={`font-bold text-sm leading-none ${isDark ? "text-white" : "text-stone-900"}`}>{stat.value}</p>
-                    <p className={`text-[10px] uppercase tracking-wider mt-0.5 ${isDark ? "text-stone-500" : "text-stone-500"}`}>{stat.label}</p>
+                    <p className={`text-[10px] uppercase tracking-wider mt-0.5 ${isDark ? "text-stone-400" : "text-stone-500"}`}>{stat.label}</p>
                   </div>
                 </div>
               ))}
             </motion.div>
           </div>
 
-          {/* Right – Bento Hero Cards */}
+          {/* Right – Bento Hero Cards with Liquid Glass */}
           <motion.div
             custom={2}
             variants={fadeUp}
@@ -167,28 +182,18 @@ export default function HeroSection() {
             animate="visible"
             className="lg:col-span-5 grid grid-cols-2 gap-3"
           >
-            {/* Card 1 – Large */}
+            {/* Card 1 – Large (Liquid Glass Gold) */}
             <div
-              className={`col-span-2 relative rounded-2xl overflow-hidden p-6 flex flex-col gap-3 border transition-colors ${
-                isDark
-                  ? "border-white/8 text-white"
-                  : "border-stone-200/90 text-stone-900 bg-white/90 shadow-xl"
+              className={`col-span-2 relative rounded-2xl p-6 flex flex-col gap-3 transition-colors liquid-glass-gold ${
+                isDark ? "text-white" : "text-stone-900"
               }`}
-              style={
-                isDark
-                  ? {
-                      background: "linear-gradient(135deg, rgba(197,160,89,0.12) 0%, rgba(255,255,255,0.03) 100%)",
-                      backdropFilter: "blur(12px)",
-                    }
-                  : { backdropFilter: "blur(12px)" }
-              }
             >
               <div className="w-10 h-10 rounded-xl bg-[#C5A059]/20 flex items-center justify-center text-[#C5A059]">
                 <Sparkles size={20} />
               </div>
               <h3 className="font-serif text-xl leading-snug">{t("hero.aiTitle")}</h3>
-              <p className={`text-sm leading-relaxed ${isDark ? "text-stone-400" : "text-stone-600"}`}>{t("hero.aiDesc")}</p>
-              <div className={`mt-2 h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/5" : "bg-stone-100"}`}>
+              <p className={`text-sm leading-relaxed ${isDark ? "text-stone-300" : "text-stone-600"}`}>{t("hero.aiDesc")}</p>
+              <div className={`mt-2 h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-stone-200"}`}>
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-[#C5A059] to-[#e9c176]"
                   initial={{ width: "0%" }}
@@ -196,39 +201,33 @@ export default function HeroSection() {
                   transition={{ delay: 1, duration: 1.2, ease: "easeOut" }}
                 />
               </div>
-              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-400"}`}>{t("hero.progress")} — 72%</p>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{t("hero.progress")} — 72%</p>
             </div>
 
-            {/* Card 2 */}
+            {/* Card 2 – Liquid Glass */}
             <div
-              className={`relative rounded-2xl overflow-hidden p-5 flex flex-col gap-2 border transition-all ${
-                isDark
-                  ? "border-white/8 bg-white/3 hover:border-[#C5A059]/30"
-                  : "border-stone-200 bg-white/80 hover:border-[#C5A059]/40 shadow-md"
+              className={`relative rounded-2xl p-5 flex flex-col gap-2 transition-all liquid-glass hover:scale-[1.02] ${
+                isDark ? "text-white" : "text-stone-900"
               }`}
-              style={{ backdropFilter: "blur(8px)" }}
             >
               <div className="text-[#C5A059] mb-1">
                 <BookOpen size={18} />
               </div>
               <p className={`font-bold text-2xl font-serif ${isDark ? "text-white" : "text-stone-900"}`}>500+</p>
-              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-500"}`}>{t("hero.courses")}</p>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{t("hero.courses")}</p>
             </div>
 
-            {/* Card 3 */}
+            {/* Card 3 – Liquid Glass Strong */}
             <div
-              className={`relative rounded-2xl overflow-hidden p-5 flex flex-col gap-2 border transition-all ${
-                isDark
-                  ? "border-[#C5A059]/20 hover:border-[#C5A059]/40 bg-gradient-to-br from-[#C5A059]/10 to-transparent"
-                  : "border-[#C5A059]/30 hover:border-[#C5A059]/50 bg-white/90 shadow-md"
+              className={`relative rounded-2xl p-5 flex flex-col gap-2 transition-all liquid-glass-gold hover:scale-[1.02] ${
+                isDark ? "text-white" : "text-stone-900"
               }`}
-              style={{ backdropFilter: "blur(8px)" }}
             >
               <div className="text-[#C5A059] mb-1">
                 <Users size={18} />
               </div>
               <p className={`font-bold text-2xl font-serif ${isDark ? "text-white" : "text-stone-900"}`}>12K+</p>
-              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-500"}`}>{t("hero.learners")}</p>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{t("hero.learners")}</p>
             </div>
           </motion.div>
         </div>

@@ -32,27 +32,48 @@ function ResetPasswordForm() {
 
   const isDark = theme === "dark";
 
-  // If URL contains PKCE code directly (e.g. /auth/reset-password?code=...), exchange code for session first
+  // Check if session exists or exchange PKCE code for session
   useEffect(() => {
-    if (code) {
-      setIsExchanging(true);
-      const supabase = createBrowserClient();
-      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        if (!error && data?.session) {
-          setIsExchanging(false);
-        } else {
-          // Fallback to server action
-          exchangeResetCode(code).then((res) => {
+    setIsExchanging(true);
+    const supabase = createBrowserClient();
+
+    // 1. Kiểm tra xem Browser đã có phiên đăng nhập active (do Server Callback vừa tạo) hay chưa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsExchanging(false);
+        setErrorMsg("");
+        return;
+      }
+
+      // 2. Nếu chưa có phiên đăng nhập và có mã code trong URL, tiến hành trao đổi code lấy Session
+      if (code) {
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (!error && data?.session) {
             setIsExchanging(false);
-            if (res?.error) {
-              const msg = t("auth.linkExpired", "Liên kết khôi phục đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại yêu cầu!");
-              setErrorMsg(msg);
-              toast.error(msg);
-            }
-          });
-        }
-      });
-    }
+            setErrorMsg("");
+          } else {
+            // Fallback tới Server Action
+            exchangeResetCode(code).then((res) => {
+              setIsExchanging(false);
+              if (res?.error) {
+                // Kiểm tra lại lần cuối xem session đã được tạo hay chưa trước khi báo lỗi
+                supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+                  if (currentSession) {
+                    setErrorMsg("");
+                  } else {
+                    const msg = t("auth.linkExpired", "Liên kết khôi phục đã hết hạn hoặc không hợp lệ. Vui lòng gửi lại yêu cầu!");
+                    setErrorMsg(msg);
+                    toast.error(msg);
+                  }
+                });
+              }
+            });
+          }
+        });
+      } else {
+        setIsExchanging(false);
+      }
+    });
   }, [code]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

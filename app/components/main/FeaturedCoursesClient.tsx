@@ -68,12 +68,11 @@ export default function FeaturedCoursesClient({ courses }: { courses: CourseItem
             >
               <Link
                 href={`/courses/${course.id}`}
-                className={`group flex flex-col rounded-2xl overflow-hidden border transition-all duration-500 hover:-translate-y-1 ${
+                className={`group flex flex-col rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 liquid-glass ${
                   isDark
-                    ? "border-white/6 bg-white/2 hover:border-[#C5A059]/30 hover:shadow-[0_20px_60px_rgba(197,160,89,0.1)]"
-                    : "border-stone-200 bg-white hover:border-[#C5A059]/50 shadow-sm hover:shadow-xl"
+                    ? "text-white hover:shadow-[0_20px_60px_rgba(197,160,89,0.15)]"
+                    : "text-stone-900 shadow-md hover:shadow-xl"
                 }`}
-                style={{ backdropFilter: "blur(8px)" }}
               >
                 {/* Image */}
                 <div className="relative aspect-[4/3] overflow-hidden bg-stone-900">

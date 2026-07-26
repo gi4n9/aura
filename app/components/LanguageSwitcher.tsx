@@ -40,18 +40,18 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-[90]" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border focus:outline-none transition-all duration-300 ${
+        className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider focus:outline-none transition-all duration-300 liquid-glass hover:scale-105 ${
           isDark
-            ? "bg-white/10 text-stone-300 border-white/10 hover:bg-white/15 hover:text-white"
-            : "bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200/80"
+            ? "text-stone-300 hover:border-[#C5A059]/60 hover:shadow-[0_0_15px_rgba(197,160,89,0.2)]"
+            : "text-stone-700 hover:border-stone-400 hover:shadow-md"
         }`}
         title="Đổi ngôn ngữ / Change language"
         aria-label="Select language"
       >
-        <Globe size={14} className={isDark ? "text-[#C5A059]" : "text-teal-600"} />
+        <Globe size={14} className={isDark ? "text-[#C5A059]" : "text-stone-700"} />
         <span>{currentOption.flag} {currentOption.code.toUpperCase()}</span>
       </button>
 
@@ -62,7 +62,7 @@ export default function LanguageSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`absolute right-0 mt-2 w-40 rounded-xl border overflow-hidden z-50 py-1 shadow-xl ${
+            className={`absolute right-0 mt-2 w-40 rounded-xl border overflow-hidden z-[100] py-1 shadow-xl ${
               isDark
                 ? "bg-[#0e0e0e] border-white/10 text-white"
                 : "bg-white border-stone-200 text-stone-900"
@@ -75,8 +75,8 @@ export default function LanguageSwitcher() {
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium transition-colors ${
                   language === option.code
                     ? isDark
-                      ? "bg-[#C5A059]/15 text-[#C5A059] font-semibold"
-                      : "bg-teal-50 text-teal-800 font-semibold"
+                      ? "bg-[#C5A059]/20 text-[#C5A059] font-semibold"
+                      : "bg-stone-100 text-stone-900 font-semibold"
                     : isDark
                       ? "text-stone-300 hover:bg-white/5"
                       : "text-stone-700 hover:bg-stone-50"
@@ -87,7 +87,7 @@ export default function LanguageSwitcher() {
                   <span>{option.label}</span>
                 </div>
                 {language === option.code && (
-                  <Check size={14} className={isDark ? "text-[#C5A059]" : "text-teal-600"} />
+                  <Check size={14} className={isDark ? "text-[#C5A059]" : "text-stone-900"} />
                 )}
               </button>
             ))}

@@ -6,6 +6,7 @@ import { Search, ArrowRight, Sparkles, Folder } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
 
 interface Category {
     id: string;
@@ -58,8 +59,10 @@ function CategoryIcon({ iconName, slug }: { iconName: string | null; slug: strin
 
     if (iconName) {
         const pascalName = toPascalCase(iconName.trim());
-        const IconComponent = (LucideIcons as any)[pascalName] || (LucideIcons as any)[iconName];
-        if (IconComponent) return <IconComponent size={28} />;
+        const DynamicIcon = (LucideIcons as any)[pascalName] || (LucideIcons as any)[iconName];
+        if (DynamicIcon) {
+            return <DynamicIcon size={28} />;
+        }
     }
 
     return <Folder size={28} />;
@@ -67,6 +70,8 @@ function CategoryIcon({ iconName, slug }: { iconName: string | null; slug: strin
 
 export default function CategoriesClient({ categories }: { categories: Category[] }) {
     const { t } = useLanguage();
+    const { theme } = useTheme();
+    const isDark = theme === "dark";
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredCategories = categories.filter(cat => {
@@ -80,7 +85,9 @@ export default function CategoriesClient({ categories }: { categories: Category[
     });
 
     return (
-        <div className="min-h-screen bg-[#F9F8F4] pt-24 pb-20">
+        <div className={`min-h-screen pt-24 pb-20 transition-colors duration-500 ${
+            isDark ? "bg-[#080808] text-white" : "bg-[#F9F8F4] text-stone-900"
+        }`}>
 
             {/* Hero Section */}
             <div className="container mx-auto px-4 mb-16 text-center">
@@ -90,17 +97,17 @@ export default function CategoriesClient({ categories }: { categories: Category[
                     transition={{ duration: 0.5 }}
                     className="max-w-3xl mx-auto"
                 >
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border border-stone-200 rounded-full shadow-sm mb-6">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 liquid-glass rounded-full mb-6">
                         <Sparkles size={16} className="text-[#C5A059]" />
-                        <span className="text-xs font-bold tracking-widest uppercase text-stone-500">
+                        <span className="text-xs font-bold tracking-widest uppercase text-[#C5A059]">
                             {t("categories.exploreTitle", "Khám phá tri thức")}
                         </span>
                     </div>
 
-                    <h1 className="text-4xl md:text-6xl font-serif font-bold text-stone-900 mb-6">
+                    <h1 className={`text-4xl md:text-6xl font-serif font-bold mb-6 ${isDark ? "text-white" : "text-stone-900"}`}>
                         {t("categories.pageTitle", "Lĩnh vực & Chủ đề tại Aura")}
                     </h1>
-                    <p className="text-lg text-stone-500 mb-8 max-w-2xl mx-auto">
+                    <p className={`text-lg mb-8 max-w-2xl mx-auto font-light ${isDark ? "text-stone-400" : "text-stone-600"}`}>
                         {t("categories.pageSubtitle", "Tìm kiếm lộ trình học tập phù hợp nhất với bạn trong kho tàng kiến thức đa dạng của chúng tôi.")}
                     </p>
 
@@ -111,9 +118,13 @@ export default function CategoriesClient({ categories }: { categories: Category[
                             placeholder={t("categories.searchPlaceholder", "Tìm kiếm lĩnh vực, kỹ năng bạn muốn học...")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-6 py-4 pl-14 bg-white rounded-full shadow-lg border-2 border-transparent focus:border-[#C5A059] focus:outline-none text-stone-700 placeholder-stone-400 transition-all font-medium"
+                            className={`w-full px-6 py-4 pl-14 rounded-full shadow-lg outline-none focus:outline-none transition-all font-medium liquid-glass-strong ${
+                                isDark
+                                    ? "text-white placeholder-stone-500 focus:border-[#C5A059]"
+                                    : "text-stone-800 placeholder-stone-400 focus:border-[#C5A059]"
+                            }`}
                         />
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" size={24} />
+                        <Search className={`absolute left-5 top-1/2 -translate-y-1/2 ${isDark ? "text-stone-500" : "text-stone-400"}`} size={24} />
                     </div>
                 </motion.div>
             </div>
@@ -136,7 +147,9 @@ export default function CategoriesClient({ categories }: { categories: Category[
                                 className="relative group"
                             >
                                 {/* Card Container */}
-                                <div className="bg-white rounded-3xl p-8 border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden group-hover:-translate-y-1">
+                                <div className={`rounded-3xl p-8 transition-all duration-300 relative overflow-hidden group-hover:-translate-y-1 liquid-glass ${
+                                    isDark ? "text-white" : "text-stone-900 shadow-md"
+                                }`}>
 
                                     {/* Decorative Background Gradient */}
                                     <div className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br ${gradient} opacity-10 rounded-full blur-3xl -mr-16 -mt-16 transition-opacity duration-500 group-hover:opacity-20`} />
@@ -148,25 +161,31 @@ export default function CategoriesClient({ categories }: { categories: Category[
                                                 <CategoryIcon iconName={category.icon} slug={category.slug} />
                                             </div>
                                             <div>
-                                                <h2 className="text-2xl font-bold text-stone-800 mb-2 group-hover:text-[#C5A059] transition-colors">
+                                                <h2 className={`text-2xl font-bold mb-2 group-hover:text-[#C5A059] transition-colors ${
+                                                    isDark ? "text-white" : "text-stone-800"
+                                                }`}>
                                                     {categoryName}
                                                 </h2>
-                                                <p className="text-stone-500 leading-relaxed text-sm">
+                                                <p className={`leading-relaxed text-sm ${isDark ? "text-stone-400" : "text-stone-500"}`}>
                                                     {categoryDesc}
                                                 </p>
                                             </div>
 
                                             <Link
                                                 href={`/categories/${category.slug}`}
-                                                className="mt-auto inline-flex items-center gap-2 font-bold text-stone-600 hover:text-[#C5A059] transition-colors group/link"
+                                                className={`mt-auto inline-flex items-center gap-2 font-bold transition-colors group/link ${
+                                                    isDark ? "text-stone-300 hover:text-[#C5A059]" : "text-stone-600 hover:text-[#C5A059]"
+                                                }`}
                                             >
                                                 {t("categories.viewAllCourses", "Xem tất cả khóa học")} <ArrowRight size={18} className="group-hover/link:translate-x-1 transition-transform" />
                                             </Link>
                                         </div>
 
                                         {/* Right Side: Topics Grid */}
-                                        <div className="md:w-2/3 border-l border-stone-100 md:pl-8 pt-4 md:pt-0">
-                                            <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">
+                                        <div className={`md:w-2/3 border-l md:pl-8 pt-4 md:pt-0 ${
+                                            isDark ? "border-white/10" : "border-stone-200"
+                                        }`}>
+                                            <h3 className="text-sm font-bold text-[#C5A059] uppercase tracking-wider mb-4">
                                                 {t("categories.featuredTopics", "Các chủ đề nổi bật")}
                                             </h3>
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -174,10 +193,18 @@ export default function CategoriesClient({ categories }: { categories: Category[
                                                     <Link
                                                         key={child.id}
                                                         href={`/categories/${category.slug}/${child.slug}`}
-                                                        className="flex items-center justify-between p-3 rounded-xl bg-stone-50 hover:bg-[#C5A059]/10 border border-stone-100 hover:border-[#C5A059]/30 transition-all cursor-pointer group/child"
+                                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group/child ${
+                                                            isDark
+                                                                ? "border-white/10 bg-white/3 hover:bg-[#C5A059]/15 hover:border-[#C5A059]/40"
+                                                                : "border-stone-200 bg-white/70 hover:bg-white hover:border-[#C5A059]/40 shadow-sm"
+                                                        }`}
                                                     >
-                                                        <span className="font-medium text-stone-700 text-sm group-hover/child:text-stone-900">{child.name}</span>
-                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-stone-400 group-hover/child:text-[#C5A059] shadow-sm">
+                                                        <span className={`font-medium text-sm ${isDark ? "text-stone-200 group-hover/child:text-white" : "text-stone-700 group-hover/child:text-stone-900"}`}>
+                                                            {child.name}
+                                                        </span>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${
+                                                            isDark ? "bg-white/10 text-stone-300 group-hover/child:text-[#C5A059]" : "bg-stone-100 text-stone-500 group-hover/child:text-[#C5A059]"
+                                                        }`}>
                                                             {child._count.courses}
                                                         </span>
                                                     </Link>
@@ -192,7 +219,7 @@ export default function CategoriesClient({ categories }: { categories: Category[
 
                     {filteredCategories.length === 0 && (
                         <div className="text-center py-20">
-                            <p className="text-stone-400 text-lg">
+                            <p className={`text-lg ${isDark ? "text-stone-400" : "text-stone-500"}`}>
                                 {t("categories.notFound", "Không tìm thấy lĩnh vực phù hợp với từ khóa của bạn.")}
                             </p>
                         </div>

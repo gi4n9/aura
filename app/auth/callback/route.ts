@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
-// The client you created from the Server-Side Auth instructions
 import { createClient } from "@/utils/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { type EmailOtpType } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  // nếu "next" parameter có trong URL, redirect tới đó sau khi login
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/";
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      console.error("❌ Auth Callback Error:", error.message, error);
-      // Fallback for password reset flow if PKCE code_verifier is missing in server cookies
-      if (next && next.includes("reset-password")) {
-        return NextResponse.redirect(`${origin}/auth/reset-password?code=${code}`);
-      }
+  const supabase = await createClient();
+
+  // Xử lý OTP Token Hash (cho Supabase Recovery / Magic Links)
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+    if (!error) {
+      const redirectUrl = next ? `${origin}${next}` : `${origin}/`;
+      return NextResponse.redirect(redirectUrl);
     } else {
-      // Tự động kiểm tra và tạo Profile cho người dùng đăng nhập qua Google OAuth nếu chưa có
+      console.error("❌ Auth Callback OTP Error:", error.message);
+    }
+  }
+
+  // Xử lý PKCE Code
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         try {
@@ -53,19 +60,18 @@ export async function GET(request: Request) {
         }
       }
 
-      const forwardedHost = request.headers.get("x-forwarded-host"); // original origin before load balancer
-      const isLocalEnv = process.env.NODE_ENV === "development";
-      if (isLocalEnv) {
-        // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-        return NextResponse.redirect(`${origin}${next}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      } else {
-        return NextResponse.redirect(`${origin}${next}`);
+      const redirectUrl = next ? `${origin}${next}` : `${origin}/`;
+      return NextResponse.redirect(redirectUrl);
+    } else {
+      console.error("❌ Auth Callback Code Error:", error.message);
+      // Nếu là reset-password flow và code exchange bị lỗi do đã tiêu thụ ở server hoặc thiếu PKCE verifier, 
+      // vẫn redirect về trang reset-password để client kiểm tra session hiện tại
+      if (next && next.includes("reset-password")) {
+        return NextResponse.redirect(`${origin}/auth/reset-password?code=${code}`);
       }
     }
   }
 
-  // Nếu lỗi, trả về trang lỗi
+  // Trả về trang lỗi nếu không xác thực được
   return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }
