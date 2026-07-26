@@ -1,7 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import Image from "next/image";
-import { BookOpen, ArrowRight } from "lucide-react";
+import CoursesClient from "@/app/components/client/CoursesClient";
 
 export default async function CoursesPage() {
     const courses = await prisma.course.findMany({
@@ -14,91 +12,12 @@ export default async function CoursesPage() {
         orderBy: { createdAt: "desc" },
     });
 
+    const serializedCourses = courses.map(course => ({
+        ...course,
+        price: Number(course.price)
+    }));
+
     return (
-        <div className="min-h-screen bg-[#F9F8F4] text-stone-900 font-sans selection:bg-[#C5A059] selection:text-white pb-20">
-            {/* Header Section */}
-            <div className="pt-24 pb-12 border-b border-stone-200">
-                <div className="container mx-auto px-6">
-                    <div className="max-w-3xl">
-                        <div className="inline-block mb-3 text-xs font-bold tracking-widest text-stone-500 uppercase">
-                            Academic Resources
-                        </div>
-                        <h1 className="font-serif text-5xl md:text-6xl text-stone-900 mb-6">
-                            Course Library
-                        </h1>
-                        <div className="w-20 h-1 bg-[#C5A059] mb-6"></div>
-                        <p className="text-xl text-stone-600 font-light leading-relaxed">
-                            Access our complete catalog of quantum computing, engineering, and AI simulations.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Grid Content */}
-            <div className="container mx-auto px-6 mt-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {courses.map((course) => (
-                        <Link
-                            key={course.id}
-                            href={`/courses/${course.id}`}
-                            className="group flex flex-col bg-white rounded-xl overflow-hidden border border-stone-200 shadow-sm hover:shadow-xl hover:border-[#C5A059]/50 transition-all duration-500 hover:-translate-y-1"
-                        >
-                            {/* Thumbnail */}
-                            <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
-                                <Image
-                                    src={course.thumbnailUrl || "/placeholder-course.jpg"}
-                                    alt={course.title}
-                                    fill
-                                    className="object-cover transition-transform duration-700 group-hover:scale-105 saturate-50 group-hover:saturate-100"
-                                />
-                                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-stone-200 shadow-sm">
-                                    <span className="text-[10px] font-bold tracking-widest uppercase text-stone-600">
-                                        {course.organization?.name || "Open Course"}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex flex-col flex-grow p-6">
-                                <h3 className="font-serif text-xl text-stone-900 leading-tight mb-3 group-hover:text-[#C5A059] transition-colors line-clamp-2">
-                                    {course.title}
-                                </h3>
-
-                                <div className="w-8 h-0.5 bg-stone-200 mb-4 group-hover:bg-[#C5A059] transition-colors"></div>
-
-                                <div className="mt-auto space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative w-8 h-8 rounded-full overflow-hidden border border-stone-200">
-                                            <Image
-                                                src={course.instructor?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
-                                                alt="Avatar"
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Lecturer</span>
-                                            <span className="text-sm font-medium text-stone-700 font-serif italic">
-                                                {course.instructor?.fullName}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between pt-4 border-t border-stone-100 text-xs text-stone-500 font-mono">
-                                        <div className="flex items-center gap-1.5">
-                                            <BookOpen size={14} className="text-[#C5A059]" />
-                                            <span>{course._count.chapters} Chapters</span>
-                                        </div>
-                                        <span className="font-bold text-stone-900">
-                                            {Number(course.price) === 0 ? "FREE" : new Intl.NumberFormat("vi-VN").format(Number(course.price)) + " đ"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-            </div>
-        </div>
+        <CoursesClient courses={serializedCourses} />
     );
 }

@@ -23,6 +23,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import { ThemeProvider } from "@/lib/theme/ThemeContext";
 
 export const metadata: Metadata = {
   title: "Aura Learning",
@@ -72,13 +73,15 @@ export default async function RootLayout({
           shadow="0 0 10px #C5A059,0 0 5px #C5A059"
         />
 
-        <LanguageProvider>
-          <AuthProvider initialUser={user} initialProfile={userProfile}>
-            {children}
-            <ChatBot />
-            <ClientToaster />
-          </AuthProvider>
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <AuthProvider initialUser={user} initialProfile={userProfile}>
+              {children}
+              <ChatBot />
+              <ClientToaster />
+            </AuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

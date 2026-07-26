@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Config allowed origins cho dev mode khi truy cập bằng địa chỉ IP mạng nội bộ
+  allowedDevOrigins: ['localhost:3000', '192.168.1.2:3000', '127.0.0.1:3000'],
+
   // Next.js 16 dùng Turbopack mặc định
   turbopack: {
     // Thêm config nếu cần, hiện tại để trống

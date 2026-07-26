@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-runner.js",
+    "dev:next": "next dev",
+    "dev:ocr": "python ocr-service/main.py",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -50,6 +52,7 @@
     "reactflow": "^11.11.4",
     "recharts": "^3.9.0",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.35.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tesseract.js": "^7.0.0",

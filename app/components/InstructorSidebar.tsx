@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react"; // Added useState
+import { useState } from "react";
 import {
     LayoutDashboard,
     Settings,
@@ -11,7 +11,8 @@ import {
     ChevronDown,
     PenTool
 } from "lucide-react";
-import QuizModal from "./courseComponents/QuizModal"; // Import Modal
+import QuizModal from "./courseComponents/QuizModal";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 function cn(...classes: (string | undefined | null | false)[]) {
     return classes.filter(Boolean).join(" ");
@@ -23,7 +24,7 @@ export default function InstructorSidebar({
     course: any
 }) {
     const pathname = usePathname();
-    // Start with null state
+    const { t } = useLanguage();
     const [editingQuiz, setEditingQuiz] = useState<{ lessonId: string, lessonTitle: string } | null>(null);
 
     return (
@@ -35,7 +36,7 @@ export default function InstructorSidebar({
                         {course.title}
                     </h2>
                     <p className="text-xs text-slate-500 mt-1 uppercase font-semibold tracking-wider">
-                        Trang quản lý
+                        {t("instructorPortal.managementPage", "Trang quản lý")}
                     </p>
                 </div>
 
@@ -43,13 +44,13 @@ export default function InstructorSidebar({
                 <div className="flex flex-col py-4">
                     <SidebarItem
                         icon={LayoutDashboard}
-                        label="Tổng quan khóa học"
+                        label={t("instructorPortal.courseOverview", "Tổng quan khóa học")}
                         href={`/instructor/courses/${course.id}`}
                         isActive={pathname === `/instructor/courses/${course.id}`}
                     />
                     <SidebarItem
                         icon={Settings}
-                        label="Cài đặt (Tên, Giá, Ảnh)"
+                        label={t("instructorPortal.courseSettings", "Cài đặt (Tên, Giá, Ảnh)")}
                         href={`/instructor/courses/${course.id}/settings`}
                         isActive={pathname.endsWith("/settings")}
                     />
@@ -58,7 +59,7 @@ export default function InstructorSidebar({
                 {/* 3. Menu Nội dung (Curriculum) */}
                 <div className="px-6 pt-4 pb-2">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        Nội dung học
+                        {t("instructorPortal.curriculum", "Nội dung học")}
                     </h3>
                 </div>
 
@@ -74,7 +75,6 @@ export default function InstructorSidebar({
                             {/* Danh sách bài học trong chương */}
                             <div className="flex flex-col mt-1">
                                 {chapter.lessons.map((lesson: any) => {
-                                    // Xác định đường dẫn active
                                     const isLessonActive = pathname.includes(`/lesson/${lesson.id}`);
                                     const isEditActive = pathname.includes(`/lesson/${lesson.id}/settings`);
 
@@ -91,7 +91,7 @@ export default function InstructorSidebar({
                                                 </span>
                                             </div>
 
-                                            {/* Sub-menu: Edit & Quiz (Chỉ hiện các nút hành động nhỏ bên dưới bài học) */}
+                                            {/* Sub-menu: Edit & Quiz */}
                                             <div className="flex items-center gap-1 pl-10 pr-4 pb-2">
                                                 {/* Nút Sửa nội dung */}
                                                 <Link
@@ -102,18 +102,18 @@ export default function InstructorSidebar({
                                                             ? "bg-white border-indigo-200 text-indigo-700 font-medium shadow-sm"
                                                             : "border-transparent text-slate-500 hover:bg-white hover:border-slate-200 hover:shadow-sm"
                                                     )}
-                                                    title="Sửa nội dung bài học"
+                                                    title={t("instructorPortal.editLesson", "Sửa nội dung bài học")}
                                                 >
-                                                    <PenTool size={12} /> Sửa bài
+                                                    <PenTool size={12} /> {t("instructorPortal.editLesson", "Sửa bài")}
                                                 </Link>
 
-                                                {/* Nút Sửa Quiz (MODAL TRIGGER) */}
+                                                {/* Nút Sửa Quiz */}
                                                 <button
                                                     onClick={() => setEditingQuiz({ lessonId: lesson.id, lessonTitle: lesson.title })}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all border border-transparent text-slate-500 hover:bg-white hover:border-slate-200 hover:shadow-sm hover:text-indigo-600"
-                                                    title="Quản lý trắc nghiệm (Popup)"
+                                                    title={t("instructorPortal.quiz", "Quiz")}
                                                 >
-                                                    <FileQuestion size={12} /> Quiz
+                                                    <FileQuestion size={12} /> {t("instructorPortal.quiz", "Quiz")}
                                                 </button>
                                             </div>
                                         </div>
@@ -137,7 +137,6 @@ export default function InstructorSidebar({
     );
 }
 
-// Component item menu nhỏ gọn
 function SidebarItem({ icon: Icon, label, href, isActive }: any) {
     return (
         <Link

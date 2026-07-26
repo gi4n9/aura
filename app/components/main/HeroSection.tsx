@@ -1,82 +1,243 @@
 "use client";
 
-import { ArrowRight, PlayCircle, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, Sparkles, Play, BookOpen, Users, Award } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import { motion, type Variants } from "framer-motion";
+import Link from "next/link";
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] as any },
+  }),
+};
 
 export default function HeroSection() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <section className="min-h-[870px] flex items-center justify-center relative overflow-hidden px-4 md:px-10 bg-nobel-cream pt-16">
-      {/* Background Glow */}
-      <div className="absolute inset-0 z-0 bg-[#C5A059]/10 pointer-events-none opacity-50 blur-3xl rounded-full translate-x-1/4 -translate-y-1/4 mix-blend-multiply"></div>
-      
-      <div className="max-w-[1280px] w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative z-10">
-        
-        {/* Left Content */}
-        <div className="md:col-span-6 flex flex-col items-start gap-8 z-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/40 backdrop-blur-md border border-[#C5A059]/30 rounded-full shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#C5A059] animate-pulse"></span>
-            <span className="text-[12px] font-bold text-stone-900 uppercase tracking-wider">{t("hero.badge")}</span>
-          </div>
-          
-          <h2 className="font-serif text-[42px] md:text-[60px] lg:text-[68px] font-bold text-stone-900 leading-[1.08] tracking-tight">
-            {t("hero.titlePrefix")} <br/>
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#C5A059] to-[#e9c176] font-bold">{t("hero.titleSuffix")}</span>
-          </h2>
-          
-          <p className="text-base md:text-lg text-stone-600 max-w-lg leading-relaxed">
-            {t("hero.subtitle")}
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-4">
-            <button className="px-8 py-4 bg-[#C5A059] text-white rounded-[4px] text-xs font-bold uppercase tracking-widest hover:scale-[0.98] transition-transform shadow-lg shadow-[#C5A059]/20 flex items-center justify-center gap-2">
-              {t("hero.exploreBtn")}
-              <ArrowRight size={18} />
-            </button>
-            <button className="px-8 py-4 bg-white/50 backdrop-blur-md border border-[#C5A059]/50 text-stone-900 rounded-[4px] text-xs font-bold uppercase tracking-widest hover:bg-white/80 transition-colors flex items-center justify-center gap-2">
-              <PlayCircle size={18} />
-              {t("hero.aiStudyPlanBtn")}
-            </button>
-          </div>
-        </div>
+    <section className={`relative min-h-screen flex items-center justify-center overflow-hidden transition-colors duration-500 ${
+      isDark ? "bg-[#080808]" : "bg-[#F9F8F4]"
+    }`}>
+      {/* Ambient background glows */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className={`absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] ${
+          isDark ? "bg-[#C5A059]/8" : "bg-[#C5A059]/15"
+        }`} />
+        <div className={`absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[80px] ${
+          isDark ? "bg-[#C5A059]/5" : "bg-[#C5A059]/10"
+        }`} />
+        <div className={`absolute top-0 left-0 w-full h-px ${
+          isDark ? "bg-gradient-to-r from-transparent via-[#C5A059]/20 to-transparent" : "bg-gradient-to-r from-transparent via-[#C5A059]/30 to-transparent"
+        }`} />
+      </div>
 
-        {/* Right Content - 3D Card */}
-        <div className="md:col-span-6 relative mt-12 md:mt-0 flex justify-center h-[500px] lg:h-[600px]" style={{ perspective: "1000px" }}>
-          
-          {/* Hero Image Card */}
-          <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-white/40 backdrop-blur-md border border-stone-200/50 shadow-2xl transform rotate-y-12 hover:rotate-y-0 transition-transform duration-700 ease-out flex items-center justify-center" style={{ transformStyle: 'preserve-3d', transform: 'rotateY(-12deg)' }}>
-            <img 
-              alt="Abstract 3D geometric shapes glowing in gold and white" 
-              className="w-full h-full object-cover" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJbzmQAjj_T7Mtmsv3Lv0TUt8PuzaV6502Cm_v9R3v5HFPstHDfdiUkZAjQRWS12EkBCSNw2A5QL1epE4aVEFsy0tJp4TA4JGZrLwy96ij6kOcqZ57GFGw6Ls4bb9K5EuHiuOHFV2rQcKaPtvnogEa0qgBLG-Q-l5GDgBQA1aMU2sUTBPb52kQG2UW4k7I9yYHWAG1NOtdwoI9stMsRu2gdAZuobCBxoY6pVwkXRySvVcYqg1Yg78L9fdTZzNYRr8KyFGLm7luSWd5"
-            />
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#C5A059]/20 to-transparent z-10 mix-blend-overlay pointer-events-none"></div>
+      {/* Grain texture overlay */}
+      <div
+        className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "200px",
+        }}
+      />
+
+      <div className="relative z-10 max-w-[1280px] w-full mx-auto px-6 md:px-10 pt-32 pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* Left Content */}
+          <div className="lg:col-span-7 flex flex-col items-start gap-8">
+            {/* Badge */}
+            <motion.div
+              custom={0}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              className={`inline-flex items-center gap-2.5 px-4 py-2 rounded-full border ${
+                isDark
+                  ? "border-[#C5A059]/30 bg-[#C5A059]/8 backdrop-blur-sm text-[#C5A059]"
+                  : "border-[#C5A059]/40 bg-white/70 backdrop-blur-sm text-stone-900 shadow-sm"
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C5A059] animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em]">
+                {t("hero.badge")}
+              </span>
+            </motion.div>
+
+            {/* Headline */}
+            <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible">
+              <h1 className={`font-serif text-[52px] md:text-[72px] lg:text-[84px] leading-[0.95] tracking-tight ${
+                isDark ? "text-white" : "text-stone-900"
+              }`}>
+                {t("hero.titlePrefix")}{" "}
+                <span
+                  className="block font-bold"
+                  style={{
+                    backgroundImage: isDark
+                      ? "linear-gradient(135deg, #C5A059 0%, #e9c176 40%, #C5A059 100%)"
+                      : "linear-gradient(135deg, #B08A42 0%, #D9B772 50%, #B08A42 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  {t("hero.titleSuffix")}
+                </span>
+              </h1>
+            </motion.div>
+
+            {/* Subtitle */}
+            <motion.p
+              custom={2}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              className={`text-base md:text-lg max-w-xl leading-relaxed font-light ${
+                isDark ? "text-stone-400" : "text-stone-600"
+              }`}
+            >
+              {t("hero.subtitle")}
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div
+              custom={3}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <Link
+                href="/courses"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#C5A059] text-white rounded-full text-[11px] font-bold uppercase tracking-[0.18em] hover:bg-[#b08d47] transition-all duration-300 shadow-[0_0_30px_rgba(197,160,89,0.3)] hover:shadow-[0_0_50px_rgba(197,160,89,0.5)]"
+              >
+                {t("hero.exploreBtn")}
+                <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link
+                href="/onboarding/study-plan"
+                className={`inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-300 backdrop-blur-sm ${
+                  isDark
+                    ? "border-white/10 bg-white/5 text-white hover:bg-white/10 hover:border-white/20"
+                    : "border-[#C5A059]/40 bg-white/80 text-stone-900 hover:bg-white hover:border-[#C5A059] shadow-sm"
+                }`}
+              >
+                <Play size={14} fill="currentColor" />
+                {t("hero.aiStudyPlanBtn")}
+              </Link>
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              custom={4}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              className={`flex items-center gap-8 pt-4 border-t w-full ${
+                isDark ? "border-white/5" : "border-stone-200"
+              }`}
+            >
+              {[
+                { icon: <BookOpen size={16} />, value: "500+", label: t("hero.courses") },
+                { icon: <Users size={16} />, value: "12K+", label: t("hero.learners") },
+                { icon: <Award size={16} />, value: "98%", label: t("hero.satisfaction") },
+              ].map((stat, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  <span className="text-[#C5A059]">{stat.icon}</span>
+                  <div>
+                    <p className={`font-bold text-sm leading-none ${isDark ? "text-white" : "text-stone-900"}`}>{stat.value}</p>
+                    <p className={`text-[10px] uppercase tracking-wider mt-0.5 ${isDark ? "text-stone-500" : "text-stone-500"}`}>{stat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
           </div>
 
-          {/* Floating elements */}
-          <div className="absolute -left-12 top-1/4 bg-white/70 backdrop-blur-md border border-stone-100 p-4 rounded-xl shadow-xl animate-[bounce_6s_ease-in-out_infinite] z-20 hidden lg:flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#C5A059]/20 flex items-center justify-center text-[#C5A059]">
-              <TrendingUp size={20} />
+          {/* Right – Bento Hero Cards */}
+          <motion.div
+            custom={2}
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            className="lg:col-span-5 grid grid-cols-2 gap-3"
+          >
+            {/* Card 1 – Large */}
+            <div
+              className={`col-span-2 relative rounded-2xl overflow-hidden p-6 flex flex-col gap-3 border transition-colors ${
+                isDark
+                  ? "border-white/8 text-white"
+                  : "border-stone-200/90 text-stone-900 bg-white/90 shadow-xl"
+              }`}
+              style={
+                isDark
+                  ? {
+                      background: "linear-gradient(135deg, rgba(197,160,89,0.12) 0%, rgba(255,255,255,0.03) 100%)",
+                      backdropFilter: "blur(12px)",
+                    }
+                  : { backdropFilter: "blur(12px)" }
+              }
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#C5A059]/20 flex items-center justify-center text-[#C5A059]">
+                <Sparkles size={20} />
+              </div>
+              <h3 className="font-serif text-xl leading-snug">{t("hero.aiTitle")}</h3>
+              <p className={`text-sm leading-relaxed ${isDark ? "text-stone-400" : "text-stone-600"}`}>{t("hero.aiDesc")}</p>
+              <div className={`mt-2 h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/5" : "bg-stone-100"}`}>
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-[#C5A059] to-[#e9c176]"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "72%" }}
+                  transition={{ delay: 1, duration: 1.2, ease: "easeOut" }}
+                />
+              </div>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-400"}`}>{t("hero.progress")} — 72%</p>
             </div>
-            <div>
-              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">{t("hero.progress")}</p>
-              <p className="font-serif text-2xl font-bold text-stone-900">+42%</p>
+
+            {/* Card 2 */}
+            <div
+              className={`relative rounded-2xl overflow-hidden p-5 flex flex-col gap-2 border transition-all ${
+                isDark
+                  ? "border-white/8 bg-white/3 hover:border-[#C5A059]/30"
+                  : "border-stone-200 bg-white/80 hover:border-[#C5A059]/40 shadow-md"
+              }`}
+              style={{ backdropFilter: "blur(8px)" }}
+            >
+              <div className="text-[#C5A059] mb-1">
+                <BookOpen size={18} />
+              </div>
+              <p className={`font-bold text-2xl font-serif ${isDark ? "text-white" : "text-stone-900"}`}>500+</p>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-500"}`}>{t("hero.courses")}</p>
             </div>
-          </div>
-          
-          <div className="absolute -right-8 bottom-1/4 bg-white/70 backdrop-blur-md border border-stone-100 p-4 rounded-xl shadow-xl animate-[bounce_5s_ease-in-out_infinite_reverse] z-20 hidden lg:flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[#C5A059]">
-              <Sparkles size={20} />
+
+            {/* Card 3 */}
+            <div
+              className={`relative rounded-2xl overflow-hidden p-5 flex flex-col gap-2 border transition-all ${
+                isDark
+                  ? "border-[#C5A059]/20 hover:border-[#C5A059]/40 bg-gradient-to-br from-[#C5A059]/10 to-transparent"
+                  : "border-[#C5A059]/30 hover:border-[#C5A059]/50 bg-white/90 shadow-md"
+              }`}
+              style={{ backdropFilter: "blur(8px)" }}
+            >
+              <div className="text-[#C5A059] mb-1">
+                <Users size={18} />
+              </div>
+              <p className={`font-bold text-2xl font-serif ${isDark ? "text-white" : "text-stone-900"}`}>12K+</p>
+              <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-500"}`}>{t("hero.learners")}</p>
             </div>
-            <div>
-              <p className="text-[12px] font-bold text-stone-500 uppercase tracking-wider">{t("hero.aiInsight")}</p>
-              <p className="text-sm text-stone-900 font-semibold">{t("hero.pathOptimized")}</p>
-            </div>
-          </div>
-          
+          </motion.div>
         </div>
       </div>
+
+      {/* Bottom fade */}
+      <div className={`absolute bottom-0 left-0 right-0 h-24 z-10 pointer-events-none ${
+        isDark ? "bg-gradient-to-t from-[#080808] to-transparent" : "bg-gradient-to-t from-[#F9F8F4] to-transparent"
+      }`} />
     </section>
   );
 }

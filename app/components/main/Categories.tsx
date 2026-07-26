@@ -1,83 +1,176 @@
 "use client";
 
-import { ArrowRight, Cpu, Microscope, Building2, Server } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+
+const categories = [
+  {
+    slug: "ai",
+    titleKey: "categories.aiTitle",
+    descKey: "categories.aiDesc",
+    span: "lg:col-span-2 lg:row-span-2",
+    accent: true,
+    icon: "✦",
+  },
+  {
+    slug: "kinh-doanh",
+    titleKey: "categories.econTitle",
+    descKey: "categories.econDesc",
+    span: "lg:col-span-1",
+    accent: false,
+    icon: "◈",
+  },
+  {
+    slug: "lap-trinh",
+    titleKey: "categories.bioTitle",
+    descKey: "categories.bioDesc",
+    span: "lg:col-span-1",
+    accent: false,
+    icon: "⬡",
+  },
+  {
+    slug: "fullstack",
+    titleKey: "categories.sysTitle",
+    descKey: "categories.sysDesc",
+    span: "lg:col-span-2",
+    accent: false,
+    icon: "◎",
+  },
+];
 
 export default function Categories() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <section className="py-24 px-4 md:px-10 bg-stone-50/50 border-y border-stone-200">
-      <div className="max-w-[1280px] mx-auto">
-        
-        {/* Section Header */}
-        <div className="text-center mb-16 max-w-2xl mx-auto">
-          <h3 className="font-serif text-[40px] font-bold text-stone-900 mb-4">{t("categories.title")}</h3>
-          <p className="text-stone-600 leading-relaxed text-lg">
+    <section className={`py-28 px-6 md:px-10 relative overflow-hidden transition-colors duration-500 ${
+      isDark ? "bg-[#080808]" : "bg-[#F9F8F4]"
+    }`}>
+      {/* Ambient */}
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full blur-[150px] pointer-events-none ${
+        isDark ? "bg-[#C5A059]/4" : "bg-[#C5A059]/10"
+      }`} />
+
+      <div className="max-w-[1280px] mx-auto relative z-10">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center mb-16 max-w-2xl mx-auto"
+        >
+          <span className="inline-block px-3 py-1 border border-[#C5A059]/30 text-[#C5A059] text-[10px] font-bold tracking-[0.25em] uppercase rounded-full mb-6">
+            {t("categories.exploreTitle")}
+          </span>
+          <h2 className={`font-serif text-[40px] md:text-[56px] leading-[1] mb-4 ${
+            isDark ? "text-white" : "text-stone-900"
+          }`}>
+            {t("categories.title")}
+          </h2>
+          <p className={`leading-relaxed text-base font-light ${
+            isDark ? "text-stone-400" : "text-stone-600"
+          }`}>
             {t("categories.subtitle")}
           </p>
-        </div>
-        
+        </motion.div>
+
         {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-[240px]">
-          
-          {/* Large Feature Card (Col span 2, Row span 2) */}
-          <div className="md:col-span-2 md:row-span-2 bg-white/60 backdrop-blur-md rounded-2xl p-8 relative overflow-hidden group cursor-pointer border border-stone-200/60 hover:border-[#C5A059]/50 transition-all duration-300 shadow-sm hover:shadow-md">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#C5A059]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="w-14 h-14 rounded-full bg-[#1a1a1a] text-[#C5A059] flex items-center justify-center shadow-lg">
-                <Cpu size={28} />
-              </div>
-              <div>
-                <h4 className="font-serif text-[28px] md:text-[32px] font-bold text-stone-900 mb-2 leading-tight">{t("categories.aiTitle")}</h4>
-                <p className="text-stone-600 max-w-md leading-relaxed text-[15px]">
-                  {t("categories.aiDesc")}
-                </p>
-              </div>
-              <div className="mt-6 flex items-center text-[#C5A059] text-[12px] font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform">
-                {t("categories.exploreCurriculum")} <ArrowRight size={16} className="ml-2" />
-              </div>
-            </div>
-          </div>
-          
-          {/* Small Card 1 */}
-          <div className="bg-white/60 backdrop-blur-md rounded-2xl p-6 relative overflow-hidden group cursor-pointer border border-stone-200/60 hover:border-[#C5A059]/30 transition-all shadow-sm hover:shadow-md">
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <Building2 className="text-[#C5A059]" size={32} />
-              <div>
-                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">{t("categories.econTitle")}</h4>
-                <p className="text-sm text-stone-600">{t("categories.econDesc")}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Small Card 2 (Dark) */}
-          <div className="bg-[#1a1a1a] rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:border-[#C5A059]/30 transition-all shadow-sm hover:shadow-md border border-transparent">
-            <div className="absolute inset-0 bg-[#C5A059]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <Microscope className="text-[#C5A059]" size={32} />
-              <div>
-                <h4 className="font-serif text-2xl font-bold text-white mb-1">{t("categories.bioTitle")}</h4>
-                <p className="text-sm text-stone-400">{t("categories.bioDesc")}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Medium Card (Col span 2) */}
-          <div className="md:col-span-2 bg-white/60 backdrop-blur-md rounded-2xl p-6 relative overflow-hidden group cursor-pointer border border-stone-200/60 hover:border-[#C5A059]/30 transition-all shadow-sm hover:shadow-md flex items-center">
-            <div className="relative z-10 flex items-center justify-between w-full">
-              <div>
-                <Server className="text-[#C5A059] mb-4 block" size={32} />
-                <h4 className="font-serif text-2xl font-bold text-stone-900 mb-1">{t("categories.sysTitle")}</h4>
-                <p className="text-sm text-stone-600">{t("categories.sysDesc")}</p>
-              </div>
-              <div className="w-12 h-12 rounded-full border border-[#C5A059]/30 flex items-center justify-center group-hover:bg-[#C5A059] group-hover:text-white transition-colors">
-                <ArrowRight size={20} className="-rotate-45" />
-              </div>
-            </div>
-          </div>
-          
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 auto-rows-[200px]">
+          {categories.map((cat, i) => (
+            <motion.div
+              key={cat.slug}
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className={`${cat.span} relative rounded-2xl p-6 overflow-hidden group cursor-pointer border transition-all duration-500 ${
+                isDark
+                  ? cat.accent
+                    ? "border-[#C5A059]/20 hover:border-[#C5A059]/50"
+                    : "bg-white/2 border-white/6 hover:border-white/15"
+                  : cat.accent
+                    ? "border-[#C5A059]/40 hover:border-[#C5A059] bg-white shadow-md hover:shadow-xl"
+                    : "bg-white border-stone-200/90 hover:border-[#C5A059]/40 shadow-sm hover:shadow-md"
+              }`}
+              style={
+                isDark && cat.accent
+                  ? {
+                      background:
+                        "linear-gradient(135deg, rgba(197,160,89,0.12) 0%, rgba(255,255,255,0.02) 100%)",
+                      backdropFilter: "blur(8px)",
+                    }
+                  : { backdropFilter: "blur(8px)" }
+              }
+            >
+              {/* Hover glow */}
+              <div className={`absolute inset-0 bg-gradient-to-br from-[#C5A059]/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
+
+              <Link
+                href={`/categories/${cat.slug}`}
+                className="relative z-10 flex flex-col h-full justify-between"
+              >
+                {/* Top row */}
+                <div className="flex items-start justify-between">
+                  <span
+                    className="text-2xl"
+                    style={{ color: "#C5A059", fontFamily: "serif" }}
+                  >
+                    {cat.icon}
+                  </span>
+                  <div className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                    isDark
+                      ? "border-stone-700 text-stone-600 group-hover:border-[#C5A059] group-hover:text-[#C5A059]"
+                      : "border-stone-300 text-stone-400 group-hover:border-[#C5A059] group-hover:text-[#C5A059]"
+                  }`}>
+                    <ArrowRight size={12} />
+                  </div>
+                </div>
+
+                {/* Bottom */}
+                <div>
+                  <h4
+                    className={`font-serif text-xl md:text-2xl font-bold mb-2 leading-snug transition-colors ${
+                      isDark ? "text-white" : "text-stone-900"
+                    } group-hover:text-[#C5A059]`}
+                  >
+                    {t(cat.titleKey as any)}
+                  </h4>
+                  <p
+                    className={`text-sm leading-relaxed ${
+                      isDark ? "text-stone-400" : "text-stone-600"
+                    }`}
+                  >
+                    {t(cat.descKey as any)}
+                  </p>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
         </div>
+
+        {/* View all link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+          className="mt-12 text-center"
+        >
+          <Link
+            href="/categories"
+            className={`inline-flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase transition-colors group ${
+              isDark ? "text-stone-500 hover:text-[#C5A059]" : "text-stone-600 hover:text-[#C5A059]"
+            }`}
+          >
+            {t("categories.viewAll")}
+            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </motion.div>
       </div>
     </section>
   );

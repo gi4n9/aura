@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { enrollFreeCourse, purchaseCourse } from "@/app/actions/enrollment";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface CourseActionButtonsProps {
     courseId: string;
@@ -15,6 +16,7 @@ interface CourseActionButtonsProps {
 
 export default function CourseActionButtons({ courseId, price, isFree, firstLessonId }: CourseActionButtonsProps) {
     const router = useRouter();
+    const { t } = useLanguage();
     const [isLoading, setIsLoading] = useState(false);
 
     const handleEnrollFree = async () => {
@@ -32,7 +34,7 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
                 toast.error(res.error);
             }
         } catch (error) {
-            toast.error("Đã xảy ra lỗi.");
+            toast.error(t("common.error", "Đã xảy ra lỗi."));
         } finally {
             setIsLoading(false);
         }
@@ -53,7 +55,7 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
                 toast.error(res.error);
             }
         } catch (error) {
-            toast.error("Lỗi thanh toán.");
+            toast.error(t("common.error", "Lỗi thanh toán."));
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +72,9 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
                 className="block w-full py-4 bg-[#1a1a1a] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#C5A059] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
                 {isLoading && <Loader2 className="animate-spin" size={16} />}
-                {isLoading ? "Đang đăng ký..." : (firstLessonId ? "Vào học ngay (Miễn phí)" : "Đăng ký ngay")}
+                {isLoading 
+                    ? t("courseDetail.enrolling", "Đang đăng ký...") 
+                    : (firstLessonId ? t("courseDetail.enrollFree", "Vào học ngay (Miễn phí)") : t("courseDetail.enrollNow", "Đăng ký ngay"))}
             </button>
         );
     }
@@ -88,11 +92,11 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
                 className="block w-full py-4 bg-[#C5A059] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#b08d4b] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
                 {isLoading && <Loader2 className="animate-spin" size={16} />}
-                {isLoading ? "Đang xử lý..." : "Mua ngay"}
+                {isLoading ? t("courseDetail.processing", "Đang xử lý...") : t("courseDetail.buyNow", "Mua ngay")}
             </button>
 
             <p className="text-xs text-center text-stone-500 italic">
-                *Thanh toán giả lập (Click là thành công)
+                {t("courseDetail.simulatedCheckout", "*Thanh toán giả lập (Click là thành công)")}
             </p>
         </div>
     );

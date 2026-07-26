@@ -5,8 +5,8 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 import { createClient } from "@/utils/supabase/client";
 
 import { User } from "@supabase/supabase-js";
-
 import { useRouter } from "next/navigation";
+import { ensureProfileExists } from "@/app/actions/auth";
 
 // Tạo Context
 interface UserProfile {
@@ -57,10 +57,25 @@ export const AuthProvider = ({
         .eq("id", userId)
         .single();
 
-      if (data && !error) {
+      if (data && !error && data.avatarUrl) {
         setProfile(data as UserProfile);
         return data as UserProfile;
       }
+
+      // Nếu chưa có Profile hoặc chưa có avatarUrl, tự động đồng bộ từ metadata Google
+      const synced = await ensureProfileExists();
+      if (synced) {
+        const syncedProfile: UserProfile = {
+          id: synced.id,
+          role: synced.role as "STUDENT" | "INSTRUCTOR" | "ADMIN",
+          fullName: synced.fullName || undefined,
+          email: synced.email,
+          avatarUrl: synced.avatarUrl || undefined,
+        };
+        setProfile(syncedProfile);
+        return syncedProfile;
+      }
+
       return null;
     } catch (err) {
       console.error("Error fetching profile:", err);

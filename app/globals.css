@@ -106,10 +106,47 @@ h6 {
   letter-spacing: -0.015em;
 }
 
-/* Accessibility Focus Ring (UI/UX Pro Max Priority 1) */
+/* Accessibility Focus Ring */
 *:focus-visible {
   outline: 2px solid var(--color-ring-teal, #0D9488);
   outline-offset: 2px;
+}
+
+/* Remove default focus outline/ring on inputs to allow custom border transitions */
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Chrome / Safari / Edge Autofill Background & Text Color Override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1c1917 !important;
+  caret-color: #1c1917 !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Dark Mode Autofill Override */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active,
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0e0e0e inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 }
 
 /* Touch & Clickable Feedback (UI/UX Pro Max Priority 2) */
@@ -395,3 +432,26 @@ a:active {
 .rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* Slow spin for decorative rings */
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Liquid glass effect utility */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.liquid-glass-gold {
+  background: linear-gradient(135deg, rgba(197,160,89,0.12) 0%, rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(197,160,89,0.2);
+  box-shadow: inset 0 1px 1px rgba(197,160,89,0.08);
+}

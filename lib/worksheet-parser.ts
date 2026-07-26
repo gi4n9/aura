@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 import * as xlsx from "xlsx";
 import Groq from "groq-sdk";
 import { getSha256, getCachedOcr, setCachedOcr } from "./ocr-cache";
+import { optimizeImageForOCR } from "./image-preprocessor";
 
 // Sửa lỗi DOMMatrix is not defined trên môi trường Node.js mới
 if (typeof global !== "undefined" && !global.DOMMatrix) {
@@ -181,26 +182,68 @@ function normalizeQuestionType(raw: string): QuestionTypeValue {
 }
 
 /**
- * Map kết quả AI (raw JSON item) thành ParsedQuestion
+ * Dọn dẹp và chuẩn hóa định dạng Markdown & LaTeX công thức toán
+ */
+function cleanMarkdownAndLatex(text: string): string {
+    if (!text) return "";
+    let s = text.trim();
+    // Chuẩn hóa ký hiệu LaTeX \( ... \) -> $ ... $, \[ ... \] -> $$ ... $$
+    s = s.replace(/\\\((.*?)\\\)/g, "$$1$");
+    s = s.replace(/\\\[([\s\S]*?)\\\]/g, "$$$$1$$$$");
+    return s;
+}
+
+/**
+ * Loại bỏ các tiền tố trùng lặp trong nội dung câu hỏi (VD: "Câu 1:", "Bài 2.", "Question 3:")
+ */
+function sanitizeQuestionContent(content: string): string {
+    if (!content) return "";
+    let clean = cleanMarkdownAndLatex(content);
+    clean = clean.replace(/^(câu|bài|question)\s*\d+[\s.:\-–]*/i, "");
+    return clean.trim();
+}
+
+/**
+ * Loại bỏ các tiền tố đáp án (VD: "A. ", "B/ ", "C: ", "D - ")
+ */
+function sanitizeOptionText(opt: string): string {
+    if (!opt) return "";
+    let clean = cleanMarkdownAndLatex(opt);
+    clean = clean.replace(/^[A-Da-d][.\/:\-–\)]\s*/, "");
+    return clean.trim();
+}
+
+/**
+ * Map kết quả AI (raw JSON item) thành ParsedQuestion kèm chuẩn hóa định dạng
  */
 function mapAiItemToParsedQuestion(item: any, fallbackIndex: number, globalSubjectHint?: string): ParsedQuestion {
     const type = normalizeQuestionType(item.type);
+    const content = sanitizeQuestionContent(item.content || "");
+
+    let options: string[] | undefined = undefined;
+    if (type === "MULTIPLE_CHOICE" && Array.isArray(item.options) && item.options.length > 0) {
+        options = item.options.map((opt: any) => sanitizeOptionText(String(opt || "")));
+    }
+
+    let trueFalseStatements: TrueFalseStatement[] | undefined = undefined;
+    if (type === "TRUE_FALSE" && Array.isArray(item.trueFalseStatements)) {
+        const defaultLabels = ["a", "b", "c", "d"];
+        trueFalseStatements = item.trueFalseStatements.map((s: any, idx: number) => ({
+            label: s.label || defaultLabels[idx] || `${idx + 1}`,
+            statement: cleanMarkdownAndLatex(s.statement || ""),
+            isCorrect: undefined
+        }));
+    }
+
     return {
         index: item.index || fallbackIndex,
-        content: item.content || "",
+        content,
         type,
-        options: type === "MULTIPLE_CHOICE" && Array.isArray(item.options) && item.options.length > 0
-            ? item.options : undefined,
+        options,
         correctAnswer: undefined,
-        trueFalseStatements: type === "TRUE_FALSE" && Array.isArray(item.trueFalseStatements)
-            ? item.trueFalseStatements.map((s: any) => ({
-                label: s.label || "",
-                statement: s.statement || "",
-                isCorrect: undefined // Không parse đáp án từ đề
-            }))
-            : undefined,
-        passageTitle: item.passageTitle || undefined,
-        passageContent: item.passageContent || undefined,
+        trueFalseStatements,
+        passageTitle: item.passageTitle ? cleanMarkdownAndLatex(item.passageTitle) : undefined,
+        passageContent: item.passageContent ? cleanMarkdownAndLatex(item.passageContent) : undefined,
         passageGroupId: item.passageGroupId || undefined,
         subjectHint: item.subjectHint || globalSubjectHint || undefined
     };
@@ -293,14 +336,46 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
 }
 
 /**
- * OCR trích xuất text từ ảnh bằng tiếng Việt
+ * OCR trích xuất text từ ảnh bằng tiếng Việt (Ưu tiên Sharp + Local PaddleOCR, Fallback Tesseract.js)
  */
 export async function extractTextFromImage(buffer: Buffer): Promise<string> {
     try {
-        // Tesseract.recognize có thể nhận buffer (hoặc Uint8Array)
-        const result = await Tesseract.recognize(buffer, "vie", {
-            // logger: m => console.log(m)
-        });
+        // 1. Tiền xử lý ảnh qua Sharp trước khi đưa vào OCR
+        const processedBuffer = await optimizeImageForOCR(buffer);
+
+        // 2. Thử gọi API sang Local PaddleOCR Service (http://localhost:8000/api/v1/ocr)
+        try {
+            const formData = new FormData();
+            formData.append("file", new Blob([new Uint8Array(processedBuffer)]), "image.png");
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+            const ocrUrl = process.env.PADDLE_OCR_SERVICE_URL || "http://localhost:8000/api/v1/ocr";
+            console.log(`🚀 Attempting Local PaddleOCR at ${ocrUrl}...`);
+
+            const response = await fetch(ocrUrl, {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.text && data.text.trim().length > 0) {
+                    console.log(`✅ Local PaddleOCR succeeded (${data.linesCount || 0} lines extracted)`);
+                    return data.text;
+                }
+            }
+        } catch (paddleErr) {
+            console.warn("⚠️ Local PaddleOCR service not available or timed out, falling back to Tesseract.js...", paddleErr);
+        }
+
+        // 3. Fallback về Tesseract.js nếu Local PaddleOCR chưa được bật
+        console.log("Running Tesseract OCR fallback on processed image...");
+        const result = await Tesseract.recognize(processedBuffer, "vie");
         return result.data.text;
     } catch (error) {
         console.error("Lỗi khi OCR ảnh:", error);
@@ -325,9 +400,14 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
 
         const prompt = buildMultiSubjectPrompt("single");
 
+        let finalBuffer = buffer;
+        if (mimeType.startsWith("image/")) {
+            finalBuffer = await optimizeImageForOCR(buffer);
+        }
+
         const filePart = {
             inlineData: {
-                data: buffer.toString("base64"),
+                data: finalBuffer.toString("base64"),
                 mimeType: mimeType
             }
         };

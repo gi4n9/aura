@@ -2,15 +2,19 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
 import { Globe, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
+  const { theme } = useTheme();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isDark = theme === "dark";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -39,11 +43,15 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors border border-stone-200 focus:outline-none"
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border focus:outline-none transition-all duration-300 ${
+          isDark
+            ? "bg-white/10 text-stone-300 border-white/10 hover:bg-white/15 hover:text-white"
+            : "bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200/80"
+        }`}
         title="Đổi ngôn ngữ / Change language"
         aria-label="Select language"
       >
-        <Globe size={14} className="text-teal-600" />
+        <Globe size={14} className={isDark ? "text-[#C5A059]" : "text-teal-600"} />
         <span>{currentOption.flag} {currentOption.code.toUpperCase()}</span>
       </button>
 
@@ -54,7 +62,11 @@ export default function LanguageSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-stone-100 overflow-hidden z-50 py-1"
+            className={`absolute right-0 mt-2 w-40 rounded-xl border overflow-hidden z-50 py-1 shadow-xl ${
+              isDark
+                ? "bg-[#0e0e0e] border-white/10 text-white"
+                : "bg-white border-stone-200 text-stone-900"
+            }`}
           >
             {options.map((option) => (
               <button
@@ -62,15 +74,21 @@ export default function LanguageSwitcher() {
                 onClick={() => handleSelectLanguage(option.code)}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-medium transition-colors ${
                   language === option.code
-                    ? "bg-teal-50 text-teal-800 font-semibold"
-                    : "text-stone-700 hover:bg-stone-50"
+                    ? isDark
+                      ? "bg-[#C5A059]/15 text-[#C5A059] font-semibold"
+                      : "bg-teal-50 text-teal-800 font-semibold"
+                    : isDark
+                      ? "text-stone-300 hover:bg-white/5"
+                      : "text-stone-700 hover:bg-stone-50"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-base">{option.flag}</span>
                   <span>{option.label}</span>
                 </div>
-                {language === option.code && <Check size={14} className="text-teal-600" />}
+                {language === option.code && (
+                  <Check size={14} className={isDark ? "text-[#C5A059]" : "text-teal-600"} />
+                )}
               </button>
             ))}
           </motion.div>

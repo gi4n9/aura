@@ -43,3 +43,24 @@ next-env.d.ts
 /lib/generated/prisma
 
 /.agents
+
+# Python & Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# PaddleOCR Models & Cache
+.paddleocr/
+*.pdmodel
+*.pdiparams
+*.pdiparams.info

@@ -15,29 +15,32 @@ import {
   UserCog,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
+import { toast } from "sonner";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Role = "ADMIN" | "INSTRUCTOR" | "STUDENT";
 
 export default function DashboardSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   // Menu cho Admin
   const adminLinks = [
-    { name: "Tổng quan", href: "/admin", icon: LayoutDashboard },
-    { name: "Quản lý Users", href: "/admin/users", icon: Users },
-    { name: "Quản lý Khóa học", href: "/admin/courses", icon: BookOpen },
-    { name: "Quản lý Danh mục", href: "/admin/categories", icon: Tag },
-    { name: "Cài đặt", href: "/admin/settings", icon: Settings },
-    { name: "Thông tin quản trị", href: "/admin/profile", icon: UserCog },
+    { name: t("adminPortal.dashboard", "Tổng quan"), href: "/admin", icon: LayoutDashboard },
+    { name: t("adminPortal.users", "Quản lý Users"), href: "/admin/users", icon: Users },
+    { name: t("adminPortal.courses", "Quản lý Khóa học"), href: "/admin/courses", icon: BookOpen },
+    { name: t("categories.title", "Quản lý Danh mục"), href: "/admin/categories", icon: Tag },
+    { name: t("adminPortal.settings", "Cài đặt"), href: "/admin/settings", icon: Settings },
+    { name: t("nav.profile", "Thông tin quản trị"), href: "/admin/profile", icon: UserCog },
   ];
 
   // Menu cho Instructor
   const instructorLinks = [
-    { name: "Thống kê", href: "/instructor", icon: LayoutDashboard },
-    { name: "Kho bài giảng", href: "/instructor/courses", icon: Video },
+    { name: t("adminPortal.analytics", "Thống kê"), href: "/instructor", icon: LayoutDashboard },
+    { name: t("nav.myCourses", "Kho bài giảng"), href: "/instructor/courses", icon: Video },
     { name: "Upload Video", href: "/instructor/upload", icon: UploadCloud },
-    { name: "Tin nhắn & Hỗ trợ", href: "/instructor/messages", icon: MessageSquare },
-    { name: "Thông tin cá nhân", href: "/instructor/profile", icon: Users }
+    { name: t("nav.messages", "Tin nhắn & Hỗ trợ"), href: "/instructor/messages", icon: MessageSquare },
+    { name: t("nav.profile", "Thông tin cá nhân"), href: "/instructor/profile", icon: Users }
   ];
 
   const links = role === "ADMIN" ? adminLinks : instructorLinks;
@@ -72,11 +75,16 @@ export default function DashboardSidebar({ role }: { role: Role }) {
 
       <div className="p-4 border-t border-stone-800">
         <button
-          onClick={() => signOut()}
+          onClick={async () => {
+            const res = await signOut();
+            if (res?.success) {
+              toast.success(t("nav.logout", "Đã đăng xuất thành công"));
+            }
+          }}
           className="flex items-center gap-3 px-4 py-3 w-full rounded-xl hover:bg-red-900/20 text-stone-400 hover:text-red-500 transition-colors"
         >
           <LogOut size={20} />
-          Đăng xuất
+          {t("nav.logout", "Đăng xuất")}
         </button>
       </div>
     </div>
