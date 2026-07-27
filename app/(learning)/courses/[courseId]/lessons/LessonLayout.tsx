@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getOrCreateConversation } from "@/app/actions/chat";
 import CourseSidebar from "@/app/components/CourseSidebar";
 import VideoPlayer, { VideoPlayerHandle } from "@/app/components/VideoPlayer";
-import QuizPlayer from "../../../../components/courseComponents/QuizPlayer";
+import QuizPlayer from "@/app/components/courseComponents/QuizPlayer";
 import TranscriptTimeline from "@/app/components/TranscriptTimeline";
 import JarvisAssistant from "@/app/components/ai/JarvisAssistant";
 import MindmapView from "@/app/components/ai/MindmapView";
@@ -164,21 +164,18 @@ export default function LessonLayout({
     };
 
     return (
-        <div className={`flex h-screen w-full transition-colors duration-500 overflow-hidden ${
-            isDark ? "bg-[#080808] text-white" : "bg-[#F4F3EE] text-stone-900"
-        }`}>
+        <div className={`flex h-screen w-full transition-colors duration-500 overflow-hidden ${isDark ? "bg-[#080808] text-white" : "bg-[#F4F3EE] text-stone-900"
+            }`}>
 
             {/* --- 1. LEFT SIDEBAR (Collapsible Course Tree) --- */}
             <div
-                className={`flex-shrink-0 border-r transition-all duration-300 ease-in-out relative ${
-                    isSidebarOpen ? "w-80" : "w-0 opacity-0 overflow-hidden"
-                } ${isDark ? "bg-[#0e0e0e] border-white/10" : "bg-white border-stone-200"}`}
+                className={`flex-shrink-0 border-r transition-all duration-300 ease-in-out relative ${isSidebarOpen ? "w-80" : "w-0 opacity-0 overflow-hidden"
+                    } ${isDark ? "bg-[#0e0e0e] border-white/10" : "bg-white border-stone-200"}`}
             >
                 <div className="h-full overflow-y-auto custom-scrollbar">
                     {/* Back link */}
-                    <div className={`p-4 border-b sticky top-0 z-10 backdrop-blur-md ${
-                        isDark ? "border-white/10 bg-[#0e0e0e]/90" : "border-stone-200 bg-white/90"
-                    }`}>
+                    <div className={`p-4 border-b sticky top-0 z-10 backdrop-blur-md ${isDark ? "border-white/10 bg-[#0e0e0e]/90" : "border-stone-200 bg-white/90"
+                        }`}>
                         <Link
                             href={`/courses/${course.id}`}
                             className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059] hover:underline"
@@ -190,7 +187,7 @@ export default function LessonLayout({
                     <CourseSidebar
                         courseId={course.id}
                         chapters={course.chapters}
-                        currentVideoId={lesson.youtubeVideoId || ""}
+                        currentVideoId={lesson.id}
                         allVideoProgress={allVideoProgress}
                         allQuizResults={allQuizResults}
                     />
@@ -201,22 +198,19 @@ export default function LessonLayout({
             <div className="flex-1 flex flex-col min-w-0 h-full">
 
                 {/* Top Control Bar (Cleanly Separated Top Workspace Header) */}
-                <div className={`h-16 border-b flex items-center justify-between px-6 flex-shrink-0 backdrop-blur-md z-30 shadow-sm ${
-                    isDark ? "bg-[#0e0e0e]/95 border-white/10 text-white" : "bg-white/95 border-stone-200 text-stone-900"
-                }`}>
+                <div className={`h-16 border-b flex items-center justify-between px-6 flex-shrink-0 backdrop-blur-md z-30 shadow-sm ${isDark ? "bg-[#0e0e0e]/95 border-white/10 text-white" : "bg-white/95 border-stone-200 text-stone-900"
+                    }`}>
                     <div className="flex items-center gap-3 min-w-0">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className={`p-2 rounded-xl transition-colors shrink-0 ${
-                                isDark ? "hover:bg-white/10 text-stone-300" : "hover:bg-stone-100 text-stone-600"
-                            }`}
+                            className={`p-2 rounded-xl transition-colors shrink-0 ${isDark ? "hover:bg-white/10 text-stone-300" : "hover:bg-stone-100 text-stone-600"
+                                }`}
                             title={isSidebarOpen ? t("course.collapseSidebar", "Thu gọn danh sách bài") : t("course.expandSidebar", "Mở danh sách bài")}
                         >
                             {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                         </button>
-                        <h1 className={`font-serif font-bold text-base md:text-lg truncate ${
-                            isDark ? "text-white" : "text-stone-900"
-                        }`}>
+                        <h1 className={`font-serif font-bold text-base md:text-lg truncate ${isDark ? "text-white" : "text-stone-900"
+                            }`}>
                             {lesson.title}
                         </h1>
                     </div>
@@ -230,11 +224,10 @@ export default function LessonLayout({
                             <button
                                 onClick={handleChatWithInstructor}
                                 disabled={isCreatingChat}
-                                className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${
-                                    isDark
+                                className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${isDark
                                         ? "bg-white/10 text-stone-200 border-white/10 hover:bg-[#C5A059] hover:text-[#080808]"
                                         : "bg-stone-100 text-stone-700 border-stone-200 hover:bg-[#C5A059] hover:text-white"
-                                } disabled:opacity-50`}
+                                    } disabled:opacity-50`}
                                 title={`Nhắn tin với giảng viên: ${course.instructor.fullName}`}
                             >
                                 {isCreatingChat ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
@@ -245,13 +238,12 @@ export default function LessonLayout({
                         {/* Focus / Video Mode Toggle Button */}
                         <button
                             onClick={() => setIsVideoVisible(!isVideoVisible)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
-                                !isVideoVisible
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-md ${!isVideoVisible
                                     ? "bg-[#C5A059] text-[#080808] hover:bg-[#e9c176]"
                                     : isDark
-                                    ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
-                                    : "bg-stone-900 text-white hover:bg-stone-800"
-                            }`}
+                                        ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                                        : "bg-stone-900 text-white hover:bg-stone-800"
+                                }`}
                         >
                             {!isVideoVisible ? (
                                 <><Maximize2 size={14} /> {t("course.showVideo", "Hiện Video")}</>
@@ -266,9 +258,8 @@ export default function LessonLayout({
                 <div className="flex-1 flex overflow-hidden">
 
                     {/* --- CENTER COLUMN: VIDEO & TIMELINE --- */}
-                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 transition-all duration-300 ${
-                        !isVideoVisible ? "hidden" : ""
-                    } ${!isSidebarOpen ? "min-w-0" : "min-w-[360px]"}`}>
+                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 transition-all duration-300 ${!isVideoVisible ? "hidden" : ""
+                        } ${!isSidebarOpen ? "min-w-0" : "min-w-[360px]"}`}>
                         <div className="max-w-4xl mx-auto space-y-8">
                             {/* Video Player */}
                             <div ref={videoContainerRef} className="transition-all duration-500">
@@ -282,12 +273,10 @@ export default function LessonLayout({
                             </div>
 
                             {/* Timeline Section */}
-                            <div className={`p-6 rounded-3xl transition-all liquid-glass ${
-                                isDark ? "text-white" : "text-stone-900 shadow-md"
-                            }`}>
-                                <h3 className={`font-serif text-lg font-bold mb-4 flex items-center gap-2 ${
-                                    isDark ? "text-white" : "text-stone-900"
+                            <div className={`p-6 rounded-3xl transition-all liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-md"
                                 }`}>
+                                <h3 className={`font-serif text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-stone-900"
+                                    }`}>
                                     <Clock size={20} className="text-[#C5A059]" />
                                     {t("course.timeline", "Mốc thời gian bài giảng")}
                                 </h3>
@@ -308,9 +297,8 @@ export default function LessonLayout({
                             ${isDragging ? '!bg-[#C5A059]' : ''}`}
                     >
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shadow-md ${
-                                isDark ? "bg-[#0e0e0e] border-white/20 text-[#C5A059]" : "bg-white border-stone-300 text-stone-700"
-                            }`}>
+                            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shadow-md ${isDark ? "bg-[#0e0e0e] border-white/20 text-[#C5A059]" : "bg-white border-stone-300 text-stone-700"
+                                }`}>
                                 <MoveHorizontal size={14} />
                             </div>
                         </div>
@@ -318,65 +306,59 @@ export default function LessonLayout({
 
                     {/* --- RIGHT COLUMN: QUIZ / AI / MINDMAP / FLASHCARDS --- */}
                     <div
-                        className={`border-l flex flex-col transition-all ease-in-out ${
-                            isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
-                        } ${!isVideoVisible
-                            ? "w-full flex-1 duration-300"
-                            : !isSidebarOpen
-                                ? "flex-1 min-w-0 duration-300"
-                                : "flex-shrink-0 duration-0"
-                        }`}
+                        className={`border-l flex flex-col transition-all ease-in-out ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
+                            } ${!isVideoVisible
+                                ? "w-full flex-1 duration-300"
+                                : !isSidebarOpen
+                                    ? "flex-1 min-w-0 duration-300"
+                                    : "flex-shrink-0 duration-0"
+                            }`}
                         style={isVideoVisible && isSidebarOpen ? { width: `${quizPanelWidth}px` } : undefined}
                     >
                         {/* Right Panel Tabs */}
-                        <div className={`flex border-b overflow-x-auto custom-scrollbar ${
-                            isDark ? "bg-white/5 border-white/10" : "bg-stone-100/80 border-stone-200"
-                        }`}>
+                        <div className={`flex border-b overflow-x-auto custom-scrollbar ${isDark ? "bg-white/5 border-white/10" : "bg-stone-100/80 border-stone-200"
+                            }`}>
                             <button
                                 onClick={() => setActiveTab('quiz')}
-                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
-                                    activeTab === 'quiz'
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${activeTab === 'quiz'
                                         ? isDark
                                             ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
                                             : 'bg-white text-stone-900 border-b-2 border-[#C5A059]'
                                         : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                                }`}
+                                    }`}
                             >
                                 <CheckCircle size={16} /> <span className="hidden xl:inline">{t("course.quizTab", "Bài tập")}</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('ai')}
-                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
-                                    activeTab === 'ai'
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${activeTab === 'ai'
                                         ? isDark
                                             ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
                                             : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
                                         : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                                }`}
+                                    }`}
                             >
                                 <Sparkles size={16} /> <span className="hidden xl:inline">AI Tutor</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('mindmap')}
-                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
-                                    activeTab === 'mindmap'
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${activeTab === 'mindmap'
                                         ? isDark
                                             ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
                                             : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
                                         : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                                }`}
+                                    }`}
                             >
                                 <Workflow size={16} /> <span className="hidden xl:inline">Mindmap</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('flashcards')}
-                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
-                                    activeTab === 'flashcards'
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${activeTab === 'flashcards'
                                         ? isDark
                                             ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
                                             : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
                                         : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                                }`}
+                                    }`}
                             >
                                 <Brain size={16} /> <span className="hidden xl:inline">Flashcards</span>
                             </button>

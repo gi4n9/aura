@@ -200,8 +200,8 @@ export default function QuizPlayer({
             return answers[qId]?.selectedOption === optionPrefix
                 ? "bg-[#C5A059] text-[#080808] border-[#C5A059] font-bold shadow-md"
                 : isDark
-                ? "bg-white/5 hover:bg-white/10 border-white/10 text-white"
-                : "bg-white hover:bg-stone-100 border-stone-200 text-stone-900";
+                    ? "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+                    : "bg-white hover:bg-stone-100 border-stone-200 text-stone-900";
         }
 
         const feedback = result.feedback.find((f: any) => f.questionId === qId);
@@ -229,11 +229,10 @@ export default function QuizPlayer({
         <div className="space-y-8 py-4 font-sans">
             {/* RESULT HEADER */}
             {result && (
-                <div className={`p-6 rounded-3xl text-center border-2 transition-all ${
-                    result.score >= 50
-                        ? isDark ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-900"
-                        : isDark ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-red-50 border-red-300 text-red-900"
-                }`}>
+                <div className={`p-6 rounded-3xl text-center border-2 transition-all ${result.score >= 50
+                    ? isDark ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-900"
+                    : isDark ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-red-50 border-red-300 text-red-900"
+                    }`}>
                     <h3 className="text-2xl font-serif font-bold mb-1">
                         Kết quả: {result.score ?? 0}/100 điểm
                     </h3>
@@ -251,9 +250,8 @@ export default function QuizPlayer({
                 return (
                     <div key={q.id} className="space-y-4">
                         {isFirstInPassage && (
-                            <div className={`p-6 rounded-3xl border transition-all ${
-                                isDark ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-stone-200" : "bg-amber-50 border-amber-200 text-stone-900"
-                            }`}>
+                            <div className={`p-6 rounded-3xl border transition-all ${isDark ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-stone-200" : "bg-amber-50 border-amber-200 text-stone-900"
+                                }`}>
                                 <h4 className="font-serif font-bold text-[#C5A059] mb-2 flex items-center gap-2">
                                     <BookOpen size={18} />
                                     {q.passage!.title || "Ngữ liệu đọc hiểu"}
@@ -266,9 +264,8 @@ export default function QuizPlayer({
                             </div>
                         )}
 
-                        <div className={`p-6 rounded-3xl border transition-all shadow-sm ${
-                            isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
-                        }`}>
+                        <div className={`p-6 rounded-3xl border transition-all shadow-sm ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
+                            }`}>
                             <div className="flex justify-between items-start gap-4 mb-5 min-w-0">
                                 <div className="flex gap-3 items-start w-full min-w-0 flex-wrap">
                                     <div className="flex flex-row gap-2 items-center shrink-0">
@@ -294,9 +291,8 @@ export default function QuizPlayer({
                                                 <img src={q.contentImageUrl} alt="Question image" className="max-h-60 rounded-2xl border border-stone-500/20 object-contain" />
                                             </div>
                                         )}
-                                        <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${
-                                            isDark ? "text-white" : "text-stone-900"
-                                        }`}>
+                                        <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${isDark ? "text-white" : "text-stone-900"
+                                            }`}>
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                                 {q.content}
                                             </ReactMarkdown>
@@ -341,9 +337,8 @@ export default function QuizPlayer({
                                         const subFb = feedback?.subItemFeedback?.[sub.id];
 
                                         return (
-                                            <div key={sub.id} className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                                                isDark ? "bg-white/5 border-white/10" : "bg-stone-50 border-stone-200"
-                                            }`}>
+                                            <div key={sub.id} className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50 border-stone-200"
+                                                }`}>
                                                 <div className="text-sm font-medium flex-1">
                                                     <span className="font-bold text-[#C5A059] mr-2">{sub.label}.</span>
                                                     <span>{sub.content}</span>
@@ -352,22 +347,20 @@ export default function QuizPlayer({
                                                     <button
                                                         disabled={!!result}
                                                         onClick={() => handleSubItemSelect(q.id, sub.id, true)}
-                                                        className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                                                            userSubAns === true
-                                                                ? "bg-emerald-500 text-white border-emerald-500"
-                                                                : isDark ? "bg-white/5 border-white/10 text-stone-300" : "bg-white border-stone-200 text-stone-700"
-                                                        }`}
+                                                        className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${userSubAns === true
+                                                            ? "bg-emerald-500 text-white border-emerald-500"
+                                                            : isDark ? "bg-white/5 border-white/10 text-stone-300" : "bg-white border-stone-200 text-stone-700"
+                                                            }`}
                                                     >
                                                         Đúng
                                                     </button>
                                                     <button
                                                         disabled={!!result}
                                                         onClick={() => handleSubItemSelect(q.id, sub.id, false)}
-                                                        className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                                                            userSubAns === false
-                                                                ? "bg-red-500 text-white border-red-500"
-                                                                : isDark ? "bg-white/5 border-white/10 text-stone-300" : "bg-white border-stone-200 text-stone-700"
-                                                        }`}
+                                                        className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${userSubAns === false
+                                                            ? "bg-red-500 text-white border-red-500"
+                                                            : isDark ? "bg-white/5 border-white/10 text-stone-300" : "bg-white border-stone-200 text-stone-700"
+                                                            }`}
                                                     >
                                                         Sai
                                                     </button>
@@ -387,12 +380,11 @@ export default function QuizPlayer({
                                     })}
                                 </div>
                             )}
-
-                            {/* ESSAY QUESTION UI */}
-                            {q.type === "ESSAY" && (
+                            {/* READING COMPREHENSION */}
+                            {q.type === "READING_COMPREHENSION" && (
                                 <div className="space-y-4 mt-4">
                                     <label className={`text-xs font-bold uppercase tracking-wider block ${isDark ? "text-stone-400" : "text-stone-600"}`}>
-                                        Câu trả lời tự luận của bạn:
+                                        Câu trả lời đọc hiểu của bạn:
                                     </label>
                                     <textarea
                                         disabled={!!result}
@@ -400,11 +392,10 @@ export default function QuizPlayer({
                                         onChange={(e) => handleTextChange(q.id, e.target.value)}
                                         placeholder="Nhập chi tiết câu trả lời của bạn tại đây..."
                                         rows={5}
-                                        className={`w-full p-4 rounded-2xl border transition-all text-sm font-medium focus:outline-none focus:border-[#C5A059] ${
-                                            isDark
-                                                ? "bg-white/5 border-white/10 text-white placeholder-stone-500"
-                                                : "bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400"
-                                        }`}
+                                        className={`w-full p-4 rounded-2xl border transition-all text-sm font-medium focus:outline-none focus:border-[#C5A059] ${isDark
+                                            ? "bg-white/5 border-white/10 text-white placeholder-stone-500"
+                                            : "bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400"
+                                            }`}
                                     />
 
                                     {/* File Attachments Section */}
@@ -412,9 +403,8 @@ export default function QuizPlayer({
                                         {parseFileUrls(answers[q.id]?.fileUrl).length > 0 && (
                                             <div className="flex flex-wrap gap-2">
                                                 {parseFileUrls(answers[q.id]?.fileUrl).map((url, idx) => (
-                                                    <div key={idx} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium ${
-                                                        isDark ? "bg-white/10 border-white/10 text-stone-200" : "bg-stone-100 border-stone-200 text-stone-700"
-                                                    }`}>
+                                                    <div key={idx} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium ${isDark ? "bg-white/10 border-white/10 text-stone-200" : "bg-stone-100 border-stone-200 text-stone-700"
+                                                        }`}>
                                                         <FileText size={14} className="text-[#C5A059]" />
                                                         <a href={url} target="_blank" rel="noreferrer" className="hover:underline truncate max-w-[200px]">
                                                             File đính kèm #{idx + 1}
@@ -435,11 +425,77 @@ export default function QuizPlayer({
 
                                         {!result && (
                                             <div className="flex items-center gap-3">
-                                                <label className={`cursor-pointer px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${
-                                                    uploadingFiles[q.id] ? "opacity-50 pointer-events-none" : ""
-                                                } ${
-                                                    isDark ? "bg-white/5 hover:bg-white/10 border-white/10 text-stone-300" : "bg-white hover:bg-stone-50 border-stone-200 text-stone-700"
-                                                }`}>
+                                                <label className={`cursor-pointer px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${uploadingFiles[q.id] ? "opacity-50 pointer-events-none" : ""
+                                                    } ${isDark ? "bg-white/5 hover:bg-white/10 border-white/10 text-stone-300" : "bg-white hover:bg-stone-50 border-stone-200 text-stone-700"
+                                                    }`}>
+                                                    {uploadingFiles[q.id] ? (
+                                                        <Loader2 size={14} className="animate-spin text-[#C5A059]" />
+                                                    ) : (
+                                                        <FileText size={14} className="text-[#C5A059]" />
+                                                    )}
+                                                    <span>{uploadingFiles[q.id] ? "Đang tải file lên..." : "Đính kèm file bài làm (Ảnh/PDF)"}</span>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        accept="image/*,.pdf,.doc,.docx,.txt"
+                                                        className="hidden"
+                                                        onChange={(e) => e.target.files && handleFileUpload(q.id, e.target.files)}
+                                                    />
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ESSAY QUESTION UI */}
+                            {q.type === "ESSAY" && (
+                                <div className="space-y-4 mt-4">
+                                    <label className={`text-xs font-bold uppercase tracking-wider block ${isDark ? "text-stone-400" : "text-stone-600"}`}>
+                                        Câu trả lời tự luận của bạn:
+                                    </label>
+                                    <textarea
+                                        disabled={!!result}
+                                        value={answers[q.id]?.answerText || ""}
+                                        onChange={(e) => handleTextChange(q.id, e.target.value)}
+                                        placeholder="Nhập chi tiết câu trả lời của bạn tại đây..."
+                                        rows={5}
+                                        className={`w-full p-4 rounded-2xl border transition-all text-sm font-medium focus:outline-none focus:border-[#C5A059] ${isDark
+                                            ? "bg-white/5 border-white/10 text-white placeholder-stone-500"
+                                            : "bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400"
+                                            }`}
+                                    />
+
+                                    {/* File Attachments Section */}
+                                    <div className="space-y-3">
+                                        {parseFileUrls(answers[q.id]?.fileUrl).length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {parseFileUrls(answers[q.id]?.fileUrl).map((url, idx) => (
+                                                    <div key={idx} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium ${isDark ? "bg-white/10 border-white/10 text-stone-200" : "bg-stone-100 border-stone-200 text-stone-700"
+                                                        }`}>
+                                                        <FileText size={14} className="text-[#C5A059]" />
+                                                        <a href={url} target="_blank" rel="noreferrer" className="hover:underline truncate max-w-[200px]">
+                                                            File đính kèm #{idx + 1}
+                                                        </a>
+                                                        {!result && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveFile(q.id, url)}
+                                                                className="text-red-400 hover:text-red-600 p-0.5"
+                                                            >
+                                                                <Trash size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {!result && (
+                                            <div className="flex items-center gap-3">
+                                                <label className={`cursor-pointer px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${uploadingFiles[q.id] ? "opacity-50 pointer-events-none" : ""
+                                                    } ${isDark ? "bg-white/5 hover:bg-white/10 border-white/10 text-stone-300" : "bg-white hover:bg-stone-50 border-stone-200 text-stone-700"
+                                                    }`}>
                                                     {uploadingFiles[q.id] ? (
                                                         <Loader2 size={14} className="animate-spin text-[#C5A059]" />
                                                     ) : (
@@ -472,18 +528,16 @@ export default function QuizPlayer({
                                         value={answers[q.id]?.answerText || ""}
                                         onChange={(e) => handleTextChange(q.id, e.target.value)}
                                         placeholder="Nhập từ hoặc cụm từ..."
-                                        className={`w-full p-4 rounded-2xl border transition-all text-sm font-medium focus:outline-none focus:border-[#C5A059] ${
-                                            isDark
-                                                ? "bg-white/5 border-white/10 text-white placeholder-stone-500"
-                                                : "bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400"
-                                        }`}
+                                        className={`w-full p-4 rounded-2xl border transition-all text-sm font-medium focus:outline-none focus:border-[#C5A059] ${isDark
+                                            ? "bg-white/5 border-white/10 text-white placeholder-stone-500"
+                                            : "bg-stone-50 border-stone-200 text-stone-900 placeholder-stone-400"
+                                            }`}
                                     />
                                     {result && feedback && (
-                                        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 text-sm font-medium ${
-                                            feedback.isCorrect
-                                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                                : "bg-red-500/10 border-red-500/30 text-red-400"
-                                        }`}>
+                                        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 text-sm font-medium ${feedback.isCorrect
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                            : "bg-red-500/10 border-red-500/30 text-red-400"
+                                            }`}>
                                             <div className="flex items-center gap-2">
                                                 {feedback.isCorrect ? <CheckCircle size={18} /> : <XCircle size={18} />}
                                                 <span>{feedback.isCorrect ? "Đáp án chính xác!" : `Đáp án đúng: ${feedback.correctAnswer || q.correctAnswer || "N/A"}`}</span>
@@ -498,9 +552,8 @@ export default function QuizPlayer({
                                 <div className="space-y-4 mt-6 pt-6 border-t border-dashed border-stone-500/20">
                                     {/* Essay Status Notice */}
                                     {q.type === "ESSAY" && (
-                                        <div className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-medium ${
-                                            isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-900"
-                                        }`}>
+                                        <div className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-medium ${isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-900"
+                                            }`}>
                                             <Clock size={16} className="text-[#C5A059] flex-shrink-0" />
                                             <span>⏳ Bài tự luận đã được nộp thành công. Giảng viên / AI sẽ hỗ trợ nhận xét và chấm điểm chi tiết.</span>
                                         </div>
@@ -508,9 +561,8 @@ export default function QuizPlayer({
 
                                     {/* Model Answer (Đáp án tham khảo / Bài mẫu) */}
                                     {(feedback?.modelAnswer || q.modelAnswer) && (
-                                        <div className={`p-5 rounded-2xl border ${
-                                            isDark ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-stone-200" : "bg-amber-50/70 border-amber-200 text-stone-900"
-                                        }`}>
+                                        <div className={`p-5 rounded-2xl border ${isDark ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-stone-200" : "bg-amber-50/70 border-amber-200 text-stone-900"
+                                            }`}>
                                             <div className="font-bold text-xs uppercase tracking-wider text-[#C5A059] mb-2 flex items-center gap-2">
                                                 <FileText size={16} />
                                                 <span>Đáp án tham khảo / Bài mẫu:</span>
@@ -537,9 +589,8 @@ export default function QuizPlayer({
 
                                     {/* AI Explanation / Hướng dẫn giải thích */}
                                     {(feedback?.explanation || q.aiExplanation) && (
-                                        <div className={`p-5 rounded-2xl border ${
-                                            isDark ? "bg-blue-500/10 border-blue-500/20 text-stone-200" : "bg-blue-50/70 border-blue-200 text-stone-900"
-                                        }`}>
+                                        <div className={`p-5 rounded-2xl border ${isDark ? "bg-blue-500/10 border-blue-500/20 text-stone-200" : "bg-blue-50/70 border-blue-200 text-stone-900"
+                                            }`}>
                                             <div className="font-bold text-xs uppercase tracking-wider text-blue-400 mb-2 flex items-center gap-2">
                                                 <Bot size={16} />
                                                 <span>Giải thích chi tiết:</span>
