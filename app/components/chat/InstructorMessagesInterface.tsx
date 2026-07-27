@@ -8,6 +8,7 @@ import { Search, Send, MoreVertical, Phone, Video, Info, ArrowLeft, Loader2, Che
 import Image from "next/image";
 import { format } from "date-fns";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import UserAvatar from "@/app/components/common/UserAvatar";
 
 // Types
 type ConversationInfo = {
@@ -412,12 +413,10 @@ export default function InstructorMessagesInterface({
                                     }`}
                                 >
                                     <div className="relative w-11 h-11 flex-shrink-0">
-                                        <Image
-                                            src={conv.isGroup ? (conv.avatarUrl || "https://placehold.co/100x100?text=G") : (conv.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U")}
-                                            alt="Avatar"
-                                            fill
-                                            unoptimized
-                                            className="rounded-full object-cover border border-stone-200"
+                                        <UserAvatar
+                                            src={conv.isGroup ? conv.avatarUrl : conv.otherUser?.avatarUrl}
+                                            name={conv.isGroup ? conv.name : conv.otherUser?.fullName}
+                                            size={44}
                                         />
                                         {!conv.isGroup && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>}
                                     </div>
@@ -457,12 +456,10 @@ export default function InstructorMessagesInterface({
                                 </button>
 
                                 <div className="relative w-10 h-10">
-                                    <Image
-                                        src={selectedConversation.isGroup ? (selectedConversation.avatarUrl || "https://placehold.co/100x100?text=G") : (selectedConversation.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U")}
-                                        alt="Avatar"
-                                        fill
-                                        unoptimized
-                                        className="rounded-full object-cover border border-stone-200"
+                                    <UserAvatar
+                                        src={selectedConversation.isGroup ? selectedConversation.avatarUrl : selectedConversation.otherUser?.avatarUrl}
+                                        name={selectedConversation.isGroup ? selectedConversation.name : selectedConversation.otherUser?.fullName}
+                                        size={40}
                                     />
                                 </div>
                                 <div>
@@ -547,16 +544,12 @@ export default function InstructorMessagesInterface({
                                     return (
                                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group mb-1`}>
                                             {!isMe && (
-                                                <div className="w-8 h-8 mr-2 flex-shrink-0 flex items-start mt-1">
-                                                    <div className="relative w-8 h-8">
-                                                        <Image
-                                                            src={msg.sender?.avatarUrl || selectedConversation?.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U"}
-                                                            alt="avt"
-                                                            fill
-                                                            unoptimized
-                                                            className="rounded-full object-cover border border-stone-200"
-                                                        />
-                                                    </div>
+                                                <div className="mr-2 flex-shrink-0 flex items-start mt-1">
+                                                    <UserAvatar
+                                                        src={msg.sender?.avatarUrl || selectedConversation?.otherUser?.avatarUrl}
+                                                        name={msg.sender?.fullName || selectedConversation?.otherUser?.fullName}
+                                                        size={32}
+                                                    />
                                                 </div>
                                             )}
 
@@ -605,15 +598,11 @@ export default function InstructorMessagesInterface({
                         {/* Typing Indicator */}
                         {isTyping && (
                             <div className="px-4 py-2 flex items-center gap-2 bg-stone-50/50">
-                                <div className="relative w-6 h-6">
-                                    <Image
-                                        src={selectedConversation?.otherUser?.avatarUrl || "https://placehold.co/100x100?text=U"}
-                                        alt="typing"
-                                        fill
-                                        unoptimized
-                                        className="rounded-full object-cover"
-                                    />
-                                </div>
+                                <UserAvatar
+                                    src={selectedConversation?.otherUser?.avatarUrl}
+                                    name={selectedConversation?.otherUser?.fullName}
+                                    size={24}
+                                />
                                 <div className="bg-stone-100 rounded-full px-4 py-1.5 flex items-center gap-1">
                                     <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                                     <span className="w-2 h-2 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>

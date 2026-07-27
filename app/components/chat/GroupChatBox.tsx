@@ -8,6 +8,7 @@ import { getMessages, sendMessage, getMessageById } from '@/app/actions/chat';
 import { createClient } from '@/utils/supabase/client';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useTheme } from '@/lib/theme/ThemeContext';
+import UserAvatar from '@/app/components/common/UserAvatar';
 
 export default function GroupChatBox({ groupId }: { groupId: string }) {
     const { t } = useLanguage();
@@ -290,14 +291,11 @@ export default function GroupChatBox({ groupId }: { groupId: string }) {
                                     )}
                                     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} group ${!hasMoreOld && index === 0 ? 'mt-auto' : ''}`}>
                                         {!isMine && (
-                                            <div className="w-8 h-8 mr-3 flex-shrink-0">
-                                                <Image
-                                                    src={msg.sender?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender?.fullName || 'User'}`}
-                                                    alt={msg.sender?.fullName || 'User'}
-                                                    width={32} height={32}
-                                                    className={`rounded-full object-cover w-full h-full border ${
-                                                        isDark ? "bg-stone-800 border-white/10" : "bg-white border-stone-200"
-                                                    }`}
+                                            <div className="mr-3 flex-shrink-0">
+                                                <UserAvatar
+                                                    src={msg.sender?.avatarUrl}
+                                                    name={msg.sender?.fullName}
+                                                    size={32}
                                                 />
                                             </div>
                                         )}
