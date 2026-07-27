@@ -13,7 +13,8 @@ import WorksheetUploader from "./WorksheetUploader";
 import AnswerKeyUploader from "./AnswerKeyUploader";
 import EssayGradingPanel from "./EssayGradingPanel";
 import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
-import FormattedMarkdown from "../common/FormattedMarkdown";
+import FormattedMarkdownForInstructors from "../common/FormattedMarkdownForInstructors";
+
 
 
 interface QuestionState {
@@ -63,8 +64,6 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
     const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("ALL");
 
     const handleUploadSuccess = () => {
-        // Tải lại trang hiện tại để có thể fetch lại list questions mới 
-        // Component này được sử dụng chung trong 2 routes, do đó dùng window.location.reload()
         window.location.reload();
     }
 
@@ -533,7 +532,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                     displayModelAnswer = obj.answer || "";
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) { }
 
                         return (
                             <div className="mb-6 p-4 bg-emerald-50/50 border border-emerald-200 rounded-lg">
@@ -565,14 +564,20 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                                 Tổng: {parsedRubric.totalScore || parsedRubric.score || 10}đ
                                             </span>
                                         </div>
+
                                         {parsedRubric.general && (
                                             <div>
                                                 <span className="font-bold text-slate-800 text-xs">Yêu cầu chung:</span>
-                                                <div className="text-xs mt-1 text-slate-700 pl-3 border-l-2 border-emerald-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                                    <FormattedMarkdown content={parsedRubric.general} />
+                                                {/* Đã xóa whitespace-pre-wrap và chuyển màu chữ vào className của component */}
+                                                <div className="mt-1 pl-3 border-l-2 border-emerald-300">
+                                                    <FormattedMarkdownForInstructors
+                                                        content={parsedRubric.general}
+                                                        className="text-slate-700 text-xs font-medium"
+                                                    />
                                                 </div>
                                             </div>
                                         )}
+
                                         {parsedRubric.criteria && parsedRubric.criteria.length > 0 && (
                                             <div className="space-y-2">
                                                 <span className="font-bold text-slate-800 text-xs">Tiêu chí chi tiết:</span>
@@ -580,12 +585,20 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                                     {parsedRubric.criteria.map((c: any, cIdx: number) => (
                                                         <div key={cIdx} className="flex justify-between items-start bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-100 text-xs">
                                                             <div className="flex-1 pr-4">
-                                                                <span className="font-bold text-emerald-900 mr-1.5 block mb-1">{c.label || `Ý ${cIdx + 1}`}:</span>
-                                                                <div className="text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">
-                                                                    <FormattedMarkdown content={c.description} />
+                                                                <span className="font-bold text-emerald-900 mr-1.5 block mb-1">
+                                                                    {c.label || `Ý ${cIdx + 1}`}:
+                                                                </span>
+                                                                {/* Đã xóa whitespace-pre-wrap */}
+                                                                <div>
+                                                                    <FormattedMarkdownForInstructors
+                                                                        content={c.description}
+                                                                        className="text-slate-800 font-medium"
+                                                                    />
                                                                 </div>
                                                             </div>
-                                                            <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">{c.score}đ</span>
+                                                            <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">
+                                                                {c.score}đ
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>

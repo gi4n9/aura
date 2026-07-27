@@ -47,9 +47,8 @@ export default function FormattedMarkdown({ content, className = "" }: Formatted
     const formattedContent = formatMarkdownText(content);
 
     return (
-        <div className={`prose prose-sm max-w-none leading-relaxed font-sans ${
-            isDark ? "text-stone-200 prose-invert" : "text-stone-800"
-        } ${className}`}>
+        <div className={`prose prose-sm max-w-none leading-relaxed font-sans ${isDark ? "text-white prose-invert" : "text-stone-800"
+            } ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -83,3 +82,6 @@ export default function FormattedMarkdown({ content, className = "" }: Formatted
         </div>
     );
 }
+
+
+

@@ -6,7 +6,7 @@ import {
     Network, Layers, LayoutDashboard
 } from "lucide-react";
 
-// Import đầy đủ các component (Đã sửa đổi thành QuizEditor)
+// Import các components
 import LessonVideoEditor from "./LessonVideoEditor";
 import QuizEditor from "./QuizEditor";
 import TranscriptEditor from "./TranscriptEditor";
@@ -100,7 +100,6 @@ export default function LessonManagerClient({
                                 Bạn có thể chỉnh sửa, thêm mới hoặc xóa bớt trước khi xuất bản.
                             </p>
                         </div>
-                        {/* Đã thay thế lại QuestionEditor bằng QuizEditor để có full feature */}
                         <QuizEditor lessonId={lessonId} initialQuestions={initialQuestions} initialDisplayMode={initialDisplayMode} transcript={initialTranscript} />
                     </div>
                 )}

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { parseFileUrls } from "@/app/utils/file-utils";
+import FormattedMarkdownForInstructors from "../common/FormattedMarkdownForInstructors";
 
 interface EssayQuestion {
     id: string;
@@ -101,7 +102,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
         setUploadingFile(prev => ({ ...prev, [questionId]: true }));
         try {
             const uploadedUrls: string[] = [];
-            
+
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 if (file.size > 10 * 1024 * 1024) {
@@ -121,7 +122,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                 const { data: publicUrlData } = supabase.storage
                     .from("quiz-attachments")
                     .getPublicUrl(fileName);
-                
+
                 uploadedUrls.push(publicUrlData.publicUrl);
             }
 
@@ -332,7 +333,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                     value={editingModelAnswer[q.id] ?? q.modelAnswer ?? ""}
                                     onChange={(e) => setEditingModelAnswer(prev => ({ ...prev, [q.id]: e.target.value }))}
                                     placeholder="Nhập đáp án mẫu, ý chính cần đạt, hoặc rubric chấm điểm (hỗ trợ Markdown)..."
-                                    className="w-full min-h-[120px] p-3 rounded-lg border border-indigo-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-y bg-white"
+                                    className="w-full min-h-[120px] p-3 rounded-lg border border-indigo-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-y bg-white text-black"
                                 />
                                 <div className="flex items-center gap-3 mt-2">
                                     <button
@@ -448,7 +449,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                     <h4 className="text-sm font-bold text-stone-800 mb-2 flex items-center gap-2">
                                         <User size={14} /> Bài làm của học viên
                                     </h4>
-                                    
+
                                     {/* Câu hỏi */}
                                     <div className="bg-stone-50 rounded-lg p-3.5 mb-3 text-sm text-stone-900 border border-stone-200 font-medium">
                                         <span className="font-bold text-stone-900">Câu hỏi: </span>
@@ -458,7 +459,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                     {/* Bài làm */}
                                     <div className="bg-white rounded-lg p-4 border border-stone-200 min-h-[200px] text-stone-900">
                                         {gradingSubmission.answerText ? (
-                                            <FormattedMarkdown content={gradingSubmission.answerText} className="text-stone-900" />
+                                            <FormattedMarkdownForInstructors content={gradingSubmission.answerText} className="text-stone-900" />
                                         ) : (
                                             <p className="text-sm text-stone-400 italic">Không có nội dung text.</p>
                                         )}
@@ -533,7 +534,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                                             <div>
                                                                 <span className="font-bold text-indigo-900 text-xs block mb-1">Yêu cầu chung:</span>
                                                                 <div className="text-stone-800 font-medium pl-2.5 border-l-2 border-indigo-300 leading-relaxed text-xs">
-                                                                    <FormattedMarkdown content={parsedRubric.general} />
+                                                                    <FormattedMarkdownForInstructors content={parsedRubric.general} />
                                                                 </div>
                                                             </div>
                                                         )}
@@ -544,7 +545,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                                                     <div key={idx} className="flex justify-between items-start bg-indigo-50/60 p-2.5 rounded-lg border border-indigo-100 text-stone-900 font-medium text-xs">
                                                                         <div className="flex-1 pr-3">
                                                                             <span className="font-bold text-indigo-900 block mb-1">{c.label || `Ý ${idx + 1}`}:</span>
-                                                                            <FormattedMarkdown content={c.description} />
+                                                                            <FormattedMarkdownForInstructors content={c.description} />
                                                                         </div>
                                                                         <span className="font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md shrink-0">{c.score}đ</span>
                                                                     </div>

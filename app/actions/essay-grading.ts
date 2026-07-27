@@ -102,6 +102,7 @@ export async function getEssaySubmissions(lessonId: string) {
             orderBy: { createdAt: "asc" }
         });
 
+
         return {
             success: true,
             data: essayQuestions.map(q => ({
@@ -128,6 +129,7 @@ export async function getEssaySubmissions(lessonId: string) {
                 }))
             }))
         };
+
     } catch (error: any) {
         console.error("getEssaySubmissions error:", error);
         return { success: false, error: error.message, data: null };
@@ -221,14 +223,14 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const base64 = buffer.toString("base64");
-        
+
         let contentType = response.headers.get("content-type") || "";
         contentType = contentType.split(";")[0].trim().toLowerCase();
-        
+
         let isPdf = false;
         let isImage = false;
         let mimeType = contentType;
-        
+
         const pathPart = url.split("?")[0].toLowerCase();
         if (contentType === "application/pdf" || pathPart.endsWith(".pdf")) {
             isPdf = true;
@@ -243,10 +245,10 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                 mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
             }
         }
-        
+
         const hash = getSha256(buffer);
         console.log(`🔑 File hash SHA-256: ${hash}`);
-        
+
         // 1. Kiểm tra Cache từ cơ sở dữ liệu
         const cached = await getCachedOcr(hash);
         if (cached) {
@@ -290,9 +292,9 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                 }
             }
         }
-        
+
         console.log(`🆕 Cache Miss for hash ${hash}. Parsing file content...`);
-        
+
         // 2. Xử lý file PDF
         if (isPdf) {
             const pdfParse = require("pdf-parse");
@@ -301,12 +303,12 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
             const textLength = text.trim().length;
             const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
             const vietnameseRatio = countVietnameseChars(text) / (textLength || 1);
-            
+
             console.log(`📊 PDF statistics: length=${textLength}, words=${wordCount}, vnRatio=${vietnameseRatio.toFixed(2)}`);
-            
+
             // Lưu vào DB Cache
             await setCachedOcr(hash, "pdf", text, { textLength, wordCount, vietnameseRatio });
-            
+
             if (textLength > 500 && wordCount > 100 && vietnameseRatio > 0.5) {
                 console.log(`✅ PDF text quality is GOOD. Using text only.`);
                 return { type: "text", text };
@@ -320,12 +322,12 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                 };
             }
         }
-        
+
         // 3. Xử lý file Ảnh
         if (isImage) {
             // Resize ảnh nếu vượt quá 2500px để tối ưu hiệu năng OCR
             const resizedBuffer = await resizeImageIfNeeded(buffer);
-            
+
             // Chạy Tesseract OCR kèm timeout 15 giây
             const runOcr = async () => {
                 const result = await Tesseract.recognize(resizedBuffer, "vie");
@@ -334,25 +336,25 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                     confidence: result.data.confidence || 0
                 };
             };
-            
+
             const ocrResult = await withTimeout(
                 runOcr(),
                 15000,
                 { text: "", confidence: 0 }
             );
-            
+
             const textLength = ocrResult.text.trim().length;
             const vietnameseRatio = countVietnameseChars(ocrResult.text) / (textLength || 1);
-            
+
             console.log(`📊 Image OCR statistics: confidence=${ocrResult.confidence}%, length=${textLength}, vnRatio=${vietnameseRatio.toFixed(2)}`);
-            
+
             // Lưu vào DB Cache
             await setCachedOcr(hash, "image", ocrResult.text, {
                 confidence: ocrResult.confidence,
                 textLength,
                 vietnameseRatio
             });
-            
+
             if (ocrResult.confidence > 80 && textLength > 500 && vietnameseRatio > 0.5) {
                 console.log(`✅ OCR confidence is HIGH (${ocrResult.confidence}%). Using text only.`);
                 return { type: "text", text: ocrResult.text };
@@ -375,7 +377,7 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                 };
             }
         }
-        
+
         // 4. Default fallback cho các file định dạng khác
         return {
             type: "file",
@@ -383,7 +385,7 @@ async function processFileForGrading(url: string): Promise<ProcessResult> {
                 inlineData: { data: base64, mimeType }
             }
         };
-        
+
     } catch (e: any) {
         console.error(`❌ Error in processFileForGrading for ${url}:`, e);
         // Fallback an toàn: Trả về file part gốc không OCR
@@ -440,7 +442,7 @@ export async function aiGradeEssay(submissionId: string) {
 
         // Tải và xử lý các file đáp án mẫu (nếu có) và file bài làm học sinh (nếu có)
         const modelAnswerUrls = parseFileUrls(question.modelAnswerFileUrl);
-        
+
         console.log(`🤖 [AI Grading] Starting hybrid processing for Submission ID: ${submissionId}`);
 
         // Xây dựng các tác vụ song song với giới hạn concurrency là 4
@@ -538,9 +540,9 @@ export async function aiGradeEssay(submissionId: string) {
 
         // Tạo mảng content chứa text prompt và các file base64 cần thiết (đáp án mẫu và bài làm của học sinh)
         const contentParts = [prompt, ...modelImageParts, ...studentImageParts];
-        
+
         console.log(`🧠 Calling Gemini 2.5 Flash with ${contentParts.length - 1} attachments (remaining files after hybrid OCR)...`);
-        
+
         const result = await model.generateContent(contentParts);
         const responseText = result.response.text();
 
