@@ -1,20 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-
+import { usePathname } from "next/navigation";
 import { MessageSquare, X, Send, Sparkles, Bot, Link as LinkIcon } from "lucide-react";
-
 import Link from "next/link";
-
 import { motion, AnimatePresence } from "framer-motion";
-
 import ReactMarkdown from "react-markdown";
-
 import { useChat } from "@ai-sdk/react";
-
 import { DefaultChatTransport } from "ai";
 
 export default function ChatBot() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState(""); // Quản lý input thủ công
   const [isMounted, setIsMounted] = useState(false);
@@ -22,6 +18,11 @@ export default function ChatBot() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Đóng/Ẩn ChatBot hoàn toàn trên các trang Admin và Instructor
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/instructor")) {
+    return null;
+  }
 
   // 2. Sử dụng hook useChat với cấu hình Transport
   const { messages, sendMessage, status } = useChat({

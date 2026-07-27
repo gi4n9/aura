@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { getMessages } from "@/app/actions/chat";
+import { getMessages, getMessageById } from "@/app/actions/chat";
 import { sendMessageEdge, sendMessageFallback } from "@/lib/edge-functions";
 import { Search, Send, MoreVertical, Phone, Video, Info, ArrowLeft, Loader2, Check, CheckCheck } from "lucide-react";
 import Image from "next/image";
@@ -123,9 +123,13 @@ export default function MessagesInterface({
 
     // REALTIME: Listen for new messages - Subscribe ONCE on mount
     useEffect(() => {
-        const handleNewMessage = (payload: any) => {
+        const handleNewMessage = async (payload: any) => {
             console.log("🔔 Realtime message received:", payload);
             const newMsg = payload.new as any;
+
+            // Fetch decrypted message from server
+            const fullMsg = await getMessageById(newMsg.id);
+            const displayContent = fullMsg ? fullMsg.content : newMsg.content;
 
             // 1. UPDATE MESSAGES WINDOW (nếu đang mở hội thoại này)
             if (selectedConvIdRef.current && newMsg.conversationId === selectedConvIdRef.current) {
@@ -133,17 +137,17 @@ export default function MessagesInterface({
                     if (prev.some(m => m.id === newMsg.id)) return prev;
 
                     const isMe = newMsg.senderId === currentUserIdRef.current;
-                    const senderInfo = isMe
+                    const senderInfo = fullMsg?.sender || (isMe
                         ? { id: currentUserIdRef.current, fullName: t("messages.you", "Bạn"), avatarUrl: null }
                         : {
                             id: selectedConversationRef.current?.otherUser?.id || "",
                             fullName: selectedConversationRef.current?.otherUser?.fullName || t("common.user", "Người dùng"),
                             avatarUrl: selectedConversationRef.current?.otherUser?.avatarUrl || null
-                        };
+                        });
 
                     return [...prev, {
                         id: newMsg.id,
-                        content: newMsg.content,
+                        content: displayContent,
                         senderId: newMsg.senderId,
                         createdAt: new Date(newMsg.createdAt),
                         isBotResponse: newMsg.isBotResponse,
@@ -160,7 +164,7 @@ export default function MessagesInterface({
 
                 const updatedConv = { ...prev[convIndex] };
                 updatedConv.lastMessage = {
-                    content: newMsg.content,
+                    content: displayContent,
                     createdAt: new Date(newMsg.createdAt),
                     isMine: newMsg.senderId === currentUserIdRef.current
                 };

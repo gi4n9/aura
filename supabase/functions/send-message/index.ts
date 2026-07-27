@@ -74,6 +74,35 @@ serve(async (req: Request) => {
       )
     }
 
+    // Helper: Encrypt message with Web Crypto API (AES-256-GCM)
+    async function encryptMessageWeb(plainText: string): Promise<string> {
+      if (!plainText || plainText.startsWith('enc:v1:')) return plainText;
+      try {
+        const secret = Deno.env.get('CHAT_ENCRYPTION_KEY') || Deno.env.get('NEXTAUTH_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'aura-default-encryption-salt-key-2026';
+        const keyData = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+        const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt']);
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encodedText = new TextEncoder().encode(plainText);
+        const encryptedBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encodedText);
+        
+        const encryptedBytes = new Uint8Array(encryptedBuffer);
+        const cipherBytes = encryptedBytes.slice(0, encryptedBytes.length - 16);
+        const tagBytes = encryptedBytes.slice(encryptedBytes.length - 16);
+        
+        const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+        const tagHex = Array.from(tagBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const cipherHex = Array.from(cipherBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        return `enc:v1:${ivHex}:${tagHex}:${cipherHex}`;
+      } catch (err) {
+        console.error('Edge function encryption failed:', err);
+        return plainText;
+      }
+    }
+
+    const encryptedContent = await encryptMessageWeb(content.trim());
+
     // Insert message into database
     // createdAt: uses PostgreSQL default (now()) - ensures correct ordering
     // updatedAt: must be provided (Prisma @updatedAt has no DB default)
@@ -83,7 +112,7 @@ serve(async (req: Request) => {
       .from('DirectMessage')
       .insert({
         id: messageId,
-        content: content.trim(),
+        content: encryptedContent,
         conversationId: conversationId,
         senderId: senderId,
         updatedAt: now,  // Required - no DB default
@@ -115,7 +144,7 @@ serve(async (req: Request) => {
         success: true, 
         message: {
           id: message.id,
-          content: message.content,
+          content: content.trim(),
           senderId: message.senderId,
           conversationId: message.conversationId,
           createdAt: message.createdAt,

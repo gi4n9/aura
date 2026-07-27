@@ -1,8 +1,9 @@
-export default function settingsAdminPage() {
-    return (
-        <div>
-            <h1>Settings Admin Page</h1>
-            {/* Nội dung trang quản trị cài đặt */}
-        </div>
-    );
+import { getSystemSettings } from "@/app/actions/admin-settings";
+import AdminSettingsClient from "@/app/components/admin/AdminSettingsClient";
+
+export default async function AdminSettingsPage() {
+  const result = await getSystemSettings();
+  const settings = result.success ? result.data : {};
+
+  return <AdminSettingsClient initialSettings={settings} />;
 }

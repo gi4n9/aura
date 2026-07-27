@@ -1,5 +1,6 @@
 import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
+import { decryptMessage } from "@/lib/security/chat-crypto";
 
 export async function GET(req: Request) {
     try {
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
         const formattedMessages = session.messages.map(msg => ({
             id: msg.id,
             role: msg.role as 'user' | 'assistant',
-            content: msg.content
+            content: decryptMessage(msg.content)
         }));
 
         return new Response(JSON.stringify({ messages: formattedMessages }), { status: 200 });

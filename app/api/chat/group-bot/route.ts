@@ -4,6 +4,7 @@ import Groq from "groq-sdk";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { createClient } from "@supabase/supabase-js";
+import { encryptMessage, decryptMessage } from "@/lib/security/chat-crypto";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
         `, queryEmbeddingString, conversationId);
 
         if (messageMatches.length > 0) {
-            messageContext = messageMatches.map(m => `[Past Question]\n${m.content}`).join("\n\n");
+            messageContext = messageMatches.map(m => `[Past Question]\n${decryptMessage(m.content)}`).join("\n\n");
             sources.push(...messageMatches.map(m => ({
                 type: 'qa',
                 messageId: m.id
@@ -189,7 +190,7 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
 
         const botMessage = await db.directMessage.create({
             data: {
-                content: aiAnswer,
+                content: encryptMessage(aiAnswer),
                 conversationId,
                 senderId: 'aura-bot',
                 isBotResponse: true,
@@ -197,10 +198,11 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
             }
         });
 
-        // Trigger Supabase Realtime via the Edge Function or Direct Insert (Direct Insert is fine, client listens to changes)
-
         return Response.json({
-            message: botMessage,
+            message: {
+                ...botMessage,
+                content: aiAnswer
+            },
             confidence
         });
 

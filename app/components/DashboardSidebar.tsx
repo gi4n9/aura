@@ -13,6 +13,11 @@ import {
   BookOpen,
   Tag,
   UserCog,
+  Building2,
+  CreditCard,
+  Cpu,
+  MessageCircle,
+  BarChart3,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { toast } from "sonner";
@@ -27,10 +32,15 @@ export default function DashboardSidebar({ role }: { role: Role }) {
   // Menu cho Admin
   const adminLinks = [
     { name: t("adminPortal.dashboard", "Tổng quan"), href: "/admin", icon: LayoutDashboard },
-    { name: t("adminPortal.users", "Quản lý Users"), href: "/admin/users", icon: Users },
-    { name: t("adminPortal.courses", "Quản lý Khóa học"), href: "/admin/courses", icon: BookOpen },
+    { name: t("adminPortal.users", "Người dùng & RBAC"), href: "/admin/users", icon: Users },
+    { name: t("adminPortal.organizations", "Tổ chức / Trường học"), href: "/admin/organizations", icon: Building2 },
+    { name: t("adminPortal.courses", "Khóa học & Kiểm duyệt"), href: "/admin/courses", icon: BookOpen },
     { name: t("categories.title", "Quản lý Danh mục"), href: "/admin/categories", icon: Tag },
-    { name: t("adminPortal.settings", "Cài đặt"), href: "/admin/settings", icon: Settings },
+    { name: t("adminPortal.finances", "Tài chính & Giao dịch"), href: "/admin/finances", icon: CreditCard },
+    { name: t("adminPortal.aiOps", "Giám sát AI & DevOps"), href: "/admin/ai-ops", icon: Cpu },
+    { name: t("adminPortal.community", "Cộng đồng & Nhóm Chat"), href: "/admin/community", icon: MessageCircle },
+    { name: t("adminPortal.analytics", "Báo cáo & Phân tích"), href: "/admin/analytics", icon: BarChart3 },
+    { name: t("adminPortal.settings", "Cài đặt Hệ thống"), href: "/admin/settings", icon: Settings },
     { name: t("nav.profile", "Thông tin quản trị"), href: "/admin/profile", icon: UserCog },
   ];
 

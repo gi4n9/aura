@@ -857,3 +857,13 @@ model LectureSegment {
   @@index([scriptId])
 }
 
+// ================= 8. SYSTEM SETTINGS =================
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  category  String   @default("GENERAL")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+

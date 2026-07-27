@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { UserRole, CourseStatus } from "@prisma/client";
 
@@ -222,15 +223,55 @@ export async function deleteUser(userId: string) {
       return { success: false, error: "Không thể tự xóa tài khoản của mình" };
     }
 
-    // Xóa profile (Supabase auth user sẽ orphan nhưng safe)
-    await prisma.profile.delete({ where: { id: userId } });
+    // Xóa tất cả dữ liệu liên quan đến User trong transaction để tránh lỗi Foreign Key Constraint (P2003)
+    await prisma.$transaction(async (tx) => {
+      await tx.enrollment.deleteMany({ where: { userId } });
+      await tx.submission.deleteMany({ where: { userId } });
+      await tx.studyPlanItem.deleteMany({ where: { userId } });
+      await tx.studySchedule.deleteMany({ where: { userId } });
+      await tx.userRoadmap.deleteMany({ where: { userId } });
+      await tx.chatSession.deleteMany({ where: { userId } });
+      await tx.videoProgress.deleteMany({ where: { userId } });
+      await tx.quizResult.deleteMany({ where: { userId } });
+      await tx.directMessage.deleteMany({ where: { senderId: userId } });
+      await tx.conversationParticipant.deleteMany({ where: { userId } });
+      await tx.userStats.deleteMany({ where: { userId } });
+      await tx.groupQuestion.deleteMany({ where: { authorId: userId } });
+      await tx.groupInvitation.deleteMany({
+        where: { OR: [{ inviterId: userId }, { inviteeId: userId }] }
+      });
+      await tx.purchase.deleteMany({ where: { userId } });
+
+      // Nếu user là Giảng viên có khóa học, chuyển quyền sở hữu khóa học về cho Admin để không mất dữ liệu khóa học
+      const userCourses = await tx.course.findMany({ where: { instructorId: userId } });
+      if (userCourses.length > 0) {
+        await tx.course.updateMany({
+          where: { instructorId: userId },
+          data: { instructorId: admin.id }
+        });
+      }
+
+      // Cuối cùng xóa Profile
+      await tx.profile.delete({ where: { id: userId } });
+    });
+
+    // Xóa user khỏi Supabase Authentication (auth.users)
+    try {
+      const supabaseAdmin = await createAdminClient();
+      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (authDeleteError) {
+        console.warn("Lỗi xóa user ở Supabase Auth (auth.users):", authDeleteError.message);
+      }
+    } catch (authErr) {
+      console.warn("Không thể kết nối Supabase Admin để xóa auth.users:", authErr);
+    }
 
     revalidatePath("/admin/users");
 
     return { success: true, message: "Đã xóa người dùng thành công" };
-  } catch (error) {
+  } catch (error: any) {
     console.error("deleteUser error:", error);
-    return { success: false, error: "Không thể xóa người dùng" };
+    return { success: false, error: error?.message || "Không thể xóa người dùng" };
   }
 }
 

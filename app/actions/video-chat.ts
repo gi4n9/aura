@@ -5,6 +5,7 @@ import { generateEmbedding } from "@/lib/ai/embedding";
 import { google } from "@ai-sdk/google";
 import { streamText, generateText } from "ai";
 import Groq from "groq-sdk";
+import { encryptMessage } from "@/lib/security/chat-crypto";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -106,7 +107,7 @@ export async function chatWithVideo(lessonId: string, query: string) {
         if (error) {
             console.error("Vector search error:", error);
             // Fallback: trả lời dù không tìm được context
-            return streamFallbackResponse(query);
+            return streamFallbackResponse(query, user.id, lessonId);
         }
 
         const matchedSegments = (segments as VideoSegment[]) || [];
@@ -163,21 +164,21 @@ ${contextText ? `**NGỮ CẢNH TỪ VIDEO:**\n${contextText}` : "**LƯU Ý:** K
                         });
                     }
 
-                    // 2. Lưu tin nhắn User
+                    // 2. Lưu tin nhắn User (Đã mã hóa)
                     await db.message.create({
                         data: {
                             sessionId: session.id,
                             role: 'user',
-                            content: query
+                            content: encryptMessage(query)
                         }
                     });
 
-                    // 3. Lưu tin nhắn Assistant (AI)
+                    // 3. Lưu tin nhắn Assistant (AI) (Đã mã hóa)
                     await db.message.create({
                         data: {
                             sessionId: session.id,
                             role: 'assistant',
-                            content: text
+                            content: encryptMessage(text)
                         }
                     });
 
@@ -222,7 +223,7 @@ function formatTime(seconds: number) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-function streamFallbackResponse(query: string) {
+function streamFallbackResponse(query: string, userId?: string, lessonId?: string) {
     const result = streamText({
         model: google('gemini-2.5-flash'),
         messages: [
@@ -232,6 +233,44 @@ function streamFallbackResponse(query: string) {
             },
             { role: "user", content: query }
         ],
+        onFinish: async ({ text }) => {
+            if (!userId || !lessonId) return;
+            try {
+                const { db } = await import("@/lib/prisma");
+
+                let session = await db.chatSession.findFirst({
+                    where: { userId: userId, lessonId: lessonId }
+                });
+
+                if (!session) {
+                    session = await db.chatSession.create({
+                        data: {
+                            userId: userId,
+                            lessonId: lessonId,
+                            title: query.substring(0, 50) + (query.length > 50 ? "..." : "")
+                        }
+                    });
+                }
+
+                await db.message.create({
+                    data: {
+                        sessionId: session.id,
+                        role: 'user',
+                        content: encryptMessage(query)
+                    }
+                });
+
+                await db.message.create({
+                    data: {
+                        sessionId: session.id,
+                        role: 'assistant',
+                        content: encryptMessage(text)
+                    }
+                });
+            } catch (saveError) {
+                console.error("Vấn đề lưu lịch sử fallback chat vào DB:", saveError);
+            }
+        }
     });
     return result.toTextStreamResponse();
 }

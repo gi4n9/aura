@@ -3,6 +3,7 @@
 import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { encryptMessage, decryptMessage } from "@/lib/security/chat-crypto";
 
 
 // 1. Lấy danh sách hội thoại của User hiện tại
@@ -69,7 +70,7 @@ export async function getConversations() {
             courseId: conv.courseId,
             otherUser: otherParticipant,
             lastMessage: lastMessage ? {
-                content: lastMessage.content,
+                content: decryptMessage(lastMessage.content),
                 createdAt: lastMessage.createdAt,
                 isMine: lastMessage.senderId === user.id
             } : null,
@@ -157,11 +158,17 @@ export async function getMessages(
         resultMessages.reverse();
     }
 
+    // Decrypt all message contents
+    const decryptedMessages = resultMessages.map(m => ({
+        ...m,
+        content: decryptMessage(m.content)
+    }));
+
     // Next cursor is the ID of the first message (oldest) for loading more old messages
     const nextCursor = hasMore ? resultMessages[0]?.id : null;
 
     return { 
-        messages: resultMessages, 
+        messages: decryptedMessages, 
         nextCursor,
         hasMore
     };
@@ -180,9 +187,10 @@ export async function sendMessage(conversationId: string, content: string, userI
     }
 
     try {
+        const encryptedContent = encryptMessage(content);
         const message = await db.directMessage.create({
             data: {
-                content: content,
+                content: encryptedContent,
                 conversationId: conversationId,
                 senderId: senderId,
             }
@@ -194,7 +202,13 @@ export async function sendMessage(conversationId: string, content: string, userI
             data: { updatedAt: new Date() }
         }).catch(() => {});
         
-        return { success: true, message: message };
+        return { 
+            success: true, 
+            message: {
+                ...message,
+                content: content // return plain text to caller
+            }
+        };
     } catch (error) {
         console.error("Send Message Error:", error);
         return { error: "Failed to send message" };
@@ -254,5 +268,11 @@ export async function getMessageById(messageId: string) {
             }
         }
     });
-    return message;
+
+    if (!message) return null;
+
+    return {
+        ...message,
+        content: decryptMessage(message.content)
+    };
 }

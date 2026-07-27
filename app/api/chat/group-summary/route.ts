@@ -1,7 +1,6 @@
 import { db } from "@/lib/prisma";
 import Groq from "groq-sdk";
-import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
+import { decryptMessage } from "@/lib/security/chat-crypto";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -76,11 +75,11 @@ export async function POST(req: Request) {
         }
 
         // 4. Prepare messages for AI
-        const formattedMessages = unreadMessages.map(m => `[${m.createdAt.toISOString()}] ${m.sender.fullName || 'User'}: ${m.content}`).join("\n");
+        const formattedMessages = unreadMessages.map(m => `[${m.createdAt.toISOString()}] ${m.sender.fullName || 'User'}: ${decryptMessage(m.content)}`).join("\n");
         const activeMembers = new Set(unreadMessages.map(m => m.senderId)).size;
         const messageCount = unreadMessages.length;
 
-        // 5. Generate Summary with Gemini (or Groq if Gemini fails, here we just use Gemini for simplicity and capability)
+        // 5. Generate Summary with Groq (llama-3.3-70b-versatile)
         const systemPrompt = `Bạn là trợ lý AI tóm tắt nội dung thảo luận nhóm.
 Nhiệm vụ: Tóm tắt ngắn gọn, dễ hiểu các tin nhắn đã bị bỏ lỡ.
 Bối cảnh học tập của học viên: ${progressContext || 'Không rõ'}
@@ -90,8 +89,8 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
 {
   "summary": "Tóm tắt tổng quan (khoảng 2-3 câu)",
   "keyTopics": ["Chủ đề 1", "Chủ đề 2"],
-  "sharedLinks": [{"title": "Tên link", "url": "https..."}],
-  "hotQuestions": [{"question": "Câu hỏi?", "answerCount": 2}]
+  "sharedLinks": [{"title": "Tên link", "url": "https..."}, ...],
+  "hotQuestions": [{"question": "Câu hỏi?", "answerCount": 2}, ...]
 }`;
 
         // Truncate messages if too long for prompt to save tokens
@@ -100,11 +99,17 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
             ? formattedMessages.substring(formattedMessages.length - maxChars) 
             : formattedMessages;
 
-        const geminiResult = await generateText({
-            model: google('gemini-2.5-flash'),
-            system: systemPrompt,
-            prompt: `Messages:\n${messagesPrompt}`,
+        const groqCompletion = await groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: `Messages:\n${messagesPrompt}` }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.3
         });
+
+        const responseText = groqCompletion.choices[0]?.message?.content || "{}";
 
         let summaryData = {
             summary: "Đã có lỗi trong quá trình tóm tắt.",
@@ -114,10 +119,10 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
         };
 
         try {
-            const jsonText = geminiResult.text.replace(/\`\`\`json\n/g, '').replace(/\`\`\`/g, '').trim();
+            const jsonText = responseText.replace(/\`\`\`json\n/g, '').replace(/\`\`\`/g, '').trim();
             summaryData = JSON.parse(jsonText);
         } catch (e) {
-            console.error("Failed to parse summary JSON", geminiResult.text);
+            console.error("Failed to parse summary JSON", responseText);
         }
 
         // 6. Save to cache (ConversationSummary)
