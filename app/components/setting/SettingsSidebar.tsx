@@ -56,8 +56,8 @@ export default function SettingsSidebar() {
                                     key={item.id}
                                     href={item.href}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
-                                            ? "bg-white text-[#C5A059] shadow-sm ring-1 ring-stone-200"
-                                            : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                                        ? "bg-white text-[#C5A059] shadow-sm ring-1 ring-stone-200"
+                                        : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                                         }`}
                                 >
                                     <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />

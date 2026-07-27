@@ -429,7 +429,7 @@ export default function MessagesInterface({
                     await new Promise(r => setTimeout(r, 500));
                     return sendWithRetry(retries - 1);
                 }
-                
+
                 // All retries failed - mark as failed (show error indicator)
                 setMessages(prev => prev.map(m =>
                     m.id === tempId
@@ -550,7 +550,7 @@ export default function MessagesInterface({
 
                             <div className="flex items-center gap-2 text-[#C5A059]">
                                 {selectedConversation.isGroup && (
-                                    <button 
+                                    <button
                                         onClick={async () => {
                                             setLoadingSummary(true);
                                             try {
@@ -582,7 +582,7 @@ export default function MessagesInterface({
                             <div className="mx-4 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl relative">
                                 <button onClick={() => setSummaryData(null)} className="absolute top-2 right-2 text-stone-400 hover:text-stone-600">✕</button>
                                 <h4 className="font-bold text-yellow-800 flex items-center gap-2 mb-2">
-                                    <CheckCheck size={16}/> Tóm tắt tin nhắn bị lỡ
+                                    <CheckCheck size={16} /> Tóm tắt tin nhắn bị lỡ
                                 </h4>
                                 <p className="text-sm text-yellow-900 whitespace-pre-wrap">{summaryData.summary}</p>
                             </div>
@@ -640,11 +640,11 @@ export default function MessagesInterface({
                                             <div className={`max-w-[70%] break-words px-4 py-2 rounded-2xl text-sm shadow-sm
                                                 ${isMe
                                                     ? 'bg-[#1a1a1a] text-white rounded-br-none'
-                                                    : msg.isBotResponse 
+                                                    : msg.isBotResponse
                                                         ? 'bg-blue-50 border border-blue-200 text-blue-900 rounded-bl-none'
                                                         : 'bg-white border border-stone-200 text-stone-800 rounded-bl-none'}
                                             `}>
-                                                {msg.isBotResponse && <div className="font-bold text-xs text-blue-600 mb-1 flex items-center gap-1"><Info size={12}/> AuraBot</div>}
+                                                {msg.isBotResponse && <div className="font-bold text-xs text-blue-600 mb-1 flex items-center gap-1"><Info size={12} /> AuraBot</div>}
                                                 <div className="whitespace-pre-wrap">{msg.content}</div>
                                                 {msg.sources && msg.sources.length > 0 && (
                                                     <div className="mt-2 pt-2 border-t border-blue-200 text-xs">

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { enrollFreeCourse, purchaseCourse } from "@/app/actions/enrollment";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "@/lib/theme/ThemeContext";
 
 interface CourseActionButtonsProps {
     courseId: string;
@@ -17,6 +18,8 @@ interface CourseActionButtonsProps {
 export default function CourseActionButtons({ courseId, price, isFree, firstLessonId }: CourseActionButtonsProps) {
     const router = useRouter();
     const { t } = useLanguage();
+    const { theme } = useTheme();
+    const isDark = theme === "dark";
     const [isLoading, setIsLoading] = useState(false);
 
     const handleEnrollFree = async () => {
@@ -63,13 +66,12 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
 
     const formattedPrice = new Intl.NumberFormat("vi-VN", { style: 'currency', currency: 'VND' }).format(price);
 
-    // Case 1: FREE COURSE
     if (isFree || price === 0) {
         return (
             <button
                 onClick={handleEnrollFree}
                 disabled={isLoading}
-                className="block w-full py-4 bg-[#1a1a1a] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#C5A059] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#C5A059] text-[#080808] font-bold tracking-widest uppercase text-xs rounded-xl hover:bg-[#e9c176] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-[1.02]"
             >
                 {isLoading && <Loader2 className="animate-spin" size={16} />}
                 {isLoading 
@@ -79,25 +81,22 @@ export default function CourseActionButtons({ courseId, price, isFree, firstLess
         );
     }
 
-    // Case 2: PAID COURSE
     return (
-        <div className="space-y-4">
-            <div className="text-3xl font-serif text-stone-900 text-center">
-                {formattedPrice}
+        <div className="space-y-3">
+            <div className="flex items-baseline gap-2 mb-2 justify-center">
+                <span className={`text-3xl font-serif font-bold ${isDark ? "text-white" : "text-stone-900"}`}>
+                    {formattedPrice}
+                </span>
             </div>
 
             <button
                 onClick={handlePurchase}
                 disabled={isLoading}
-                className="block w-full py-4 bg-[#C5A059] text-white text-center font-bold tracking-widest uppercase text-sm rounded-lg hover:bg-[#b08d4b] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#C5A059] text-[#080808] font-bold tracking-widest uppercase text-xs rounded-xl hover:bg-[#e9c176] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:scale-[1.02]"
             >
                 {isLoading && <Loader2 className="animate-spin" size={16} />}
-                {isLoading ? t("courseDetail.processing", "Đang xử lý...") : t("courseDetail.buyNow", "Mua ngay")}
+                {isLoading ? t("courseDetail.processing", "Đang xử lý...") : t("courseDetail.buyNow", "Đăng ký ngay")}
             </button>
-
-            <p className="text-xs text-center text-stone-500 italic">
-                {t("courseDetail.simulatedCheckout", "*Thanh toán giả lập (Click là thành công)")}
-            </p>
         </div>
     );
 }

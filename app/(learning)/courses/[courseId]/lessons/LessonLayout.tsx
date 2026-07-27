@@ -13,9 +13,8 @@ import {
     MessageCircle,
     Loader2,
     Sparkles,
-    PlayCircle,
     Workflow,
-    Brain // Icon for Flashcards
+    Brain
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -27,9 +26,11 @@ import TranscriptTimeline from "@/app/components/TranscriptTimeline";
 import JarvisAssistant from "@/app/components/ai/JarvisAssistant";
 import MindmapView from "@/app/components/ai/MindmapView";
 import FlashcardDeck from "@/app/components/ai/FlashcardDeck";
+import ThemeSwitcher from "@/app/components/ThemeSwitcher";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
+import { useTheme } from "@/lib/theme/ThemeContext";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-
-// Định nghĩa lại các Type cần thiết
 type TimelineItem = {
     time: number;
     label: string;
@@ -41,8 +42,8 @@ type LessonData = {
     youtubeVideoId: string | null;
     transcript: string | null;
     timeline: TimelineItem[] | null;
-    mindMapData: any; // AI generated mindmap structure
-    flashcards: any; // AI generated flashcards
+    mindMapData: any;
+    flashcards: any;
     duration: number | null;
     questions: any[];
 };
@@ -75,7 +76,10 @@ export default function LessonLayout({
     allVideoProgress?: any[];
     allQuizResults?: any[];
 }) {
-    // State quản lý hiển thị
+    const { theme } = useTheme();
+    const { t } = useLanguage();
+    const isDark = theme === "dark";
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isVideoVisible, setIsVideoVisible] = useState(true);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
@@ -84,42 +88,33 @@ export default function LessonLayout({
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // State cho resizable quiz panel
-    const [quizPanelWidth, setQuizPanelWidth] = useState(400);
+    const [quizPanelWidth, setQuizPanelWidth] = useState(440);
 
-    // Effect: Auto Seek from URL
+    const videoPlayerRef = useRef<VideoPlayerHandle>(null);
+    const videoContainerRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        const t = searchParams.get('t');
-        if (t && videoPlayerRef.current) {
-            // Need a slight delay to ensure player is ready? 
-            // Better if VideoPlayer exposes onReady prop, but timeout works for now.
+        const timeParam = searchParams.get('t');
+        if (timeParam && videoPlayerRef.current) {
             setTimeout(() => {
-                videoPlayerRef.current?.seekTo(Number(t));
+                videoPlayerRef.current?.seekTo(Number(timeParam));
                 videoContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 1000);
         }
     }, [searchParams]);
+
     const [isDragging, setIsDragging] = useState(false);
     const dragStartX = useRef(0);
-    const dragStartWidth = useRef(400);
+    const dragStartWidth = useRef(440);
 
-    // Ref để control video player và container
-    const videoPlayerRef = useRef<VideoPlayerHandle>(null);
-    const videoContainerRef = useRef<HTMLDivElement>(null);
-
-    // Handler để seek video từ timeline + scroll đến video
     const handleSeekToTime = useCallback((seconds: number) => {
-        // Seek video đến mốc thời gian
         videoPlayerRef.current?.seekTo(seconds);
-
-        // Scroll đến video container với animation mượt
         videoContainerRef.current?.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
         });
     }, []);
 
-    // Handlers cho drag resize
     const handleDragStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -129,9 +124,8 @@ export default function LessonLayout({
 
     const handleDragMove = useCallback((e: MouseEvent) => {
         if (!isDragging) return;
-
         const deltaX = dragStartX.current - e.clientX;
-        const newWidth = Math.min(Math.max(dragStartWidth.current + deltaX, 300), 800);
+        const newWidth = Math.min(Math.max(dragStartWidth.current + deltaX, 320), 800);
         setQuizPanelWidth(newWidth);
     }, [isDragging]);
 
@@ -139,7 +133,6 @@ export default function LessonLayout({
         setIsDragging(false);
     }, []);
 
-    // Effect để add/remove mouse event listeners
     useEffect(() => {
         if (isDragging) {
             document.addEventListener('mousemove', handleDragMove);
@@ -151,9 +144,8 @@ export default function LessonLayout({
         };
     }, [isDragging, handleDragMove, handleDragEnd]);
 
-    // Handle Chat with Instructor
     const handleChatWithInstructor = async () => {
-        if (!course.instructor?.id) return alert("Không tìm thấy thông tin giảng viên");
+        if (!course.instructor?.id) return alert(t("course.noInstructorInfo", "Không tìm thấy thông tin giảng viên"));
 
         setIsCreatingChat(true);
         try {
@@ -161,29 +153,37 @@ export default function LessonLayout({
             if (res.success && res.conversationId) {
                 router.push(`/messages`);
             } else {
-                alert(res.error || "Không thể tạo cuộc trò chuyện");
+                alert(res.error || t("course.cannotCreateChat", "Không thể tạo cuộc trò chuyện"));
             }
         } catch (error) {
             console.error(error);
-            alert("Có lỗi xảy ra");
+            alert(t("common.errorOccurred", "Có lỗi xảy ra"));
         } finally {
             setIsCreatingChat(false);
         }
     };
 
     return (
-        <div className="flex h-screen w-full bg-[#F9F8F4] overflow-hidden pt-[70px]">
+        <div className={`flex h-screen w-full transition-colors duration-500 overflow-hidden ${
+            isDark ? "bg-[#080808] text-white" : "bg-[#F4F3EE] text-stone-900"
+        }`}>
 
-            {/* --- 1. SIDEBAR BÊN TRÁI (Collapsible) --- */}
+            {/* --- 1. LEFT SIDEBAR (Collapsible Course Tree) --- */}
             <div
-                className={`flex-shrink-0 bg-white border-r border-stone-200 transition-all duration-300 ease-in-out relative ${isSidebarOpen ? "w-80" : "w-0 opacity-0 overflow-hidden"
-                    }`}
+                className={`flex-shrink-0 border-r transition-all duration-300 ease-in-out relative ${
+                    isSidebarOpen ? "w-80" : "w-0 opacity-0 overflow-hidden"
+                } ${isDark ? "bg-[#0e0e0e] border-white/10" : "bg-white border-stone-200"}`}
             >
                 <div className="h-full overflow-y-auto custom-scrollbar">
-                    {/* Nút quay lại */}
-                    <div className="p-4 border-b border-stone-100 sticky top-0 bg-white z-10">
-                        <Link href={`/courses/${course.id}`} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone-500 hover:text-[#C5A059]">
-                            <ArrowLeft size={14} /> Tổng quan
+                    {/* Back link */}
+                    <div className={`p-4 border-b sticky top-0 z-10 backdrop-blur-md ${
+                        isDark ? "border-white/10 bg-[#0e0e0e]/90" : "border-stone-200 bg-white/90"
+                    }`}>
+                        <Link
+                            href={`/courses/${course.id}`}
+                            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C5A059] hover:underline"
+                        >
+                            <ArrowLeft size={14} /> {t("course.overview", "Tổng quan khóa học")}
                         </Link>
                     </div>
 
@@ -197,66 +197,81 @@ export default function LessonLayout({
                 </div>
             </div>
 
-            {/* --- 2. KHUNG NỘI DUNG CHÍNH (Giữa + Phải) --- */}
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* --- 2. MAIN WORKSPACE (Center + Right) --- */}
+            <div className="flex-1 flex flex-col min-w-0 h-full">
 
-                {/* Toolbar điều khiển (Header nhỏ) */}
-                <div className="h-12 bg-white border-b border-stone-200 flex items-center justify-between px-4 flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                        {/* Nút Toggle Sidebar */}
+                {/* Top Control Bar (Cleanly Separated Top Workspace Header) */}
+                <div className={`h-16 border-b flex items-center justify-between px-6 flex-shrink-0 backdrop-blur-md z-30 shadow-sm ${
+                    isDark ? "bg-[#0e0e0e]/95 border-white/10 text-white" : "bg-white/95 border-stone-200 text-stone-900"
+                }`}>
+                    <div className="flex items-center gap-3 min-w-0">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-1.5 hover:bg-stone-100 rounded text-stone-500"
-                            title={isSidebarOpen ? "Thu gọn danh sách bài" : "Mở danh sách bài"}
+                            className={`p-2 rounded-xl transition-colors shrink-0 ${
+                                isDark ? "hover:bg-white/10 text-stone-300" : "hover:bg-stone-100 text-stone-600"
+                            }`}
+                            title={isSidebarOpen ? t("course.collapseSidebar", "Thu gọn danh sách bài") : t("course.expandSidebar", "Mở danh sách bài")}
                         >
                             {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                         </button>
-                        <span className="font-serif font-bold text-stone-800 line-clamp-1">
+                        <h1 className={`font-serif font-bold text-base md:text-lg truncate ${
+                            isDark ? "text-white" : "text-stone-900"
+                        }`}>
                             {lesson.title}
-                        </span>
+                        </h1>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Nút Chat (NEW) */}
+                    <div className="flex items-center gap-3 shrink-0">
+                        <ThemeSwitcher />
+                        <LanguageSwitcher />
+
+                        {/* Ask Instructor Button */}
                         {course.instructor && (
                             <button
                                 onClick={handleChatWithInstructor}
                                 disabled={isCreatingChat}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-stone-100 text-stone-600 hover:bg-[#C5A059] hover:text-white transition-colors disabled:opacity-50"
+                                className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${
+                                    isDark
+                                        ? "bg-white/10 text-stone-200 border-white/10 hover:bg-[#C5A059] hover:text-[#080808]"
+                                        : "bg-stone-100 text-stone-700 border-stone-200 hover:bg-[#C5A059] hover:text-white"
+                                } disabled:opacity-50`}
                                 title={`Nhắn tin với giảng viên: ${course.instructor.fullName}`}
                             >
                                 {isCreatingChat ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
-                                <span className="hidden sm:inline">Hỏi Giảng viên</span>
+                                <span className="hidden sm:inline">{t("course.askInstructor", "Hỏi Giảng viên")}</span>
                             </button>
                         )}
 
-                        {/* Nút Toggle Video Mode */}
+                        {/* Focus / Video Mode Toggle Button */}
                         <button
                             onClick={() => setIsVideoVisible(!isVideoVisible)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${!isVideoVisible
-                                ? "bg-[#C5A059] text-white"
-                                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                                }`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-md ${
+                                !isVideoVisible
+                                    ? "bg-[#C5A059] text-[#080808] hover:bg-[#e9c176]"
+                                    : isDark
+                                    ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                                    : "bg-stone-900 text-white hover:bg-stone-800"
+                            }`}
                         >
                             {!isVideoVisible ? (
-                                <><Maximize2 size={14} /> Hiện Video</>
+                                <><Maximize2 size={14} /> {t("course.showVideo", "Hiện Video")}</>
                             ) : (
-                                <><Minimize2 size={14} /> Tập trung làm bài</>
+                                <><Minimize2 size={14} /> {t("course.focusMode", "Tập trung làm bài")}</>
                             )}
                         </button>
                     </div>
                 </div>
 
-                {/* Vùng chứa nội dung: Video (Giữa) + Quiz (Phải) */}
+                {/* Main Workspace Area: Video (Center) + Quiz/AI/Mindmap (Right) */}
                 <div className="flex-1 flex overflow-hidden">
 
-                    {/* --- CỘT GIỮA: VIDEO & TRANSCRIPT --- */}
-                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#F9F8F4] transition-all duration-300 ${!isVideoVisible ? "hidden" : ""
-                        } ${!isSidebarOpen ? "min-w-0" : "min-w-[400px]"
-                        }`}>
+                    {/* --- CENTER COLUMN: VIDEO & TIMELINE --- */}
+                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-6 transition-all duration-300 ${
+                        !isVideoVisible ? "hidden" : ""
+                    } ${!isSidebarOpen ? "min-w-0" : "min-w-[360px]"}`}>
                         <div className="max-w-4xl mx-auto space-y-8">
                             {/* Video Player */}
-                            <div ref={videoContainerRef}>
+                            <div ref={videoContainerRef} className="transition-all duration-500">
                                 <VideoPlayer
                                     ref={videoPlayerRef}
                                     videoId={lesson.youtubeVideoId || ""}
@@ -266,11 +281,15 @@ export default function LessonLayout({
                                 />
                             </div>
 
-                            {/* Timeline Section - Click để nhảy đến mốc thời gian */}
-                            <div className="bg-white p-6 rounded-xl border border-stone-200 shadow-sm">
-                                <h3 className="font-serif text-lg font-bold mb-4 flex items-center gap-2 text-stone-800">
+                            {/* Timeline Section */}
+                            <div className={`p-6 rounded-3xl transition-all liquid-glass ${
+                                isDark ? "text-white" : "text-stone-900 shadow-md"
+                            }`}>
+                                <h3 className={`font-serif text-lg font-bold mb-4 flex items-center gap-2 ${
+                                    isDark ? "text-white" : "text-stone-900"
+                                }`}>
                                     <Clock size={20} className="text-[#C5A059]" />
-                                    Mốc thời gian bài giảng
+                                    {t("course.timeline", "Mốc thời gian bài giảng")}
                                 </h3>
                                 <TranscriptTimeline
                                     timeline={lesson.timeline}
@@ -280,72 +299,99 @@ export default function LessonLayout({
                         </div>
                     </div>
 
-                    {/* --- DRAG HANDLE để resize quiz panel --- */}
+                    {/* --- DRAG HANDLE to resize right panel --- */}
                     <div
                         onMouseDown={handleDragStart}
                         className={`w-1.5 hover:bg-[#C5A059] cursor-col-resize flex-shrink-0 
                             transition-colors duration-200 relative group z-20
-                            ${isVideoVisible ? 'bg-stone-200' : 'hidden'}
+                            ${isVideoVisible ? (isDark ? 'bg-white/10' : 'bg-stone-200') : 'hidden'}
                             ${isDragging ? '!bg-[#C5A059]' : ''}`}
                     >
-                        {/* Visual indicator icon */}
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-6 h-6 bg-white border border-stone-200 shadow-sm rounded-full flex items-center justify-center text-stone-500">
+                            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shadow-md ${
+                                isDark ? "bg-[#0e0e0e] border-white/20 text-[#C5A059]" : "bg-white border-stone-300 text-stone-700"
+                            }`}>
                                 <MoveHorizontal size={14} />
                             </div>
                         </div>
                     </div>
 
-                    {/* --- CỘT PHẢI: BÀI TẬP (QUIZ) & AI CHAT & MINDMAP & FLASHCARDS --- */}
+                    {/* --- RIGHT COLUMN: QUIZ / AI / MINDMAP / FLASHCARDS --- */}
                     <div
-                        className={`border-l border-stone-200 bg-white flex flex-col transition-all ease-in-out ${!isVideoVisible
-                            ? "w-full flex-1 duration-300" // Chế độ tập trung: Full màn hình
+                        className={`border-l flex flex-col transition-all ease-in-out ${
+                            isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
+                        } ${!isVideoVisible
+                            ? "w-full flex-1 duration-300"
                             : !isSidebarOpen
-                                ? "flex-1 min-w-0 duration-300" // Chế độ chia đôi: 50% màn hình
-                                : "flex-shrink-0 duration-0" // Chế độ thường: width động
-                            }`}
+                                ? "flex-1 min-w-0 duration-300"
+                                : "flex-shrink-0 duration-0"
+                        }`}
                         style={isVideoVisible && isSidebarOpen ? { width: `${quizPanelWidth}px` } : undefined}
                     >
                         {/* Right Panel Tabs */}
-                        <div className="flex border-b border-stone-200 bg-stone-50 overflow-x-auto custom-scrollbar">
+                        <div className={`flex border-b overflow-x-auto custom-scrollbar ${
+                            isDark ? "bg-white/5 border-white/10" : "bg-stone-100/80 border-stone-200"
+                        }`}>
                             <button
                                 onClick={() => setActiveTab('quiz')}
-                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'quiz' ? 'bg-white text-stone-800 border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
-                                    }`}
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
+                                    activeTab === 'quiz'
+                                        ? isDark
+                                            ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
+                                            : 'bg-white text-stone-900 border-b-2 border-[#C5A059]'
+                                        : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                                }`}
                             >
-                                <CheckCircle size={16} /> <span className="hidden xl:inline">Bài tập</span>
+                                <CheckCircle size={16} /> <span className="hidden xl:inline">{t("course.quizTab", "Bài tập")}</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('ai')}
-                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'ai' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
-                                    }`}
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
+                                    activeTab === 'ai'
+                                        ? isDark
+                                            ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
+                                            : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
+                                        : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                                }`}
                             >
                                 <Sparkles size={16} /> <span className="hidden xl:inline">AI Tutor</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('mindmap')}
-                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'mindmap' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
-                                    }`}
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
+                                    activeTab === 'mindmap'
+                                        ? isDark
+                                            ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
+                                            : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
+                                        : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                                }`}
                             >
                                 <Workflow size={16} /> <span className="hidden xl:inline">Mindmap</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('flashcards')}
-                                className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors min-w-fit px-2 ${activeTab === 'flashcards' ? 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]' : 'text-stone-500 hover:text-stone-700'
-                                    }`}
+                                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors min-w-fit px-3 ${
+                                    activeTab === 'flashcards'
+                                        ? isDark
+                                            ? 'bg-[#0e0e0e] text-[#C5A059] border-b-2 border-[#C5A059]'
+                                            : 'bg-white text-[#C5A059] border-b-2 border-[#C5A059]'
+                                        : isDark ? 'text-stone-400 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+                                }`}
                             >
                                 <Brain size={16} /> <span className="hidden xl:inline">Flashcards</span>
                             </button>
                         </div>
 
                         {/* Content Area */}
-
                         {activeTab === 'quiz' && (
-                            // Render Quiz Logic
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 h-full relative">
-                                {!isVideoVisible && <p className="text-center text-xs text-stone-400 font-bold uppercase tracking-widest mb-4">Chế độ tập trung</p>}
+                                {!isVideoVisible && (
+                                    <p className="text-center text-xs text-[#C5A059] font-bold uppercase tracking-widest mb-4">
+                                        {t("course.focusModeActive", "Chế độ tập trung làm bài")}
+                                    </p>
+                                )}
                                 <div className={`transition-all duration-500 ${!isVideoVisible
-                                    ? "max-w-3xl mx-auto bg-white rounded-xl shadow-lg border border-stone-200 p-8 min-h-fit"
+                                    ? "max-w-3xl mx-auto rounded-3xl p-8 min-h-fit liquid-glass"
                                     : "w-full pb-10"
                                     }`}>
                                     <QuizPlayer
@@ -360,8 +406,7 @@ export default function LessonLayout({
                         )}
 
                         {activeTab === 'ai' && (
-                            // Render AI Chat Logic
-                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-3xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-3xl mx-auto w-full border-x border-white/10" : ""}`}>
                                 <JarvisAssistant
                                     lessonId={lesson.id}
                                     onSeek={handleSeekToTime}
@@ -371,8 +416,7 @@ export default function LessonLayout({
                         )}
 
                         {activeTab === 'mindmap' && (
-                            // Render Mindmap Logic
-                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-white/10" : ""}`}>
                                 <MindmapView
                                     data={lesson.mindMapData}
                                     onSeek={handleSeekToTime}
@@ -381,20 +425,16 @@ export default function LessonLayout({
                         )}
 
                         {activeTab === 'flashcards' && (
-                            // Render Flashcards Logic
-                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-stone-200" : ""}`}>
+                            <div className={`flex-1 overflow-hidden h-full ${!isVideoVisible ? "max-w-5xl mx-auto w-full border-x border-white/10" : ""}`}>
                                 <FlashcardDeck
                                     cards={lesson.flashcards}
                                     onSeek={handleSeekToTime}
                                 />
                             </div>
                         )}
-
                     </div>
-
                 </div>
             </div>
-
         </div>
     );
 }

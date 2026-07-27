@@ -26,6 +26,7 @@ export default function HeroSection() {
     }`}>
       {/* Cinematic Looping Background Video */}
       <video
+        suppressHydrationWarning
         autoPlay
         muted
         loop

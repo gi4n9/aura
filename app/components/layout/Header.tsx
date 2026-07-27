@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useAuth } from "../AuthProvider";
-import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, BookOpen, MessageCircle } from "lucide-react";
+import { Menu, X, Search, LogOut, LayoutDashboard, Map, Settings, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 import LoginModal from "../auth/LoginModal";
@@ -67,20 +67,22 @@ export default function Header() {
     });
   };
 
-  const paddingClass = isScrolled ? "py-2" : "py-4";
+  const paddingClass = isScrolled ? "py-2.5" : "py-4";
   const bgClass = (isScrolled || isMenuOpen)
     ? isDark
-      ? "bg-[#0a0a0a]/95 shadow-[0_1px_0_rgba(197,160,89,0.15)] backdrop-blur-xl border-b border-white/5"
-      : "bg-[#F9F8F4]/95 shadow-md backdrop-blur-xl border-b border-stone-200/80"
-    : "bg-transparent border-b border-transparent";
+      ? "bg-[#0e0e0e]/95 shadow-[0_1px_0_rgba(197,160,89,0.15)] backdrop-blur-xl border-b border-white/10 text-white"
+      : "bg-[#F9F8F4]/95 shadow-md backdrop-blur-xl border-b border-stone-200/80 text-stone-900"
+    : isDark
+      ? "bg-transparent border-b border-white/10 text-white"
+      : "bg-transparent border-b border-stone-200/40 text-stone-900";
 
   const menuTopPosition = isScrolled ? "top-[50px]" : "top-[64px]";
-  const userInitial = user?.email?.charAt(0).toUpperCase() || "U";
+  const userInitial = profile?.fullName?.trim().charAt(0).toUpperCase() || user?.user_metadata?.full_name?.trim().charAt(0).toUpperCase() || user?.user_metadata?.name?.trim().charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
   const avatarUrl = profile?.avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${bgClass} ${paddingClass}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${bgClass} ${paddingClass}`}>
         <div className="container mx-auto px-6 flex justify-between items-center relative z-50">
 
           {/* LOGO */}
@@ -291,7 +293,7 @@ export default function Header() {
                         </div>
                       )}
                       <div className="overflow-hidden">
-                        <p className={`font-medium text-sm truncate ${isDark ? "text-white" : "text-stone-900"}`}>{user.email}</p>
+                        <p className={`font-medium text-sm truncate ${isDark ? "text-[#C5A059]" : "text-stone-900"}`}>{user.email}</p>
                         <Link href="/profile" className="text-xs text-[#C5A059] hover:underline block">{t("nav.profile")}</Link>
                       </div>
                     </div>

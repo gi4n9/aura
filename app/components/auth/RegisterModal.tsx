@@ -14,9 +14,10 @@ interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
+  redirectTo?: string;
 }
 
-export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModalProps) {
+export default function RegisterModal({ isOpen, onClose, onSwitchToLogin, redirectTo }: RegisterModalProps) {
   const { t, language } = useLanguage();
   const { theme } = useTheme();
   const router = useRouter();
@@ -127,6 +128,7 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
 
               {/* Form */}
               <form className="w-full flex flex-col gap-4 sm:gap-5" onSubmit={handleSubmit}>
+                {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
                 {errorMsg && (
                   <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-xs text-center font-medium">
                     {errorMsg}

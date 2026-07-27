@@ -42,7 +42,7 @@ export default function StudyPlanClient({
 
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* LEFT COLUMN: TIMELINE WITH INDEPENDENT INTERNAL SCROLLBAR (8 cols) */}
-                <div className="lg:col-span-8 h-[calc(100vh-210px)] overflow-y-auto overflow-x-hidden pr-2 scrollbar-none space-y-4">
+                <div className="lg:col-span-8 h-[calc(100vh-210px)] overflow-y-auto overflow-x-hidden pr-3 custom-scrollbar space-y-4">
                     <StudyTimeline initialSchedule={schedule} />
                 </div>
 

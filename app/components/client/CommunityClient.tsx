@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Users, Plus, Link as LinkIcon, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import GroupCard from '@/app/components/community/GroupCard';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { useTheme } from '@/lib/theme/ThemeContext';
 
 interface Category {
     id: string;
@@ -39,6 +40,8 @@ export default function CommunityClient({
     nextCursor
 }: CommunityClientProps) {
     const { t } = useLanguage();
+    const { theme } = useTheme();
+    const isDark = theme === "dark";
 
     const renderPagination = (currentPage: number, total: number, paramName: 'page' | 'mypage', nextCursorStr: string | null) => {
         if (total <= 1) return null;
@@ -69,11 +72,13 @@ export default function CommunityClient({
         };
 
         return (
-            <div className="flex justify-end items-center gap-4 mt-8 text-sm font-medium text-stone-500">
+            <div className={`flex justify-end items-center gap-4 mt-8 text-sm font-medium ${isDark ? "text-stone-400" : "text-stone-500"}`}>
                 <span>{t("communityPage.page", "Trang")} {currentPage} / {total}</span>
                 <div className="flex gap-2 items-center">
                     {currentPage > 1 && (
-                        <Link href={buildUrl(currentPage - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:bg-white text-stone-600 transition-colors">
+                        <Link href={buildUrl(currentPage - 1)} className={`w-8 h-8 flex items-center justify-center rounded-lg border border-transparent transition-colors ${
+                            isDark ? "hover:bg-white/5 text-stone-400" : "hover:bg-white text-stone-600"
+                        }`}>
                             <ChevronLeft size={16} />
                         </Link>
                     )}
@@ -88,7 +93,13 @@ export default function CommunityClient({
                             <Link
                                 key={p}
                                 href={buildUrl(p as number)}
-                                className={`w-8 h-8 flex items-center justify-center rounded-lg border ${isCurrent ? 'border-[#C5A059] bg-[#C5A059] text-white' : 'border-transparent hover:bg-white text-stone-600'} transition-colors`}
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                                    isCurrent
+                                        ? 'border-[#C5A059] bg-[#C5A059] text-white'
+                                        : isDark
+                                            ? 'border-transparent hover:bg-white/5 text-stone-400'
+                                            : 'border-transparent hover:bg-white text-stone-600'
+                                }`}
                             >
                                 {p}
                             </Link>
@@ -96,7 +107,9 @@ export default function CommunityClient({
                     })}
 
                     {currentPage < total && (
-                        <Link href={buildUrl(currentPage + 1, true)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-transparent hover:bg-white text-stone-600 transition-colors">
+                        <Link href={buildUrl(currentPage + 1, true)} className={`w-8 h-8 flex items-center justify-center rounded-lg border border-transparent transition-colors ${
+                            isDark ? "hover:bg-white/5 text-stone-400" : "hover:bg-white text-stone-600"
+                        }`}>
                             <ChevronRight size={16} />
                         </Link>
                     )}
@@ -106,20 +119,24 @@ export default function CommunityClient({
     };
 
     return (
-        <div className="min-h-screen bg-[#F9F8F4] pt-24 pb-12">
+        <div className={`min-h-screen pt-24 pb-12 transition-colors duration-500 ${isDark ? "bg-[#080808]" : "bg-[#F9F8F4]"}`}>
             <div className="container mx-auto px-4 max-w-6xl">
                 
                 {/* Header */}
                 <div className="mb-10">
-                    <h1 className="text-3xl font-serif font-bold text-stone-800 mb-2">
+                    <h1 className={`text-3xl font-serif font-bold mb-2 ${isDark ? "text-white" : "text-stone-800"}`}>
                         {t("communityPage.title", "Nhóm học tập")}
                     </h1>
-                    <p className="text-stone-500 mb-6">
+                    <p className={`mb-6 ${isDark ? "text-stone-400" : "text-stone-500"}`}>
                         {t("communityPage.subtitle", "Tham gia hoặc tạo nhóm học tập để học cùng các sinh viên khác")}
                     </p>
                     
                     <div className="flex flex-wrap items-center gap-4">
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-stone-200 rounded-full font-bold text-stone-700 hover:bg-stone-50 hover:shadow-sm transition-all text-sm">
+                        <button className={`flex items-center gap-2 px-5 py-2.5 border rounded-full font-bold hover:shadow-sm transition-all text-sm ${
+                            isDark
+                                ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
+                                : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
+                        }`}>
                             <LinkIcon size={16} />
                             {t("communityPage.joinByCode", "Tham gia bằng mã")}
                         </button>
@@ -130,12 +147,16 @@ export default function CommunityClient({
                     </div>
                 </div>
 
-                <div className="flex justify-between items-start mb-4 border-b border-stone-200 pb-4 gap-4">
+                <div className={`flex justify-between items-start mb-4 border-b pb-4 gap-4 ${isDark ? "border-white/10" : "border-stone-200"}`}>
                     {/* Category Tabs */}
                     <div className="flex flex-wrap gap-2 flex-1">
                         <Link 
                             href="/community" 
-                            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${!categoryId ? 'bg-stone-800 text-white' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
+                                !categoryId
+                                    ? isDark ? 'bg-white/10 text-white' : 'bg-stone-800 text-white'
+                                    : isDark ? 'bg-white/5 border border-white/10 text-stone-400 hover:bg-white/10' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
+                            }`}
                         >
                             {t("communityPage.allCategories", "Tất cả lĩnh vực")}
                         </Link>
@@ -143,16 +164,22 @@ export default function CommunityClient({
                             <Link 
                                 key={cat.id}
                                 href={`/community?category=${cat.id}`} 
-                                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${categoryId === cat.id ? 'bg-stone-800 text-white' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'}`}
+                                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
+                                    categoryId === cat.id
+                                        ? isDark ? 'bg-white/10 text-white' : 'bg-stone-800 text-white'
+                                        : isDark ? 'bg-white/5 border border-white/10 text-stone-400 hover:bg-white/10' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
+                                }`}
                             >
                                 {cat.name}
                             </Link>
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-lg p-1 shadow-sm ml-4 h-fit">
-                        <button className="p-1.5 bg-stone-100 rounded text-stone-700"><LayoutGrid size={18} /></button>
-                        <button className="p-1.5 text-stone-400 hover:text-stone-700"><List size={18} /></button>
+                    <div className={`flex items-center gap-1 border rounded-lg p-1 shadow-sm ml-4 h-fit ${
+                        isDark ? "bg-white/5 border-white/10" : "bg-white border-stone-200"
+                    }`}>
+                        <button className={`p-1.5 rounded ${isDark ? "bg-white/10 text-white" : "bg-stone-100 text-stone-700"}`}><LayoutGrid size={18} /></button>
+                        <button className={`p-1.5 ${isDark ? "text-stone-500 hover:text-white" : "text-stone-400 hover:text-stone-700"}`}><List size={18} /></button>
                     </div>
                 </div>
 
@@ -161,7 +188,7 @@ export default function CommunityClient({
                     <div className="mb-12">
                         <div className="flex items-center gap-2 mb-6">
                             <Users className="text-[#C5A059]" size={24} />
-                            <h2 className="text-xl font-bold text-stone-800">
+                            <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-stone-800"}`}>
                                 {t("communityPage.myGroups", "Nhóm của tôi")}
                             </h2>
                         </div>
@@ -180,8 +207,8 @@ export default function CommunityClient({
                 {/* Nhóm có sẵn */}
                 <div>
                     <div className="flex items-center gap-2 mb-6">
-                        <Users className="text-stone-400" size={24} />
-                        <h2 className="text-xl font-bold text-stone-800">
+                        <Users className={isDark ? "text-stone-500" : "text-stone-400"} size={24} />
+                        <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-stone-800"}`}>
                             {categoryId 
                                 ? `${t("communityPage.availableGroups", "Nhóm có sẵn")} (${categories.find(c => c.id === categoryId)?.name})` 
                                 : t("communityPage.availableGroups", "Nhóm có sẵn (Mới nhất)")}
@@ -200,8 +227,10 @@ export default function CommunityClient({
                             {renderPagination(page, totalPages, 'page', nextCursor)}
                         </>
                     ) : (
-                        <div className="text-center py-12 bg-white rounded-2xl border border-stone-200">
-                            <p className="text-stone-500">
+                        <div className={`text-center py-12 rounded-2xl border ${
+                            isDark ? "bg-white/[0.02] border-white/10" : "bg-white border-stone-200"
+                        }`}>
+                            <p className={isDark ? "text-stone-500" : "text-stone-500"}>
                                 {t("communityPage.noGroupsFound", "Không tìm thấy nhóm nào trong lĩnh vực này.")}
                             </p>
                         </div>

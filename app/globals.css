@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Tailwind v4: Use class-based dark mode (.dark on <html>) instead of prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* Primary Colors */
   --primary-50: #f0f7ff;
@@ -46,13 +49,13 @@
   --shadow-glow: 0 0 40px rgb(0 132 255 / 0.3);
 
   /* Light mode - Default */
-  --background: #ffffff;
+  --background: #F9F8F4;
   --foreground: var(--neutral-900);
   --card-bg: #ffffff;
   --card-border: var(--neutral-200);
 
-  /* Force light scheme */
-  color-scheme: light;
+  /* Dynamic color-scheme */
+  color-scheme: light dark;
 
   /* UI/UX Pro Max Tokens */
   --space-xs: 4px;
@@ -69,6 +72,20 @@
   --color-accent-amber: #D97706;
   --color-soft-bg: #F0FDFA;
   --color-ring-teal: #0D9488;
+}
+
+/* Dark mode CSS custom properties — synced with html.dark class */
+html.dark,
+.dark {
+  --background: #080808;
+  --foreground: #ffffff;
+  --card-bg: #0e0e0e;
+  --card-border: rgba(255, 255, 255, 0.1);
+  color-scheme: dark !important;
+}
+
+html:not(.dark) {
+  color-scheme: light !important;
 }
 
 @theme inline {
@@ -264,52 +281,6 @@ a:active {
   }
 }
 
-/* Scrollbar - Gold Theme */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f5f0e8;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #C5A059;
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #b08d47;
-}
-
-/* Firefox scrollbar */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #C5A059 #f5f0e8;
-}
-
-/* Custom scrollbar class - for specific containers */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #d4b87a;
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #C5A059;
-}
-
-
 /* Animation Keyframes - Tạo các lát cắt ngẫu nhiên */
 @keyframes lando-glitch-anim-1 {
   0% {
@@ -458,11 +429,11 @@ a:active {
 }
 
 html:not(.dark) .liquid-glass {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(28, 25, 23, 0.08);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.07), 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 2px rgba(255, 255, 255, 1);
+  border: 1px solid rgba(28, 25, 23, 0.06);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .liquid-glass::before {
@@ -510,11 +481,11 @@ html:not(.dark) .liquid-glass::before {
 }
 
 html:not(.dark) .liquid-glass-strong {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(60px);
   -webkit-backdrop-filter: blur(60px);
-  border: 1px solid rgba(197, 160, 89, 0.3);
-  box-shadow: 0 25px 50px -12px rgba(197, 160, 89, 0.18), 0 6px 16px rgba(0, 0, 0, 0.05), inset 0 1px 2px rgba(255, 255, 255, 1);
+  border: 1px solid rgba(197, 160, 89, 0.2);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .liquid-glass-strong::before {
@@ -555,11 +526,11 @@ html:not(.dark) .liquid-glass-strong::before {
 }
 
 html:not(.dark) .liquid-glass-gold {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 243, 233, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(248, 243, 233, 0.45) 100%);
   backdrop-filter: blur(36px);
   -webkit-backdrop-filter: blur(36px);
-  border: 1px solid rgba(197, 160, 89, 0.35);
-  box-shadow: 0 20px 45px -10px rgba(197, 160, 89, 0.2), 0 4px 12px rgba(0, 0, 0, 0.04), inset 0 1px 2px rgba(255, 255, 255, 1);
+  border: 1px solid rgba(197, 160, 89, 0.2);
+  box-shadow: 0 8px 24px -8px rgba(197, 160, 89, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .liquid-glass-gold::before {
@@ -588,4 +559,80 @@ html:not(.dark) .liquid-glass-gold::before {
     rgba(255, 255, 255, 0) 50%,
     rgba(197, 160, 89, 0.35) 75%,
     rgba(197, 160, 89, 0.85) 100%);
-}
+}
+
+/* Custom Scrollbar Styling for Dark & Light Modes */
+* {
+  scrollbar-width: thin;
+}
+
+html.dark *,
+.dark * {
+  scrollbar-color: rgba(197, 160, 89, 0.6) transparent !important;
+}
+
+html:not(.dark) * {
+  scrollbar-color: rgba(197, 160, 89, 0.7) transparent !important;
+}
+
+::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-radius: 9999px !important;
+}
+
+::-webkit-scrollbar-track-piece {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html.dark ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb,
+html.dark *::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(197, 160, 89, 0.4) !important;
+  border-radius: 9999px !important;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover,
+.dark ::-webkit-scrollbar-thumb:hover,
+html.dark *::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(197, 160, 89, 0.8) !important;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb,
+html:not(.dark) *::-webkit-scrollbar-thumb {
+  background-color: rgba(197, 160, 89, 0.5) !important;
+  border-radius: 9999px !important;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb:hover,
+html:not(.dark) *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(197, 160, 89, 0.85) !important;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}

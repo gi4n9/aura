@@ -14,9 +14,10 @@ interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToRegister: () => void;
+  redirectTo?: string;
 }
 
-export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onSwitchToRegister, redirectTo }: LoginModalProps) {
   const { t, language } = useLanguage();
   const { theme } = useTheme();
   const router = useRouter();
@@ -249,6 +250,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
               ) : (
                 /* Login Form */
                 <form className="w-full flex flex-col gap-5 sm:gap-6" onSubmit={handleSubmit}>
+                  {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
                   {errorMsg && (
                     <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-500 text-xs text-center font-medium">
                       {errorMsg}
