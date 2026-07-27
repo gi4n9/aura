@@ -96,26 +96,42 @@ export default function CourseDetailClient({
                                 {t("courseDetail.whatYouLearn", "Bạn sẽ học được gì?")}
                             </h2>
                             <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
-                                <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
-                                    }`}>
-                                    <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
-                                    <span>Hiểu rõ kiến thức chuyên sâu và mô hình thực thi thực tế.</span>
-                                </li>
-                                <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
-                                    }`}>
-                                    <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
-                                    <span>Kỹ năng thực hành ứng dụng trực tiếp vào dự án.</span>
-                                </li>
-                                <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
-                                    }`}>
-                                    <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
-                                    <span>Tự động hóa quy trình làm việc và tối ưu hiệu suất.</span>
-                                </li>
-                                <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
-                                    }`}>
-                                    <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
-                                    <span>Làm chủ các công cụ hỗ trợ và tư duy nâng cao.</span>
-                                </li>
+                                {course.whatYouWillLearn && course.whatYouWillLearn.trim() ? (
+                                    course.whatYouWillLearn
+                                        .split("\n")
+                                        .map((item: string) => item.trim())
+                                        .filter(Boolean)
+                                        .map((item: string, idx: number) => (
+                                            <li key={idx} className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10 text-stone-200" : "bg-stone-50/60 border-stone-200/70 text-stone-800"
+                                                }`}>
+                                                <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
+                                                <span>{item}</span>
+                                            </li>
+                                        ))
+                                ) : (
+                                    <>
+                                        <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
+                                            }`}>
+                                            <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
+                                            <span>Hiểu rõ kiến thức chuyên sâu và mô hình thực thi thực tế.</span>
+                                        </li>
+                                        <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
+                                            }`}>
+                                            <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
+                                            <span>Kỹ năng thực hành ứng dụng trực tiếp vào dự án.</span>
+                                        </li>
+                                        <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
+                                            }`}>
+                                            <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
+                                            <span>Tự động hóa quy trình làm việc và tối ưu hiệu suất.</span>
+                                        </li>
+                                        <li className={`p-3.5 rounded-2xl border transition-all flex items-start gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50/60 border-stone-200/70"
+                                            }`}>
+                                            <CheckCircle2 size={16} className="text-[#C5A059] shrink-0 mt-0.5" />
+                                            <span>Làm chủ các công cụ hỗ trợ và tư duy nâng cao.</span>
+                                        </li>
+                                    </>
+                                )}
                             </ul>
                         </div>
 

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import FormattedMarkdown from "../common/FormattedMarkdown";
 import { parseFileUrls } from "@/app/utils/file-utils";
 import { useTheme } from "@/lib/theme/ThemeContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -228,19 +229,42 @@ export default function QuizPlayer({
     return (
         <div className="space-y-8 py-4 font-sans">
             {/* RESULT HEADER */}
-            {result && (
-                <div className={`p-6 rounded-3xl text-center border-2 transition-all ${result.score >= 50
-                    ? isDark ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-900"
-                    : isDark ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-red-50 border-red-300 text-red-900"
-                    }`}>
-                    <h3 className="text-2xl font-serif font-bold mb-1">
-                        Kết quả: {result.score ?? 0}/100 điểm
-                    </h3>
-                    <p className="text-sm font-medium opacity-90">
-                        Bạn đã làm đúng <span className="font-bold">{result.correctCount}/{result.total}</span> câu hỏi.
-                    </p>
-                </div>
-            )}
+            {result && (() => {
+                const hasPendingEssay = questions.some(q => q.type === "ESSAY" || q.type === "READING_COMPREHENSION") &&
+                    result.feedback.some((f: any) => f.isPendingGrading || !f.isFinalized);
+
+                if (hasPendingEssay) {
+                    return (
+                        <div className={`p-6 rounded-3xl text-center border-2 transition-all ${
+                            isDark ? "bg-[#C5A059]/15 border-[#C5A059]/40 text-[#C5A059]" : "bg-amber-50 border-amber-300 text-stone-900"
+                        }`}>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                                <CheckCircle className="text-emerald-500" size={24} />
+                                <h3 className="text-2xl font-serif font-bold">
+                                    Đã nộp bài thành công!
+                                </h3>
+                            </div>
+                            <p className="text-sm font-medium opacity-90">
+                                Bài làm tự luận / đọc hiểu của bạn đã được ghi nhận. Giảng viên sẽ hỗ trợ chấm điểm và nhận xét chi tiết.
+                            </p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className={`p-6 rounded-3xl text-center border-2 transition-all ${result.score >= 50
+                        ? isDark ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" : "bg-emerald-50 border-emerald-300 text-emerald-900"
+                        : isDark ? "bg-red-500/15 border-red-500/40 text-red-300" : "bg-red-50 border-red-300 text-red-900"
+                        }`}>
+                        <h3 className="text-2xl font-serif font-bold mb-1">
+                            Kết quả: {result.score ?? 0}/100 điểm
+                        </h3>
+                        <p className="text-sm font-medium opacity-90">
+                            Bạn đã làm đúng <span className="font-bold">{result.correctCount}/{result.total}</span> câu hỏi.
+                        </p>
+                    </div>
+                );
+            })()}
 
             {/* QUESTION LIST */}
             {questions.map((q, index) => {
@@ -550,37 +574,50 @@ export default function QuizPlayer({
                             {/* AFTER-SUBMISSION FEEDBACK & MODEL ANSWER SECTION */}
                             {result && (
                                 <div className="space-y-4 mt-6 pt-6 border-t border-dashed border-stone-500/20">
-                                    {/* Essay Status Notice */}
-                                    {q.type === "ESSAY" && (
-                                        <div className={`p-4 rounded-2xl border flex items-center gap-3 text-xs font-medium ${isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-900"
-                                            }`}>
-                                            <Clock size={16} className="text-[#C5A059] flex-shrink-0" />
-                                            <span>⏳ Bài tự luận đã được nộp thành công. Giảng viên / AI sẽ hỗ trợ nhận xét và chấm điểm chi tiết.</span>
+                                    {/* Essay & Reading Comprehension Status Notice */}
+                                    {(q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (
+                                        <div className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-medium ${
+                                            feedback?.isFinalized
+                                                ? isDark ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                                : isDark ? "bg-amber-500/15 border-amber-500/30 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-900"
+                                        }`}>
+                                            <div className="flex items-center gap-2">
+                                                {feedback?.isFinalized ? <CheckCircle size={16} className="text-emerald-500 shrink-0" /> : <Clock size={16} className="text-[#C5A059] shrink-0" />}
+                                                <span>
+                                                    {feedback?.isFinalized
+                                                        ? `Đã được chấm điểm: ${feedback.essayScore != null ? feedback.essayScore + " điểm" : "Hoàn tất"}`
+                                                        : "Đã nộp bài thành công (Chờ giảng viên chấm điểm)"}
+                                                </span>
+                                            </div>
+                                            {feedback?.isFinalized && feedback?.essayFeedback && (
+                                                <p className="text-xs italic text-emerald-600 font-semibold">Nhận xét: {feedback.essayFeedback}</p>
+                                            )}
                                         </div>
                                     )}
 
                                     {/* Model Answer (Đáp án tham khảo / Bài mẫu) */}
                                     {(feedback?.modelAnswer || q.modelAnswer) && (
-                                        <div className={`p-5 rounded-2xl border ${isDark ? "bg-[#C5A059]/10 border-[#C5A059]/30 text-stone-200" : "bg-amber-50/70 border-amber-200 text-stone-900"
-                                            }`}>
+                                        <div className={`p-5 rounded-2xl border transition-all ${
+                                            isDark
+                                                ? "bg-[#0e0e0e] border-white/10 text-stone-200"
+                                                : "bg-amber-50/70 border-amber-200 text-stone-900"
+                                        }`}>
                                             <div className="font-bold text-xs uppercase tracking-wider text-[#C5A059] mb-2 flex items-center gap-2">
                                                 <FileText size={16} />
                                                 <span>Đáp án tham khảo / Bài mẫu:</span>
                                             </div>
-                                            <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? "text-stone-300" : "text-stone-700"}`}>
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {feedback?.modelAnswer || q.modelAnswer || ""}
-                                                </ReactMarkdown>
-                                            </div>
+                                            <FormattedMarkdown
+                                                content={feedback?.modelAnswer || q.modelAnswer || ""}
+                                            />
                                             {(feedback?.modelAnswerFileUrl || q.modelAnswerFileUrl) && (
-                                                <div className="mt-3">
+                                                <div className="mt-3 pt-3 border-t border-stone-500/20">
                                                     <a
                                                         href={feedback?.modelAnswerFileUrl || q.modelAnswerFileUrl || "#"}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C5A059] hover:underline"
                                                     >
-                                                        <FileText size={14} /> File đính kèm bài mẫu
+                                                        <FileText size={14} /> File đính kèm bài mẫu ↗
                                                     </a>
                                                 </div>
                                             )}
@@ -595,11 +632,10 @@ export default function QuizPlayer({
                                                 <Bot size={16} />
                                                 <span>Giải thích chi tiết:</span>
                                             </div>
-                                            <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? "text-stone-300" : "text-stone-700"}`}>
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {feedback?.explanation || q.aiExplanation || ""}
-                                                </ReactMarkdown>
-                                            </div>
+                                            <FormattedMarkdown
+                                                content={feedback?.explanation || q.aiExplanation || ""}
+                                                className={isDark ? "text-stone-200" : "text-stone-800"}
+                                            />
                                         </div>
                                     )}
                                 </div>

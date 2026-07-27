@@ -37,7 +37,7 @@ export default function QuizModal({ lessonId, lessonTitle, onClose }: QuizModalP
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-md transition-all animate-in fade-in duration-200">
-            <div className="bg-[#F9F8F4] w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 border border-white/20">
+            <div className="bg-[#F9F8F4] text-stone-900 w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 border border-white/20">
 
                 {/* Header */}
                 <div className="px-8 py-5 border-b border-stone-200 flex justify-between items-center bg-white rounded-t-2xl">

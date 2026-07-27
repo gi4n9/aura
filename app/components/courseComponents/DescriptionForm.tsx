@@ -47,9 +47,9 @@ export const DescriptionForm = ({ initialData, courseId }: DescriptionFormProps)
             </div>
 
             {!isEditing && (
-                <p className={`text-sm mt-2 ${!initialData.description && "text-stone-400 italic"}`}>
+                <div className={`text-sm mt-2 text-stone-900 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed pr-1 ${!initialData.description && "text-stone-400 italic"}`}>
                     {initialData.description || "Chưa có mô tả..."}
-                </p>
+                </div>
             )}
 
             {isEditing && (
@@ -58,13 +58,13 @@ export const DescriptionForm = ({ initialData, courseId }: DescriptionFormProps)
                         disabled={isLoading}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        rows={4}
-                        className="w-full p-2 bg-white border border-stone-300 rounded-md outline-none focus:ring-2 focus:ring-[#C5A059]"
+                        rows={6}
+                        className="w-full p-3 bg-white text-stone-900 border border-stone-300 rounded-md outline-none focus:ring-2 focus:ring-[#C5A059] text-sm font-normal"
                     />
                     <button
                         onClick={onSubmit}
                         disabled={isLoading}
-                        className="bg-[#1a1a1a] text-white text-xs px-3 py-2 rounded-md font-bold hover:bg-stone-800 transition flex items-center gap-2"
+                        className="bg-[#1a1a1a] text-white text-xs px-4 py-2 rounded-md font-bold hover:bg-stone-800 transition flex items-center gap-2"
                     >
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Lưu thay đổi"}
                     </button>

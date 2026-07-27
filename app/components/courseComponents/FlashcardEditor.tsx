@@ -131,7 +131,7 @@ export default function FlashcardEditor({ lessonId, initialFlashcards, transcrip
                                     type="text"
                                     value={card.front}
                                     onChange={(e) => updateCard(index, "front", e.target.value)}
-                                    className="w-full p-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none transition-all font-semibold"
+                                    className="w-full p-2 text-sm bg-stone-50 border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none transition-all font-semibold"
                                     placeholder="Ví dụ: AI"
                                 />
                             </div>
@@ -141,7 +141,7 @@ export default function FlashcardEditor({ lessonId, initialFlashcards, transcrip
                                     value={card.back}
                                     onChange={(e) => updateCard(index, "back", e.target.value)}
                                     rows={3}
-                                    className="w-full p-2 text-sm bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none resize-none transition-all"
+                                    className="w-full p-2 text-sm bg-stone-50 border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none resize-none transition-all"
                                     placeholder="Ví dụ: Trí tuệ nhân tạo..."
                                 />
                             </div>

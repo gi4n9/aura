@@ -99,7 +99,7 @@ export default function LessonVideoEditor({ lessonId }: LessonVideoEditorProps) 
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none"
+                        className="w-full p-3 border border-stone-300 text-stone-900 bg-white rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none font-medium"
                         placeholder="Nhập tiêu đề video..."
                     />
                     <p className="text-xs text-stone-500 mt-1">
@@ -115,7 +115,7 @@ export default function LessonVideoEditor({ lessonId }: LessonVideoEditorProps) 
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         rows={8}
-                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none font-mono text-sm"
+                        className="w-full p-3 border border-stone-300 text-stone-900 bg-white rounded-lg focus:ring-2 focus:ring-[#C5A059] outline-none font-mono text-sm"
                         placeholder="Nhập mô tả video..."
                     />
                     <p className="text-xs text-stone-500 mt-1">

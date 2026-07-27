@@ -133,6 +133,7 @@ model Course {
   price        Decimal      @default(0)
   isFree       Boolean      @default(true) // Helper flag: true if price == 0
   status       CourseStatus @default(DRAFT)
+  whatYouWillLearn String?  @db.Text
 
   // Ai sở hữu khóa học này?
   instructorId String

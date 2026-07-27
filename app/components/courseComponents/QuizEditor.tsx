@@ -13,6 +13,7 @@ import WorksheetUploader from "./WorksheetUploader";
 import AnswerKeyUploader from "./AnswerKeyUploader";
 import EssayGradingPanel from "./EssayGradingPanel";
 import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
+import FormattedMarkdown from "../common/FormattedMarkdown";
 
 
 interface QuestionState {
@@ -416,7 +417,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                         <textarea
                             value={q.content}
                             onChange={(e) => handleChangeField(originalIndex, "content", e.target.value)}
-                            className="w-full p-3 text-lg font-medium border-b-2 border-transparent focus:border-indigo-500 bg-transparent outline-none placeholder:text-slate-300 transition-colors resize-none"
+                            className="w-full p-3 text-lg font-medium border-b-2 border-transparent focus:border-indigo-500 bg-transparent outline-none placeholder:text-slate-400 transition-colors resize-none text-slate-900"
                             placeholder={q.type === "TRUE_FALSE" ? "Nhập câu lệnh chung (VD: Cho hàm số y = f(x)...)" : "Nhập nội dung câu hỏi..."}
                             rows={2}
                         />
@@ -446,7 +447,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                             type="text"
                                             value={opt}
                                             onChange={(e) => handleOptionChange(originalIndex, optIndex, e.target.value)}
-                                            className="flex-1 bg-transparent outline-none text-slate-700"
+                                            className="flex-1 bg-transparent outline-none text-slate-900 font-medium"
                                             placeholder={`Đáp án ${label}`}
                                         />
 
@@ -480,7 +481,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                             newSub[sIdx] = { ...newSub[sIdx], content: e.target.value };
                                             handleChangeField(originalIndex, "subItems", newSub);
                                         }}
-                                        className="flex-1 bg-transparent outline-none font-medium"
+                                        className="flex-1 bg-transparent outline-none font-medium text-slate-900"
                                         placeholder="Nội dung mệnh đề..."
                                     />
                                     <div className="flex gap-2 shrink-0">
@@ -536,12 +537,14 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
                         return (
                             <div className="mb-6 p-4 bg-emerald-50/50 border border-emerald-200 rounded-lg">
-                                <div className="text-sm font-semibold text-emerald-800 mb-2 flex items-center gap-1.5">
-                                    <CheckCircle size={16} className="text-emerald-600" />
-                                    Đáp án mẫu / Hướng dẫn chấm tự luận:
+                                <div className="text-sm font-semibold text-emerald-800 mb-2 flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5">
+                                        <CheckCircle size={16} className="text-emerald-600" />
+                                        Đáp án mẫu / Hướng dẫn chấm tự luận:
+                                    </span>
                                     {q.modelAnswer ? (
                                         <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-medium">
-                                            {parsedRubric ? "Đã phân tích Rubric cấu trúc" : "Đã khớp đáp án thành công"}
+                                            {parsedRubric ? "Đã phân tích Rubric cấu trúc" : "Đã có đáp án mẫu"}
                                         </span>
                                     ) : (
                                         <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">
@@ -550,19 +553,24 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                     )}
                                 </div>
 
-                                {/* Render Rubric chi tiết nếu có */}
+                                {/* Render Rubric chi tiết cho Giảng viên */}
                                 {parsedRubric && (
-                                    <div className="mb-4 bg-white/80 p-3 rounded-lg border border-emerald-100 text-sm text-slate-700 space-y-3 shadow-sm">
-                                        <div className="font-semibold text-emerald-900 border-b border-emerald-50 pb-1 flex justify-between items-center">
-                                            <span>Rubric chấm điểm tự động (AI Grading)</span>
-                                            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs font-bold">
+                                    <div className="mb-4 bg-white p-3.5 rounded-xl border border-emerald-200 text-sm text-slate-800 space-y-3 shadow-xs">
+                                        <div className="font-bold text-emerald-900 border-b border-emerald-100 pb-2 flex justify-between items-center">
+                                            <span className="flex items-center gap-2">
+                                                <Sparkles size={16} className="text-emerald-600" />
+                                                Tiêu chí chấm điểm tự động (Rubric AI)
+                                            </span>
+                                            <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-xs font-bold">
                                                 Tổng: {parsedRubric.totalScore || parsedRubric.score || 10}đ
                                             </span>
                                         </div>
                                         {parsedRubric.general && (
                                             <div>
                                                 <span className="font-bold text-slate-800 text-xs">Yêu cầu chung:</span>
-                                                <p className="text-xs mt-1 text-slate-600 pl-2 border-l-2 border-slate-200 whitespace-pre-line">{parsedRubric.general}</p>
+                                                <div className="text-xs mt-1 text-slate-700 pl-3 border-l-2 border-emerald-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                                    <FormattedMarkdown content={parsedRubric.general} />
+                                                </div>
                                             </div>
                                         )}
                                         {parsedRubric.criteria && parsedRubric.criteria.length > 0 && (
@@ -570,12 +578,14 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                                 <span className="font-bold text-slate-800 text-xs">Tiêu chí chi tiết:</span>
                                                 <div className="grid gap-2 mt-1">
                                                     {parsedRubric.criteria.map((c: any, cIdx: number) => (
-                                                        <div key={cIdx} className="flex justify-between items-start bg-emerald-50/20 p-2 rounded border border-emerald-50 text-xs">
+                                                        <div key={cIdx} className="flex justify-between items-start bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-100 text-xs">
                                                             <div className="flex-1 pr-4">
-                                                                <span className="font-bold text-emerald-800 mr-1">{c.label || `Ý ${cIdx + 1}`}:</span>
-                                                                <span className="text-slate-600">{c.description}</span>
+                                                                <span className="font-bold text-emerald-900 mr-1.5 block mb-1">{c.label || `Ý ${cIdx + 1}`}:</span>
+                                                                <div className="text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">
+                                                                    <FormattedMarkdown content={c.description} />
+                                                                </div>
                                                             </div>
-                                                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">{c.score}đ</span>
+                                                            <span className="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">{c.score}đ</span>
                                                         </div>
                                                     ))}
                                                 </div>

@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    unoptimized: process.env.NODE_ENV === "development",
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

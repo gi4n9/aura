@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { TitleForm } from "@/app/components/courseComponents/TitleForm";
 import { DescriptionForm } from "@/app/components/courseComponents/DescriptionForm";
+import { WhatYouWillLearnForm } from "@/app/components/courseComponents/WhatYouWillLearnForm";
 import { PriceForm } from "@/app/components/courseComponents/PriceForm";
 import { CourseActions } from "@/app/components/courseComponents/CourseActions";
 import { ImageForm } from "@/app/components/courseComponents/ImageForm";
@@ -112,6 +113,8 @@ export default async function CourseEditPage({
                         <TitleForm initialData={plainCourse} courseId={course.id} />
 
                         <DescriptionForm initialData={plainCourse} courseId={course.id} />
+
+                        <WhatYouWillLearnForm initialData={plainCourse} courseId={course.id} />
 
                         <ImageForm initialData={plainCourse} courseId={course.id} />
                     </div>

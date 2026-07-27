@@ -35,7 +35,7 @@ export default function ChapterQuizModal({ chapterId, chapterTitle, onClose }: C
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md transition-all animate-in fade-in duration-200">
-            <div className="bg-[#F9F8F4] w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex relative animate-in zoom-in-95 duration-200 border border-white/20 overflow-hidden">
+            <div className="bg-[#F9F8F4] text-stone-900 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex relative animate-in zoom-in-95 duration-200 border border-white/20 overflow-hidden">
 
                 {/* Close Button Absolute */}
                 <button

@@ -3,8 +3,9 @@
 import { useState, useCallback } from "react";
 import {
     BookOpen, Upload, Save, Bot, CheckCircle, Clock, XCircle,
-    ChevronDown, ChevronUp, FileText, Loader2, Star, User, Eye, Trash
+    ChevronDown, ChevronUp, FileText, Loader2, Star, User, Eye, Trash, Sparkles
 } from "lucide-react";
+import FormattedMarkdown from "../common/FormattedMarkdown";
 import { uploadModelAnswer, getEssaySubmissions, gradeEssaySubmission, aiGradeEssay } from "@/app/actions/essay-grading";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
@@ -427,12 +428,12 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
             {/* Grading Modal */}
             {gradingSubmission && gradingQuestion && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setGradingSubmission(null); setGradingQuestion(null); }}>
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white text-stone-900 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50">
                             <div>
-                                <h3 className="font-bold text-stone-800">Chấm bài tự luận</h3>
-                                <p className="text-xs text-stone-500 mt-0.5">Học viên: {gradingSubmission.userName}</p>
+                                <h3 className="font-bold text-stone-800 text-lg">Chấm bài tự luận</h3>
+                                <p className="text-xs text-stone-500 mt-0.5">Học viên: <span className="font-bold text-stone-800">{gradingSubmission.userName}</span></p>
                             </div>
                             <button onClick={() => { setGradingSubmission(null); setGradingQuestion(null); }} className="text-stone-400 hover:text-stone-600">
                                 <XCircle size={20} />
@@ -444,47 +445,43 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Left: Bài làm */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-stone-800 mb-2 flex items-center gap-2">
                                         <User size={14} /> Bài làm của học viên
                                     </h4>
                                     
                                     {/* Câu hỏi */}
-                                    <div className="bg-stone-50 rounded-lg p-3 mb-3 text-sm text-stone-600 border border-stone-100">
-                                        <span className="font-bold text-stone-800">Câu hỏi: </span>
+                                    <div className="bg-stone-50 rounded-lg p-3.5 mb-3 text-sm text-stone-900 border border-stone-200 font-medium">
+                                        <span className="font-bold text-stone-900">Câu hỏi: </span>
                                         {gradingQuestion.content}
                                     </div>
 
                                     {/* Bài làm */}
-                                    <div className="bg-white rounded-lg p-4 border border-stone-200 min-h-[200px]">
+                                    <div className="bg-white rounded-lg p-4 border border-stone-200 min-h-[200px] text-stone-900">
                                         {gradingSubmission.answerText ? (
-                                            <div className="prose prose-sm max-w-none text-stone-700">
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {gradingSubmission.answerText}
-                                                </ReactMarkdown>
-                                            </div>
+                                            <FormattedMarkdown content={gradingSubmission.answerText} className="text-stone-900" />
                                         ) : (
                                             <p className="text-sm text-stone-400 italic">Không có nội dung text.</p>
                                         )}
                                         {gradingSubmission.fileUrl && (
                                             <div className="mt-3 space-y-2">
-                                                <span className="text-xs font-bold text-stone-500 block">Hình ảnh bài làm ({parseFileUrls(gradingSubmission.fileUrl).length}):</span>
+                                                <span className="text-xs font-bold text-stone-600 block">Hình ảnh bài làm ({parseFileUrls(gradingSubmission.fileUrl).length}):</span>
                                                 <div className="flex flex-col gap-3">
                                                     {parseFileUrls(gradingSubmission.fileUrl).map((url, idx) => {
                                                         const isImage = /\.(png|jpe?g|webp|gif)($|\?)/i.test(url);
                                                         return (
-                                                            <div key={url} className="border border-stone-200 rounded-lg p-2 bg-stone-50">
+                                                            <div key={url} className="border border-stone-200 rounded-lg p-2 bg-stone-50 text-stone-900">
                                                                 <div className="flex items-center justify-between text-xs mb-1">
-                                                                    <span className="font-semibold text-stone-600">Trang {idx + 1}</span>
-                                                                    <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                                                    <span className="font-semibold text-stone-700">Trang {idx + 1}</span>
+                                                                    <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 font-semibold">
                                                                         <Eye size={10} /> Mở tab mới
                                                                     </a>
                                                                 </div>
                                                                 {isImage ? (
                                                                     <img src={url} alt={`Trang ${idx + 1}`} className="max-h-[500px] w-full object-contain rounded border border-stone-200 bg-white" />
                                                                 ) : (
-                                                                    <div className="flex items-center gap-2 text-stone-600 p-2 text-sm bg-white border border-stone-200 rounded">
+                                                                    <div className="flex items-center gap-2 text-stone-800 p-2 text-sm bg-white border border-stone-200 rounded">
                                                                         <FileText size={16} />
-                                                                        <span className="truncate flex-1">{url.split('/').pop()}</span>
+                                                                        <span className="truncate flex-1 font-medium">{url.split('/').pop()}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -496,32 +493,86 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                     </div>
                                 </div>
 
-                                {/* Right: Đáp án mẫu */}
+                                {/* Right: Tiêu chí chấm điểm */}
                                 <div>
-                                    <h4 className="text-sm font-bold text-stone-700 mb-2 flex items-center gap-2">
-                                        <FileText size={14} /> Đáp án mẫu
+                                    <h4 className="text-sm font-bold text-stone-800 mb-2 flex items-center gap-2">
+                                        <FileText size={14} /> Tiêu chí chấm điểm (Rubric)
                                     </h4>
-                                    <div className="bg-indigo-50/50 rounded-lg p-4 border border-indigo-100 min-h-[200px]">
-                                        {gradingQuestion.modelAnswer ? (
-                                            <div className="prose prose-sm max-w-none text-indigo-900">
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {gradingQuestion.modelAnswer}
-                                                </ReactMarkdown>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-indigo-400 italic">Chưa có đáp án mẫu. Vui lòng upload ở phần trên.</p>
-                                        )}
+                                    <div className="bg-indigo-50/50 rounded-lg p-4 border border-indigo-100 min-h-[200px] text-stone-900">
+                                        {(() => {
+                                            let parsedRubric: any = null;
+                                            let plainAnswer: string | null = null;
+                                            try {
+                                                if (gradingQuestion.modelAnswer && gradingQuestion.modelAnswer.trim().startsWith("{")) {
+                                                    const obj = JSON.parse(gradingQuestion.modelAnswer);
+                                                    if (obj.rubric || obj.isRubric) {
+                                                        parsedRubric = obj.rubric || obj;
+                                                    } else if (obj.answer) {
+                                                        plainAnswer = obj.answer;
+                                                    }
+                                                } else {
+                                                    plainAnswer = gradingQuestion.modelAnswer;
+                                                }
+                                            } catch (e) {
+                                                plainAnswer = gradingQuestion.modelAnswer;
+                                            }
+
+                                            if (parsedRubric) {
+                                                return (
+                                                    <div className="bg-white p-3.5 rounded-xl border border-indigo-200 text-xs text-stone-900 space-y-3 shadow-xs">
+                                                        <div className="font-bold text-indigo-900 border-b border-indigo-100 pb-2 flex justify-between items-center">
+                                                            <span className="flex items-center gap-1.5 font-bold text-sm">
+                                                                <Sparkles size={16} className="text-indigo-600" />
+                                                                Tiêu chí chấm điểm (Rubric AI)
+                                                            </span>
+                                                            <span className="bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full font-bold text-xs">
+                                                                Tổng: {parsedRubric.totalScore || parsedRubric.score || 10}đ
+                                                            </span>
+                                                        </div>
+                                                        {parsedRubric.general && (
+                                                            <div>
+                                                                <span className="font-bold text-indigo-900 text-xs block mb-1">Yêu cầu chung:</span>
+                                                                <div className="text-stone-800 font-medium pl-2.5 border-l-2 border-indigo-300 leading-relaxed text-xs">
+                                                                    <FormattedMarkdown content={parsedRubric.general} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {parsedRubric.criteria && (
+                                                            <div className="space-y-2 mt-2">
+                                                                <span className="font-bold text-indigo-900 text-xs block mb-1">Tiêu chí chi tiết:</span>
+                                                                {parsedRubric.criteria.map((c: any, idx: number) => (
+                                                                    <div key={idx} className="flex justify-between items-start bg-indigo-50/60 p-2.5 rounded-lg border border-indigo-100 text-stone-900 font-medium text-xs">
+                                                                        <div className="flex-1 pr-3">
+                                                                            <span className="font-bold text-indigo-900 block mb-1">{c.label || `Ý ${idx + 1}`}:</span>
+                                                                            <FormattedMarkdown content={c.description} />
+                                                                        </div>
+                                                                        <span className="font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md shrink-0">{c.score}đ</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (plainAnswer) {
+                                                return <FormattedMarkdown content={plainAnswer} className="text-stone-900" />;
+                                            }
+
+                                            return <p className="text-sm text-indigo-400 italic">Chưa có tiêu chí chấm điểm / đáp án mẫu.</p>;
+                                        })()}
+
                                         {gradingQuestion.modelAnswerFileUrl && (
                                             <div className="mt-3 space-y-2">
-                                                <span className="text-xs font-bold text-indigo-800 block">Hình ảnh đáp án ({parseFileUrls(gradingQuestion.modelAnswerFileUrl).length}):</span>
+                                                <span className="text-xs font-bold text-indigo-800 block">File đính kèm ({parseFileUrls(gradingQuestion.modelAnswerFileUrl).length}):</span>
                                                 <div className="flex flex-col gap-3">
                                                     {parseFileUrls(gradingQuestion.modelAnswerFileUrl).map((url, idx) => {
                                                         const isImage = /\.(png|jpe?g|webp|gif)($|\?)/i.test(url);
                                                         return (
-                                                            <div key={url} className="border border-indigo-150 rounded-lg p-2 bg-indigo-50/30">
+                                                            <div key={url} className="border border-indigo-150 rounded-lg p-2 bg-indigo-50/30 text-stone-900">
                                                                 <div className="flex items-center justify-between text-xs mb-1">
                                                                     <span className="font-semibold text-indigo-800">Trang {idx + 1}</span>
-                                                                    <a href={url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
+                                                                    <a href={url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1 font-semibold">
                                                                         <Eye size={10} /> Mở tab mới
                                                                     </a>
                                                                 </div>
@@ -530,7 +581,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                                                 ) : (
                                                                     <div className="flex items-center gap-2 text-indigo-800 p-2 text-sm bg-white border border-indigo-100 rounded">
                                                                         <FileText size={16} />
-                                                                        <span className="truncate flex-1">{url.split('/').pop()}</span>
+                                                                        <span className="truncate flex-1 font-medium">{url.split('/').pop()}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -544,7 +595,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                             </div>
 
                             {/* Grading Form */}
-                            <div className="mt-6 bg-amber-50/50 rounded-lg p-4 border border-amber-100">
+                            <div className="mt-6 bg-amber-50/50 rounded-lg p-4 border border-amber-100 text-stone-900">
                                 <h4 className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2">
                                     <Star size={14} /> Chấm điểm
                                 </h4>
@@ -558,14 +609,14 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                         step={0.5}
                                         value={gradeScore}
                                         onChange={(e) => setGradeScore(parseFloat(e.target.value) || 0)}
-                                        className="w-24 px-3 py-2 rounded-lg border border-amber-200 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                        className="w-24 px-3 py-2 rounded-lg border border-amber-200 text-center font-bold text-lg text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                                     />
                                     <div className="flex gap-1">
                                         {[0, 2, 4, 5, 6, 7, 8, 9, 10].map(v => (
                                             <button
                                                 key={v}
                                                 onClick={() => setGradeScore(v)}
-                                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${gradeScore === v ? "bg-amber-500 text-white" : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"}`}
+                                                className={`px-2 py-1 rounded text-xs font-bold transition-colors ${gradeScore === v ? "bg-amber-500 text-white" : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-50"}`}
                                             >
                                                 {v}
                                             </button>
@@ -577,7 +628,7 @@ export default function EssayGradingPanel({ lessonId }: { lessonId: string }) {
                                     value={gradeFeedback}
                                     onChange={(e) => setGradeFeedback(e.target.value)}
                                     placeholder="Nhận xét chi tiết cho học viên (hỗ trợ Markdown)..."
-                                    className="w-full min-h-[100px] p-3 rounded-lg border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y"
+                                    className="w-full min-h-[100px] p-3 rounded-lg border border-amber-200 text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y font-medium"
                                 />
                             </div>
                         </div>

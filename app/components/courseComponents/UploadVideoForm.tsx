@@ -243,11 +243,11 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
                     value={selectedCourseId}
                     onChange={(e) => handleCourseChange(e.target.value)}
                     disabled={loading}
-                    className="w-full p-3 border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-[#C5A059] outline-none"
+                    className="w-full p-3 border border-stone-300 rounded-lg bg-white text-stone-900 focus:ring-2 focus:ring-[#C5A059] outline-none font-medium"
                 >
-                    <option value="">-- Vui lòng chọn một khóa học --</option>
+                    <option value="" className="text-stone-900">-- Vui lòng chọn một khóa học --</option>
                     {playlists.map((p) => (
-                        <option key={p.id} value={p.id}>
+                        <option key={p.id} value={p.id} className="text-stone-900">
                             {p.title}
                         </option>
                     ))}
@@ -267,11 +267,11 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
                         value={selectedChapterId}
                         onChange={(e) => setSelectedChapterId(e.target.value)}
                         disabled={loading}
-                        className="w-full p-3 border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-[#C5A059] outline-none"
+                        className="w-full p-3 border border-stone-300 rounded-lg bg-white text-stone-900 focus:ring-2 focus:ring-[#C5A059] outline-none font-medium"
                     >
-                        <option value="">-- Chọn chương để thêm video --</option>
+                        <option value="" className="text-stone-900">-- Chọn chương để thêm video --</option>
                         {chapters.map((c) => (
-                            <option key={c.id} value={c.id}>
+                            <option key={c.id} value={c.id} className="text-stone-900">
                                 {c.title}
                             </option>
                         ))}
