@@ -4,6 +4,7 @@ import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
+
 // 1. Lấy danh sách hội thoại của User hiện tại
 export async function getConversations() {
     const supabase = await createClient();
@@ -20,6 +21,13 @@ export async function getConversations() {
             }
         },
         include: {
+            course: {
+                select: {
+                    id: true,
+                    title: true,
+                    thumbnailUrl: true
+                }
+            },
             participants: {
                 include: {
                     user: {
@@ -48,10 +56,18 @@ export async function getConversations() {
     return conversations.map(conv => {
         const otherParticipant = conv.participants.find(p => p.userId !== user.id)?.user;
         const lastMessage = conv.messages[0];
-        
+
         return {
             id: conv.id,
-            otherUser: otherParticipant, // Người mình đang chat cùng
+            isGroup: conv.isGroup,
+            name: conv.isGroup
+                ? (conv.name || (conv.course ? `Nhóm: ${conv.course.title}` : "Nhóm khóa học"))
+                : undefined,
+            avatarUrl: conv.isGroup
+                ? (conv.avatarUrl || conv.course?.thumbnailUrl || null)
+                : undefined,
+            courseId: conv.courseId,
+            otherUser: otherParticipant,
             lastMessage: lastMessage ? {
                 content: lastMessage.content,
                 createdAt: lastMessage.createdAt,

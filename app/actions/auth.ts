@@ -164,14 +164,25 @@ export async function ensureProfileExists() {
       where: { id: user.id },
     });
 
-    if (existingProfile) return existingProfile;
+    const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+
+    if (existingProfile) {
+      if (!existingProfile.avatarUrl && googleAvatar) {
+        const updated = await prisma.profile.update({
+          where: { id: user.id },
+          data: { avatarUrl: googleAvatar }
+        });
+        return updated;
+      }
+      return existingProfile;
+    }
 
     const newProfile = await prisma.profile.create({
       data: {
         id: user.id,
         email: user.email || "",
         fullName: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
-        avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+        avatarUrl: googleAvatar || null,
         role: "STUDENT",
       },
     });

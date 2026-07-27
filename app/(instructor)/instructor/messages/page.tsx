@@ -1,7 +1,9 @@
 import { getConversations } from "@/app/actions/chat";
+import { getMyInvitations } from "@/app/actions/community-actions";
 import { createClient } from "@/utils/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import MessagesInterface from "@/app/components/chat/MessagesInterface";
+import InstructorMessagesClient from "./InstructorMessagesClient";
 
 export default async function InstructorMessagesPage() {
     const supabase = await createClient();
@@ -9,20 +11,23 @@ export default async function InstructorMessagesPage() {
 
     if (!user) return redirect("/login");
 
-    const conversations = await getConversations();
+    const [conversations, invitations] = await Promise.all([
+        getConversations(),
+        getMyInvitations()
+    ]);
+
+    // Lấy khóa học giảng viên đã tạo (dùng cho modal tạo nhóm)
+    const instructorCourses = await prisma.course.findMany({
+        where: { instructorId: user.id },
+        select: { id: true, title: true, thumbnailUrl: true }
+    });
 
     return (
-        <div className="flex flex-col gap-4">
-            <h1 className="text-2xl font-bold font-serif text-stone-800">Tin nhắn & Hỗ trợ</h1>
-            {/* Wrapper không cần height cứng nữa vì ta truyền height trực tiếp vào Component */}
-            <div className="w-full">
-                <MessagesInterface
-                    initialConversations={conversations}
-                    currentUserId={user.id}
-                    // Instructor layout: Cao hơn và cố định hơn (85vh, min 800px)
-                    className="flex h-[85vh] min-h-[800px] w-full bg-white overflow-hidden rounded-2xl shadow-sm border border-stone-200"
-                />
-            </div>
-        </div>
+        <InstructorMessagesClient
+            conversations={conversations}
+            currentUserId={user.id}
+            invitations={invitations}
+            instructorCourses={instructorCourses}
+        />
     );
 }

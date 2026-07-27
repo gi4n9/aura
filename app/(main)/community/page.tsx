@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCategories, getMyGroups, getAvailableGroups } from '@/app/actions/community';
 import { createClient } from '@/utils/supabase/server';
+import { prisma } from '@/lib/prisma';
 import CommunityClient from '@/app/components/client/CommunityClient';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,33 @@ export default async function CommunityPage(props: {
     const { groups: myGroups, totalPages: myTotalPages, nextCursor: myNextCursor } = userId ? await getMyGroups(userId, myPage, 10, mycursor) : { groups: [], totalPages: 0, nextCursor: null };
     const { groups: availableGroups, totalPages, nextCursor } = await getAvailableGroups(userId, categoryId, page, 10, cursor);
 
+    // 4. Lấy danh sách khóa học mà user đăng ký (để hiển thị trong modal tạo nhóm)
+    let enrolledCourses: { id: string; title: string; thumbnailUrl: string | null }[] = [];
+    if (userId) {
+        const enrollments = await prisma.enrollment.findMany({
+            where: { userId },
+            select: {
+                course: {
+                    select: { id: true, title: true, thumbnailUrl: true }
+                }
+            }
+        });
+        enrolledCourses = enrollments.map(e => e.course);
+
+        // Nếu user là giảng viên, thêm cả các khóa học do họ tạo
+        const instructorCourses = await prisma.course.findMany({
+            where: { instructorId: userId },
+            select: { id: true, title: true, thumbnailUrl: true }
+        });
+
+        const existingIds = new Set(enrolledCourses.map(c => c.id));
+        for (const c of instructorCourses) {
+            if (!existingIds.has(c.id)) {
+                enrolledCourses.push(c);
+            }
+        }
+    }
+
     return (
         <CommunityClient
             userId={userId}
@@ -42,6 +70,7 @@ export default async function CommunityPage(props: {
             availableGroups={availableGroups}
             totalPages={totalPages}
             nextCursor={nextCursor}
+            enrolledCourses={enrolledCourses}
         />
     );
 }

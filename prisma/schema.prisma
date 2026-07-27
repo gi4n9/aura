@@ -99,6 +99,10 @@ model Profile {
   userStats      UserStats?
   groupQuestions GroupQuestion[]
   
+  // Group Invitations
+  invitationsSent     GroupInvitation[] @relation("InvitationsSent")
+  invitationsReceived GroupInvitation[] @relation("InvitationsReceived")
+  
   // Payment History
   purchases      Purchase[]
 
@@ -158,6 +162,7 @@ model Course {
   
   // Community Groups
   conversations    Conversation[]
+  groupCourseLinks GroupCourseLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -552,6 +557,36 @@ model Conversation {
   summaries    ConversationSummary[]
   goals        GroupGoal[]
   questions    GroupQuestion[]
+  courseLinks  GroupCourseLink[]
+  invitations  GroupInvitation[]
+}
+
+// Many-to-many: Conversation ↔ Course (nhóm liên kết nhiều khóa học)
+model GroupCourseLink {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, courseId])
+}
+
+// Lời mời tham gia nhóm chat
+model GroupInvitation {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  inviterId      String
+  inviter        Profile      @relation("InvitationsSent", fields: [inviterId], references: [id])
+  inviteeId      String
+  invitee        Profile      @relation("InvitationsReceived", fields: [inviteeId], references: [id])
+  status         String       @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([conversationId, inviteeId])
 }
 
 model ConversationParticipant {

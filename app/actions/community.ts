@@ -22,14 +22,14 @@ export async function getMyGroups(userId: string, page = 1, limit = 10, cursor?:
         db.conversation.count({ where }),
         cursor ? db.conversation.findMany({
             where,
-            include: { participants: true, course: { select: { title: true } } },
+            include: { participants: true, course: { select: { title: true } }, courseLinks: { include: { course: { select: { title: true } } } } },
             take: limit,
             orderBy: { id: 'desc' },
             cursor: { id: cursor },
-            skip: 1, // Bỏ qua bản ghi trùng với cursor
+            skip: 1,
         }) : db.conversation.findMany({
             where,
-            include: { participants: true, course: { select: { title: true } } },
+            include: { participants: true, course: { select: { title: true } }, courseLinks: { include: { course: { select: { title: true } } } } },
             take: limit,
             orderBy: { id: 'desc' },
             skip: (page - 1) * limit,
@@ -50,7 +50,9 @@ export async function getMyGroups(userId: string, page = 1, limit = 10, cursor?:
             membersCount: c.participants.length,
             maxMembers: c.maxMembers,
             isPublic: c.isPublic,
-            courseName: c.course?.title || 'Chung',
+            courseName: c.courseLinks.length > 0
+                ? c.courseLinks.map(l => l.course.title).join(', ')
+                : (c.course?.title || 'Chung'),
         }))
     };
 }
@@ -76,14 +78,14 @@ export async function getAvailableGroups(userId: string | null, categoryId?: str
         db.conversation.count({ where: whereClause }),
         cursor ? db.conversation.findMany({
             where: whereClause,
-            include: { participants: true, course: { select: { title: true } } },
+            include: { participants: true, course: { select: { title: true } }, courseLinks: { include: { course: { select: { title: true } } } } },
             take: limit,
             orderBy: { id: 'desc' },
             cursor: { id: cursor },
             skip: 1,
         }) : db.conversation.findMany({
             where: whereClause,
-            include: { participants: true, course: { select: { title: true } } },
+            include: { participants: true, course: { select: { title: true } }, courseLinks: { include: { course: { select: { title: true } } } } },
             take: limit,
             orderBy: { id: 'desc' },
             skip: (page - 1) * limit,
@@ -104,7 +106,9 @@ export async function getAvailableGroups(userId: string | null, categoryId?: str
             membersCount: c.participants.length,
             maxMembers: c.maxMembers,
             isPublic: c.isPublic,
-            courseName: c.course?.title || 'Chung',
+            courseName: c.courseLinks.length > 0
+                ? c.courseLinks.map(l => l.course.title).join(', ')
+                : (c.course?.title || 'Chung'),
         }))
     };
 }

@@ -25,11 +25,19 @@ export default function Header() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isPendingLogout, startTransitionLogout] = useTransition();
+  const [imgError, setImgError] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile } = useAuth();
 
   const isDark = theme === "dark";
+
+  const userInitial = profile?.fullName?.trim().charAt(0).toUpperCase() || user?.user_metadata?.full_name?.trim().charAt(0).toUpperCase() || user?.user_metadata?.name?.trim().charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
+  const avatarUrl = profile?.avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,8 +85,6 @@ export default function Header() {
       : "bg-transparent border-b border-stone-200/40 text-stone-900";
 
   const menuTopPosition = isScrolled ? "top-[50px]" : "top-[64px]";
-  const userInitial = profile?.fullName?.trim().charAt(0).toUpperCase() || user?.user_metadata?.full_name?.trim().charAt(0).toUpperCase() || user?.user_metadata?.name?.trim().charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U";
-  const avatarUrl = profile?.avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
   return (
     <>
@@ -152,10 +158,12 @@ export default function Header() {
                   <div className="text-right hidden xl:block">
                     <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{t("nav.account")}</p>
                   </div>
-                  {avatarUrl ? (
+                  {avatarUrl && !imgError ? (
                     <img
                       src={avatarUrl}
                       alt={profile?.fullName || user.email || "Avatar"}
+                      referrerPolicy="no-referrer"
+                      onError={() => setImgError(true)}
                       className="w-9 h-9 rounded-full object-cover border border-[#C5A059] shadow-sm"
                     />
                   ) : (
@@ -285,8 +293,14 @@ export default function Header() {
                     <div className={`flex items-center gap-3 p-3 rounded-lg border ${
                       isDark ? "bg-white/5 border-white/10" : "bg-white border-stone-200"
                     }`}>
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-[#C5A059]" />
+                      {avatarUrl && !imgError ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar"
+                          referrerPolicy="no-referrer"
+                          onError={() => setImgError(true)}
+                          className="w-10 h-10 rounded-full object-cover border border-[#C5A059]"
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-serif font-bold text-base border border-[#C5A059]">
                           {userInitial}

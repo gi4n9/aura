@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Users, Plus, Link as LinkIcon, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import GroupCard from '@/app/components/community/GroupCard';
+import CreateGroupModal from '@/app/components/community/CreateGroupModal';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
@@ -24,6 +25,7 @@ interface CommunityClientProps {
     availableGroups: any[];
     totalPages: number;
     nextCursor: string | null;
+    enrolledCourses: { id: string; title: string; thumbnailUrl?: string | null }[];
 }
 
 export default function CommunityClient({
@@ -37,11 +39,13 @@ export default function CommunityClient({
     myNextCursor,
     availableGroups,
     totalPages,
-    nextCursor
+    nextCursor,
+    enrolledCourses
 }: CommunityClientProps) {
     const { t } = useLanguage();
     const { theme } = useTheme();
     const isDark = theme === "dark";
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const renderPagination = (currentPage: number, total: number, paramName: 'page' | 'mypage', nextCursorStr: string | null) => {
         if (total <= 1) return null;
@@ -140,7 +144,7 @@ export default function CommunityClient({
                             <LinkIcon size={16} />
                             {t("communityPage.joinByCode", "Tham gia bằng mã")}
                         </button>
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-[#C5A059] text-white rounded-full font-bold hover:bg-[#b08d4b] hover:shadow-md transition-all text-sm shadow-sm">
+                        <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-[#C5A059] text-white rounded-full font-bold hover:bg-[#b08d4b] hover:shadow-md transition-all text-sm shadow-sm">
                             <Plus size={16} />
                             {t("communityPage.createGroup", "Tạo nhóm")}
                         </button>
@@ -238,6 +242,13 @@ export default function CommunityClient({
                 </div>
 
             </div>
+
+            {/* Create Group Modal */}
+            <CreateGroupModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                enrolledCourses={enrolledCourses}
+            />
         </div>
     );
 }
