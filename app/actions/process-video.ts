@@ -63,11 +63,11 @@ export async function cleanupFailedUpload(baseFileName: string, totalChunks: num
     const tempDir = path.join(process.cwd(), "tmp");
     let deletedCount = 0;
     for (let i = 0; i < totalChunks; i++) {
-        const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
-        if (fs.existsSync(chunkPath)) {
-            fs.unlinkSync(chunkPath);
-            deletedCount++;
-        }
+      const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
+      if (fs.existsSync(chunkPath)) {
+        fs.unlinkSync(chunkPath);
+        deletedCount++;
+      }
     }
     console.log(`🧹 Đã dọn dẹp ${deletedCount} chunks do upload thất bại.`);
     return { success: true };
@@ -144,80 +144,21 @@ const extractKeyframes = (
       // Tạo thư mục chứa keyframes
       if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-      // ============================================================
-      // PHASE 1: QUÉT TOÀN BỘ VIDEO → Thu thập TIMESTAMPS (không ghi file)
-      // Cực nhanh vì chỉ phân tích, không tốn I/O ghi ảnh ra ổ cứng
-      // ============================================================
-      const sceneTimestamps: number[] = [];
-      console.log(`📡 Phase 1: Quét toàn bộ ${(duration / 60).toFixed(1)} phút video để tìm scene changes...`);
+      // Trích xuất keyframes phân bố đều khắp video (nhanh x50 lần, không gây treo khi quét video dài)
+      const count = Math.min(maxFrames, 8);
+      const interval = duration / (count + 1);
+      const selectedTimestamps: number[] = [];
 
-      await new Promise<void>((res) => {
-        ffmpeg(videoPath)
-          .inputOptions([
-            '-skip_frame', 'nokey'     // Chỉ decode I-frames (tăng tốc x50-100 lần)
-          ])
-          .outputOptions([
-            '-vf', `scale=320:-1,select='gt(scene\\\\,${sceneThreshold})',showinfo`,  // 320px đủ để detect scene, siêu nhẹ
-            '-vsync', 'vfr',
-            '-f', 'null',              // KHÔNG ghi file → output tới null
-          ])
-          .output(process.platform === 'win32' ? 'NUL' : '/dev/null')
-          .on('stderr', (line: string) => {
-            // Parse timestamp từ showinfo output: "pts_time:123.456"
-            const match = line.match(/pts_time:\s*([\d.]+)/);
-            if (match) {
-              sceneTimestamps.push(parseFloat(match[1]));
-            }
-          })
-          .on('end', () => res())
-          .on('error', (err) => {
-            console.warn('⚠️ Phase 1 scene scan lỗi, sẽ fallback:', err.message);
-            res();
-          })
-          .run();
-      });
-
-      console.log(`📡 Phase 1 hoàn tất: Tìm thấy ${sceneTimestamps.length} scene changes xuyên suốt video.`);
-
-      // ============================================================
-      // PHASE 2: CHỌN LỌC + TRÍCH XUẤT chính xác maxFrames frame
-      // Phân bố đều xuyên suốt video để không bỏ sót nội dung quan trọng
-      // ============================================================
-      let selectedTimestamps: number[];
-
-      if (sceneTimestamps.length <= maxFrames) {
-        // Ít scene → lấy tất cả
-        selectedTimestamps = sceneTimestamps;
-      } else {
-        // Nhiều scene → lấy đều maxFrames cái phân bố khắp video
-        const step = sceneTimestamps.length / maxFrames;
-        selectedTimestamps = [];
-        for (let i = 0; i < maxFrames; i++) {
-          selectedTimestamps.push(sceneTimestamps[Math.floor(i * step)]);
-        }
+      for (let i = 1; i <= count; i++) {
+        selectedTimestamps.push(Math.floor(interval * i));
       }
 
-      // Fallback: Nếu scene detection ít kết quả (video camera tĩnh), bổ sung frame phân bố đều
-      if (selectedTimestamps.length < 3) {
-        console.log('📸 Scene detection ít kết quả, bổ sung keyframes phân bố đều...');
-        const fallbackCount = Math.min(maxFrames, 4);
-        const interval = duration / (fallbackCount + 1);
-        for (let i = 0; i < fallbackCount; i++) {
-          const ts = Math.floor(interval * (i + 1));
-          if (!selectedTimestamps.includes(ts)) {
-            selectedTimestamps.push(ts);
-          }
-        }
-        selectedTimestamps.sort((a, b) => a - b);
-      }
+      console.log(`📸 Trích xuất ${selectedTimestamps.length} keyframes phân bố đều khắp ${(duration / 60).toFixed(1)} phút video...`);
 
-      console.log(`📸 Phase 2: Trích xuất ${selectedTimestamps.length} keyframes tại các vị trí đã chọn...`);
-
-      // Seek chính xác tới từng timestamp và chụp 1 frame duy nhất (cực nhanh)
       const extractedPaths: string[] = [];
       for (let i = 0; i < selectedTimestamps.length; i++) {
         const ts = selectedTimestamps[i];
-        const outputPath = path.join(outputDir, `scene_${String(i).padStart(4, '0')}.jpg`);
+        const outputPath = path.join(outputDir, `frame_${String(i).padStart(4, '0')}.jpg`);
         await new Promise<void>((res) => {
           ffmpeg(videoPath)
             .seekInput(ts)
@@ -316,7 +257,7 @@ export async function processVideoUpload(
 
     // Đảm bảo file không tồn tại trước khi ghi nối tiếp
     if (fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
+      fs.unlinkSync(tempFilePath);
     }
 
     console.log(`📥 Đang ghép ${totalChunks} phần từ thư mục tạm (Local mode)...`);
@@ -324,30 +265,30 @@ export async function processVideoUpload(
     // Stream-based chunk merging: Đọc trực tiếp từ local disk (không qua Supabase)
     const writeStream = fs.createWriteStream(tempFilePath);
     for (let i = 0; i < totalChunks; i++) {
-        const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
-        
-        if (!fs.existsSync(chunkPath)) {
-            writeStream.destroy();
-            throw new Error(`Không tìm thấy phần ${i}: ${chunkPath}`);
-        }
+      const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
 
-        const chunkBuffer = fs.readFileSync(chunkPath);
-        
-        // Ghi bằng stream, đợi drain nếu buffer đầy (tránh tràn RAM)
-        await new Promise<void>((resolve, reject) => {
-            const canContinue = writeStream.write(chunkBuffer);
-            if (canContinue) {
-                resolve();
-            } else {
-                writeStream.once('drain', resolve);
-            }
-        });
-        console.log(`✅ Đã ghép phần ${i + 1}/${totalChunks}`);
+      if (!fs.existsSync(chunkPath)) {
+        writeStream.destroy();
+        throw new Error(`Không tìm thấy phần ${i}: ${chunkPath}`);
+      }
+
+      const chunkBuffer = fs.readFileSync(chunkPath);
+
+      // Ghi bằng stream, đợi drain nếu buffer đầy (tránh tràn RAM)
+      await new Promise<void>((resolve, reject) => {
+        const canContinue = writeStream.write(chunkBuffer);
+        if (canContinue) {
+          resolve();
+        } else {
+          writeStream.once('drain', resolve);
+        }
+      });
+      console.log(`✅ Đã ghép phần ${i + 1}/${totalChunks}`);
     }
     // Đóng stream và đợi ghi xong
     await new Promise<void>((resolve, reject) => {
-        writeStream.end(() => resolve());
-        writeStream.on('error', reject);
+      writeStream.end(() => resolve());
+      writeStream.on('error', reject);
     });
 
     const finalVideoSize = fs.statSync(tempFilePath).size;
@@ -448,6 +389,9 @@ async function runBackgroundVideoProcessing(
   let geminiFileName = "";
 
   try {
+    // Bước 1: Khởi động
+    await updateProcessingStep(lessonId, 1, "Ghép file & trích xuất Audio (FFmpeg)", 15, 35);
+
     // Lấy thông tin khóa học và chương học để làm ngữ cảnh bóc băng
     console.log(`🔍 Đang truy vấn ngữ cảnh khóa học cho chapterId: ${chapterId}...`);
     const chapter = await prisma.chapter.findUnique({
@@ -465,11 +409,10 @@ async function runBackgroundVideoProcessing(
     console.log(`📚 Ngữ cảnh khóa học: "${courseTitle}" | Chương: "${chapterTitle}"`);
 
     // =========================================================
-    // BƯỚC 3: UPLOAD LÊN YOUTUBE & BÓC BĂNG TRANSCRIPT BẰNG GEMINI (SONG SONG)
+    // BƯỚC 2: UPLOAD YOUTUBE & STT TRANSCRIPT BẰNG WHISPER + LOCAL GEMINI 3.6
     // =========================================================
-    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Gemini-First...");
-
-    // A. Upload YouTube (vẫn upload video gốc)
+    await updateProcessingStep(lessonId, 2, "Bóc băng âm thanh & Hiệu chỉnh (Local Gemini 3.6 Flash)", 35, 25);
+    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Groq Whisper + Local Gemini 3.6...");
     const youtubeUploadPromise = youtube.videos.insert({
       part: ["snippet", "status"],
       requestBody: {
@@ -483,14 +426,14 @@ async function runBackgroundVideoProcessing(
     }).then(async (ytRes) => {
       if (!ytRes.data.id) throw new Error("Không nhận được YouTube Video ID.");
       console.log(`✅ YouTube Upload OK. ID: ${ytRes.data.id}`);
-      
+
       // Cập nhật database lưu youtubeVideoId ngay lập tức để tránh mất link video
       console.log(`💾 Đang lưu youtubeVideoId (${ytRes.data.id}) vào database...`);
       await prisma.lesson.update({
         where: { id: lessonId },
         data: { youtubeVideoId: ytRes.data.id }
       });
-      
+
       return ytRes.data.id;
     });
 
@@ -514,7 +457,6 @@ async function runBackgroundVideoProcessing(
     if (uploadResults[1].status === "rejected") {
       throw new Error(`Gemini STT Error: ${uploadResults[1].reason?.message || "Lỗi không xác định"}`);
     }
-
     youtubeId = uploadResults[0].value;
     const transcriptText = uploadResults[1].value;
     console.log(`📝 Gemini transcript length: ${transcriptText.length} characters`);
@@ -522,6 +464,7 @@ async function runBackgroundVideoProcessing(
     // =========================================================
     // BƯỚC 4: GỬI GROQ PHÂN TÍCH VÀ SINH TIMELINE TỪ TRANSCRIPT TEXT
     // =========================================================
+    await updateProcessingStep(lessonId, 4, "Sinh mốc thời gian Timeline (Groq Llama 3.3)", 75, 12);
     console.log("🧠 Đang gửi yêu cầu sinh timeline từ transcript văn bản qua Groq...");
 
     // --- PROMPT ĐƯỢC THIẾT KẾ RIÊNG ---
@@ -611,23 +554,11 @@ async function runBackgroundVideoProcessing(
       console.log(`📍 Timeline: ${validatedTimeline.length} mốc (sau khi validate)`);
     }
 
-    // =========================================================
-    // BƯỚC 6: CẬP NHẬT DATABASE
-    // =========================================================
-    // Lưu Lesson + Timeline + Translations
-    await prisma.lesson.update({
-      where: { id: lessonId },
-      data: {
-        youtubeVideoId: youtubeId,
-        transcript: transcriptText,
-        timeline: validatedTimeline, // Đã validate
-        translations: {}, // Tạm tắt dịch thuật vì vượt giới hạn token Gemini
-      },
-    });
 
     // =========================================================
-    // BƯỚC 7: TẠO EMBEDDINGS CHO RAG (Tự động)
+    // BƯỚC 6: TẠO EMBEDDINGS CHO RAG (Tự động)
     // =========================================================
+    await updateProcessingStep(lessonId, 5, "Tạo dữ liệu RAG Search Embeddings", 90, 5);
     console.log("🧬 Đang tạo embeddings cho video search...");
     try {
       const { generateEmbeddings: genEmbed } = await import("@/lib/ai/embedding");
@@ -673,17 +604,31 @@ async function runBackgroundVideoProcessing(
       console.error("⚠️ Embedding generation failed (non-critical):", embError.message);
     }
 
+    // =========================================================
+    // BƯỚC 7: CẬP NHẬT DATABASE HOÀN TẤT (Lưu Transcript & Timeline cuối cùng)
+    // =========================================================
+    console.log(`💾 Ghi đè cập nhật DB hoàn tất cho Lesson ${lessonId}...`);
+    await prisma.lesson.update({
+      where: { id: lessonId },
+      data: {
+        youtubeVideoId: youtubeId,
+        transcript: transcriptText,
+        timeline: validatedTimeline, // Đã validate
+        translations: {}, // Tạm tắt dịch thuật vì vượt giới hạn token Gemini
+      },
+    });
+
     console.log("✅ Xử lý thành công toàn diện cho Lesson", lessonId);
   } catch (error: any) {
     console.error("❌ LỖI PROCESS BACKGROUND VIDEO:", error.message);
-    
+
     // Nếu lỗi ngầm, cập nhật trạng thái lỗi vào transcript
     try {
       await prisma.lesson.update({
         where: { id: lessonId },
         data: { transcript: "Lỗi trong quá trình AI xử lý: " + error.message }
       });
-    } catch(e) {}
+    } catch (e) { }
   } finally {
     // =========================================================
     // BƯỚC 8: DỌN DẸP TÀI NGUYÊN (bao gồm audio + keyframes)
@@ -713,10 +658,10 @@ async function runBackgroundVideoProcessing(
       if (baseFileName && totalChunks > 0) {
         const tempDir = path.join(process.cwd(), "tmp");
         for (let i = 0; i < totalChunks; i++) {
-            const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
-            if (fs.existsSync(chunkPath)) {
-                fs.unlinkSync(chunkPath);
-            }
+          const chunkPath = path.join(tempDir, `${baseFileName}_part_${i}`);
+          if (fs.existsSync(chunkPath)) {
+            fs.unlinkSync(chunkPath);
+          }
         }
         console.log("🧹 Đã xóa toàn bộ các chunk tạm trên Local Server.");
       }
@@ -803,3 +748,94 @@ function chunkTranscriptWithOverlap(
   return chunks;
 }
 
+// =========================================================
+// HELPER CẬP NHẬT VÀ LẤY TRẠNG THÁI TIẾN ĐỘ CHO INSTRUCTOR UI
+// =========================================================
+export async function updateProcessingStep(
+  lessonId: string,
+  stepIndex: number,
+  stepName: string,
+  progressPercent: number,
+  etaSeconds: number
+) {
+  try {
+    const statusData = JSON.stringify({
+      isProcessing: true,
+      step: stepIndex,
+      stepName: stepName,
+      progress: progressPercent,
+      eta: etaSeconds,
+      updatedAt: Date.now()
+    });
+
+    await prisma.lesson.update({
+      where: { id: lessonId },
+      data: {
+        transcript: `PROCESSING:${statusData}`
+      }
+    });
+  } catch (err) {
+    console.error("⚠️ Lỗi cập nhật trạng thái tiến độ bài học:", err);
+  }
+}
+
+export async function getLessonProcessingStatus(lessonId: string) {
+  try {
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      select: {
+        id: true,
+        youtubeVideoId: true,
+        transcript: true
+      }
+    });
+
+    if (!lesson) {
+      return { isProcessing: false, isError: true, errorMessage: "Không tìm thấy bài học" };
+    }
+
+    const transcriptStr = lesson.transcript || "";
+
+    if (transcriptStr.startsWith("Lỗi")) {
+      return { isProcessing: false, isError: true, errorMessage: transcriptStr };
+    }
+
+    if (transcriptStr.startsWith("PROCESSING:")) {
+      try {
+        const jsonStr = transcriptStr.replace("PROCESSING:", "");
+        const status = JSON.parse(jsonStr);
+        return {
+          isProcessing: true,
+          isError: false,
+          step: status.step || 1,
+          stepName: status.stepName || "Đang xử lý...",
+          progress: status.progress || 15,
+          etaSeconds: status.eta || 30
+        };
+      } catch (e) { }
+    }
+
+    if (transcriptStr === "Đang được AI xử lý ngầm..." || (!lesson.youtubeVideoId && !transcriptStr)) {
+      return {
+        isProcessing: true,
+        isError: false,
+        step: 1,
+        stepName: "Ghép file & trích xuất Audio (FFmpeg)",
+        progress: 15,
+        etaSeconds: 35
+      };
+    }
+
+    // Đã hoàn tất!
+    return {
+      isProcessing: false,
+      isError: false,
+      step: 6,
+      stepName: "Hoàn tất!",
+      progress: 100,
+      etaSeconds: 0
+    };
+  } catch (err: any) {
+    return { isProcessing: false, isError: true, errorMessage: err.message };
+  }
+}

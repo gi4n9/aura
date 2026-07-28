@@ -13,8 +13,33 @@ interface FlashcardPayload {
 
 interface UpdateLessonPayload {
   transcript?: string;
+  timeline?: any[];
   mindMapData?: any;
   flashcards?: FlashcardPayload[];
+}
+
+export async function getLessonTranscript(lessonId: string) {
+  try {
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      select: { transcript: true, timeline: true, youtubeVideoId: true }
+    });
+
+    if (!lesson) return { success: false, error: "Lesson not found" };
+
+    const transcript = lesson.transcript || "";
+    const isProcessing = transcript.startsWith("PROCESSING:") || transcript === "Đang được AI xử lý ngầm...";
+
+    return {
+      success: true,
+      transcript: isProcessing ? "" : transcript,
+      timeline: (lesson.timeline as any[]) || [],
+      isProcessing,
+      rawTranscript: transcript,
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
 
 export async function createLesson(chapterId: string, title: string) {
@@ -61,9 +86,10 @@ export async function createLesson(chapterId: string, title: string) {
 
 export async function updateLessonContent(lessonId: string, data: UpdateLessonPayload) {
   try {
-    // 1. CẬP NHẬT CÁC TRƯỜNG CƠ BẢN (Transcript, Mindmap)
+    // 1. CẬP NHẬT CÁC TRƯỜNG CƠ BẢN (Transcript, Timeline, Mindmap)
     const updateData: any = {};
     if (data.transcript !== undefined) updateData.transcript = data.transcript;
+    if (data.timeline !== undefined) updateData.timeline = data.timeline;
     if (data.mindMapData !== undefined) updateData.mindMapData = data.mindMapData;
 
     if (Object.keys(updateData).length > 0) {

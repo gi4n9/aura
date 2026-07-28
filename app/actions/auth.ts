@@ -6,20 +6,29 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { resolveLoginError } from "@/lib/auth-error";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const rawEmail = (formData.get("email") as string || "").trim();
+  const password = formData.get("password") as string || "";
   const customRedirect = formData.get("redirectTo") as string | null;
 
+  if (!rawEmail) {
+    return { error: "Vui lòng nhập địa chỉ email của bạn.", code: "ERR_EMAIL_REQUIRED" };
+  }
+  if (!password) {
+    return { error: "Vui lòng nhập mật khẩu.", code: "ERR_PASSWORD_REQUIRED" };
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: rawEmail,
     password
   });
 
   if (error) {
-    return { error: error.message };
+    const resolvedError = await resolveLoginError(error, rawEmail);
+    return { error: resolvedError.error, code: resolvedError.code };
   }
 
   if (data.user) {

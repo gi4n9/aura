@@ -210,7 +210,8 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             setEtaSeconds(0);
             setStatus("Thành công! Video đang được AI phân tích ngầm.");
             if (result.lessonId) {
-                router.push(`/instructor/courses/${selectedCourseId}/chapters/${selectedChapterId}/lesson/${result.lessonId}`)
+                router.refresh();
+                router.push(`/instructor/courses/${selectedCourseId}/chapters/${selectedChapterId}/lesson/${result.lessonId}`);
             }
             setFile(null);
 

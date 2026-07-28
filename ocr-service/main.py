@@ -19,11 +19,16 @@ app.add_middleware(
 # Khởi tạo mô hình PaddleOCR nhận diện tiếng Việt (tự động load model ở lần đầu)
 print("🚀 Đang khởi tạo mô hình PaddleOCR (Tiếng Việt)...")
 try:
-    ocr_engine = PaddleOCR(use_angle_cls=True, lang='vi', show_log=False)
+    # enable_mkldnn=False tránh lỗi static executor onednn trên Windows
+    ocr_engine = PaddleOCR(lang='vi', enable_mkldnn=False)
     print("✅ PaddleOCR Engine đã sẵn sàng!")
 except Exception as e:
-    print("⚠️ Cảnh báo khởi tạo PaddleOCR Engine:", e)
-    ocr_engine = None
+    try:
+        ocr_engine = PaddleOCR(lang='vi')
+        print("✅ PaddleOCR Engine đã sẵn sàng (Legacy Mode)!")
+    except Exception as e2:
+        print("⚠️ Cảnh báo khởi tạo PaddleOCR Engine:", e2)
+        ocr_engine = None
 
 @app.get("/")
 def read_root():
@@ -46,18 +51,67 @@ async def process_ocr(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents)).convert('RGB')
         img_np = np.array(image)
 
-        # Chạy PaddleOCR
-        result = ocr_engine.ocr(img_np, cls=True)
+        # Chạy PaddleOCR (chuẩn v3 predict / fallback v2 ocr)
+        try:
+            result = list(ocr_engine.predict(img_np))
+        except Exception:
+            result = ocr_engine.ocr(img_np)
 
         extracted_text = []
         confidences = []
+        blocks = []
 
-        if result and result[0]:
-            for line in result[0]:
-                text = line[1][0]
-                score = line[1][1]
-                extracted_text.append(text)
-                confidences.append(score)
+        if result and len(result) > 0:
+            res_item = result[0]
+
+            # Cú pháp PaddleOCR v3 (Dict result)
+            if isinstance(res_item, dict):
+                rec_texts = res_item.get("rec_texts", [])
+                rec_scores = res_item.get("rec_scores", [])
+                rec_polys = res_item.get("rec_polys", []) or res_item.get("dt_polys", [])
+
+                for idx, text in enumerate(rec_texts):
+                    score = float(rec_scores[idx]) if idx < len(rec_scores) else 1.0
+                    box = rec_polys[idx] if idx < len(rec_polys) else None
+
+                    x1, y1, x2, y2 = 0, 0, 0, 0
+                    if box is not None and len(box) > 0:
+                        try:
+                            xs = [int(pt[0]) for pt in box]
+                            ys = [int(pt[1]) for pt in box]
+                            x1, y1, x2, y2 = min(xs), min(ys), max(xs), max(ys)
+                        except Exception:
+                            pass
+
+                    extracted_text.append(text)
+                    confidences.append(score)
+                    blocks.append({
+                        "lineIndex": idx + 1,
+                        "text": text,
+                        "confidence": score,
+                        "bbox": { "x1": x1, "y1": y1, "x2": x2, "y2": y2 }
+                    })
+
+            # Cú pháp PaddleOCR v2 (List of [box, (text, score)] tuples)
+            elif isinstance(res_item, list):
+                for idx, line in enumerate(res_item):
+                    if isinstance(line, (list, tuple)) and len(line) >= 2:
+                        box = line[0]
+                        text = line[1][0] if isinstance(line[1], (list, tuple)) else str(line[1])
+                        score = float(line[1][1]) if isinstance(line[1], (list, tuple)) and len(line[1]) > 1 else 1.0
+
+                        xs = [int(pt[0]) for pt in box] if isinstance(box, (list, tuple)) else [0]
+                        ys = [int(pt[1]) for pt in box] if isinstance(box, (list, tuple)) else [0]
+                        x1, y1, x2, y2 = min(xs), min(ys), max(xs), max(ys)
+
+                        extracted_text.append(text)
+                        confidences.append(score)
+                        blocks.append({
+                            "lineIndex": idx + 1,
+                            "text": text,
+                            "confidence": score,
+                            "bbox": { "x1": x1, "y1": y1, "x2": x2, "y2": y2 }
+                        })
 
         full_text = "\n".join(extracted_text)
         avg_confidence = float(np.mean(confidences)) if confidences else 0.0
@@ -66,7 +120,8 @@ async def process_ocr(file: UploadFile = File(...)):
             "success": True,
             "text": full_text,
             "confidence": avg_confidence,
-            "linesCount": len(extracted_text)
+            "linesCount": len(extracted_text),
+            "blocks": blocks
         }
     except Exception as e:
         print("❌ Lỗi khi xử lý OCR:", e)

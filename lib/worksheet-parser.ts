@@ -138,6 +138,105 @@ const answerKeySchema: Schema = {
     }
 };
 
+// ================== OCR METADATA & RELIABILITY INTERFACES ==================
+
+export interface BoundingBox {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+}
+
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+
+export interface OCRBlock {
+    lineIndex: number;
+    text: string;
+    confidence: number;
+    bbox: BoundingBox;
+    page?: number;
+    riskLevel?: RiskLevel;
+    problems?: string[];
+    rawOCR?: string;
+    verifiedText?: string;
+    verificationMethod?: "OCR_ONLY" | "TARGETED_VISION" | "FULL_VISION";
+}
+
+export interface OCRPageResult {
+    pageNumber: number;
+    fullText: string;
+    avgConfidence: number;
+    blocks: OCRBlock[];
+    reliabilityScore: number;
+}
+
+/**
+ * Tầng 1 & 2: OCR Quality Analyzer & Risk Assessment theo mức độ rủi ro ngữ nghĩa
+ */
+export function analyzeOCRBlockRisk(block: OCRBlock): { riskLevel: RiskLevel; problems: string[] } {
+    const problems: string[] = [];
+    let riskLevel: RiskLevel = "LOW";
+    const text = block.text.trim();
+
+    // Risk 1: HIGH Risk patterns (Số thứ tự câu, Thang điểm, Đáp án trắc nghiệm A/B/C/D, Số liệu, Công thức toán)
+    const isQuestionHeader = /^(câu|bài|question)\s*\d+/i.test(text);
+    const isScore = /\d+([.,]\d+)?\s*(điểm|pt|m)/i.test(text);
+    const isOptionLetter = /^[A-D][.\/:\-–\)]\s*/.test(text);
+    const hasMathFormula = /[x-zX-Z]\s*[\^²³\+\-\*=]/u.test(text);
+
+    if (isQuestionHeader || isScore || isOptionLetter || hasMathFormula) {
+        riskLevel = "HIGH";
+    } else if (/\b(không|chưa|chẳng|tác giả|bài thơ|truyện|tác phẩm)\b/i.test(text)) {
+        riskLevel = "MEDIUM";
+    }
+
+    // Tầng 1 Check: Confidence thấp hơn ngưỡng tin cậy
+    if (block.confidence < 0.85) {
+        problems.push("LOW_CONFIDENCE");
+    }
+
+    // Tầng 2 Check: Ký tự lạ hoặc tỷ lệ ký hiệu bất thường
+    if (text.length > 20) {
+        const abnormalMatch = text.match(/[^\p{L}\p{N}\s.,;:!?'"“”‘’()[\]{}\-+/%=]/gu);
+        const abnormalRatio = (abnormalMatch ? abnormalMatch.length : 0) / text.length;
+        if (abnormalRatio > 0.25) {
+            problems.push("HIGH_SYMBOL_RATIO");
+        }
+    }
+
+    return { riskLevel, problems };
+}
+
+/**
+ * Tầng 2: Tính toán OCR Reliability Score đa chiều
+ * Score = 50% Avg Confidence + 50% Structure Score - Risk Penalty
+ */
+export function computeOCRPageReliability(blocks: OCRBlock[]): number {
+    if (!blocks || blocks.length === 0) return 0;
+
+    const confidences = blocks.map(b => b.confidence);
+    const avgConfidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+
+    let validStructureCount = 0;
+    let highRiskProblemCount = 0;
+
+    for (const b of blocks) {
+        const analysis = analyzeOCRBlockRisk(b);
+        b.riskLevel = analysis.riskLevel;
+        b.problems = analysis.problems;
+
+        if (analysis.problems.length === 0) validStructureCount++;
+        if (analysis.riskLevel === "HIGH" && analysis.problems.length > 0) {
+            highRiskProblemCount++;
+        }
+    }
+
+    const structureScore = validStructureCount / blocks.length;
+    const riskPenalty = (highRiskProblemCount / blocks.length) * 0.3;
+
+    return Math.max(0, Math.min(1, (0.5 * avgConfidence) + (0.5 * structureScore) - riskPenalty));
+}
+
 // ================== INTERFACES ==================
 
 export type QuestionTypeValue = "MULTIPLE_CHOICE" | "ESSAY" | "TRUE_FALSE" | "FILL_IN_BLANK" | "READING_COMPREHENSION";
@@ -306,6 +405,12 @@ Hãy xác định \`subjectHint\` cho toàn bộ đề (ở mức top-level) d�
 - "gdcd": Giáo dục công dân
 - "tin_hoc": Tin học / Lập trình
 
+=== QUY TẮC HIỆU CHỈNH LỖI OCR NGHĨA VĂN BẢN (SEMANTIC HEALING) ===
+
+1. TỰ ĐỘNG KHÔI PHỤC LỖI TỪ NGHĨA DO PHÔNG IN NGHIÊNG VÀ NÉT BÚT TÔ ĐÈ:
+   - Khi văn bản được trích xuất từ OCR có lỗi do phông in nghiêng hoặc vết bút mực đè lên (VD: "tấm bản" -> "văn bản", "[...J" -> "[...]", "giam cầm.|Nó" -> "giam cầm. Nó", "được tôn vinh" -> "được hậu thế tôn vinh"), bạn PHẢI tự động hiệu chỉnh dựa trên ngữ cảnh chuẩn xác của bài đọc hiểu.
+   - Giữ đúng cấu trúc xuống dòng, đoạn văn (1), (2), (3)... và nội dung gốc của bài đọc.
+
 === QUY TẮC CHUNG ===
 
 1. Mỗi câu hỏi thường được đánh dấu bằng "Câu X:", "Bài X.", "Question X".
@@ -349,7 +454,7 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
             formData.append("file", new Blob([new Uint8Array(processedBuffer)]), "image.png");
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout cho ảnh dung lượng lớn/độ phân giải cao
 
             const ocrUrl = process.env.PADDLE_OCR_SERVICE_URL || "http://localhost:8000/api/v1/ocr";
             console.log(`🚀 Attempting Local PaddleOCR at ${ocrUrl}...`);
@@ -388,7 +493,7 @@ export async function extractTextFromImage(buffer: Buffer): Promise<string> {
  */
 export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): Promise<ParsedQuestion[]> {
     try {
-        console.log(`🧠 Calling Gemini 2.5 Flash for multi-subject file parsing (${mimeType})...`);
+        console.log(`🧠 [Direct Gemini Vision] Calling Gemini 2.5 Flash for file parsing (${mimeType})...`);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
@@ -419,7 +524,6 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
         try {
             parsed = JSON.parse(responseText);
         } catch (e) {
-            // Thử tìm JSON object hoặc array
             const objMatch = responseText.match(/\{[\s\S]*\}/);
             const arrMatch = responseText.match(/\[[\s\S]*\]/);
             if (objMatch) {
@@ -434,6 +538,7 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
         const globalSubjectHint = parsed.subjectHint || undefined;
         const questionsArray = Array.isArray(parsed.questions) ? parsed.questions : (Array.isArray(parsed) ? parsed : []);
 
+        console.log(`✅ [Direct Gemini Vision] Thành công bóc được ${questionsArray.length} câu hỏi từ ảnh/tài liệu.`);
         return questionsArray.map((item: any, i: number) =>
             mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint)
         );
@@ -528,7 +633,7 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
     try {
         if (files.length === 0) return { questions: [], examCode: null, subjectHint: null };
 
-        console.log(`🧠 Calling Gemini 2.5 Flash for multi-subject batch parsing (${files.length} files)...`);
+        console.log(`🧠 [Direct Gemini Vision Batch] Calling Gemini 2.5 Flash for ${files.length} file(s)...`);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
@@ -540,12 +645,12 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
 
         const prompt = buildMultiSubjectPrompt("batch");
 
-        const fileParts = files.map(f => ({
+        const fileParts = await Promise.all(files.map(async f => ({
             inlineData: {
-                data: f.buffer.toString("base64"),
+                data: (f.mimeType.startsWith("image/") ? await optimizeImageForOCR(f.buffer) : f.buffer).toString("base64"),
                 mimeType: f.mimeType
             }
-        }));
+        })));
 
         const result = await model.generateContent([prompt, ...fileParts]);
         const responseText = result.response.text();
@@ -568,6 +673,7 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
             mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint || undefined)
         );
 
+        console.log(`✅ [Direct Gemini Vision Batch] Bóc tách thành công ${formattedQuestions.length} câu hỏi từ ${files.length} file(s).`);
         return {
             questions: formattedQuestions,
             examCode: parsed.examCode || null,
@@ -1192,6 +1298,7 @@ LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
     };
 
     try {
+        console.log(`🧠 [Direct Gemini Vision AnswerKey] Calling Gemini 2.5 Flash for ${files.length} file(s)...`);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
@@ -1212,12 +1319,12 @@ ${examCodeInstruction}
 ${formattedQuestionsInfo}
 `;
 
-        const fileParts = files.map(f => ({
+        const fileParts = await Promise.all(files.map(async f => ({
             inlineData: {
-                data: f.buffer.toString("base64"),
+                data: (f.mimeType.startsWith("image/") ? await optimizeImageForOCR(f.buffer) : f.buffer).toString("base64"),
                 mimeType: f.mimeType
             }
-        }));
+        })));
 
         const result = await model.generateContent([prompt, ...fileParts]);
         const responseText = result.response.text();
@@ -1251,6 +1358,7 @@ ${formattedQuestionsInfo}
             vietnameseRatio: 1.0
         });
 
+        console.log(`✅ [Direct Gemini Vision AnswerKey] Khớp thành công ${Object.keys(finalResult).length} câu hỏi.`);
         return finalResult;
     } catch (error: any) {
         console.error("❌ parseAnswerKeyBatch error:", error);

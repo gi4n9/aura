@@ -1,11 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-
 import { createClient } from "@/utils/supabase/server";
-
 import { prisma } from "@/lib/prisma";
-
+import { resolveLoginError } from "@/lib/auth-error";
 
 // --- SIGNUP ---
 export async function signup(formData: FormData) {
@@ -39,8 +37,15 @@ export async function signup(formData: FormData) {
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const email = (formData.get("email") as string || "").trim();
+  const password = formData.get("password") as string || "";
+
+  if (!email) {
+    return { error: "Vui lòng nhập địa chỉ email của bạn.", code: "ERR_EMAIL_REQUIRED" };
+  }
+  if (!password) {
+    return { error: "Vui lòng nhập mật khẩu.", code: "ERR_PASSWORD_REQUIRED" };
+  }
 
   // Supabase sẽ tự check password hash trong bảng auth.users nội bộ của nó
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -49,7 +54,8 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: "Email hoặc mật khẩu không chính xác" };
+    const resolvedError = await resolveLoginError(error, email);
+    return { error: resolvedError.error, code: resolvedError.code };
   }
 
   let redirectUrl = "/";

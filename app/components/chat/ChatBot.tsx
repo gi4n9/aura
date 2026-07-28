@@ -84,11 +84,6 @@ export default function ChatBot() {
     };
   }, []);
 
-  // Đóng/Ẩn ChatBot hoàn toàn trên các trang Admin và Instructor
-  if (pathname?.startsWith("/admin") || pathname?.startsWith("/instructor")) {
-    return null;
-  }
-
   // 2. Sử dụng hook useChat với cấu hình Transport cố định & experimental_throttle 30ms cho real-time update
   const { messages, sendMessage, status } = useChat({
     transport: chatTransport,
@@ -105,6 +100,11 @@ export default function ChatBot() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isOpen]);
+
+  // Đóng/Ẩn ChatBot hoàn toàn trên các trang Admin và Instructor
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/instructor")) {
+    return null;
+  }
 
   // 3. Hàm xử lý gửi tin nhắn - Kiểm duyệt Đăng nhập
   const handleSend = (e: React.FormEvent) => {

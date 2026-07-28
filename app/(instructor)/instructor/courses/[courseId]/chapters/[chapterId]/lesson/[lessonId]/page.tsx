@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import LessonManagerClient from "@/app/components/courseComponents/LessonManagerClient";
+import LessonProcessingProgress from "@/app/components/courseComponents/LessonProcessingProgress";
 
 export default async function LessonEditPage({ params }: { params: Promise<{ lessonId: string, courseId: string }> }) {
     const { lessonId, courseId } = await params;
@@ -54,7 +55,7 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
     }));
 
     const isUploading = lesson.youtubeVideoId === null;
-    const isAIProcessing = lesson.transcript === "Đang được AI xử lý ngầm...";
+    const isAIProcessing = lesson.transcript === "Đang được AI xử lý ngầm..." || (lesson.transcript?.startsWith("PROCESSING:") ?? false);
     const hasError = lesson.transcript?.includes("Lỗi");
 
     return (
@@ -66,18 +67,6 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
                 <div className="flex flex-col gap-2 mb-2">
                     <h1 className="text-3xl font-serif font-bold text-stone-800 flex items-center flex-wrap gap-3">
                         {lesson.title}
-                        {isUploading && (
-                            <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full animate-pulse flex items-center gap-2 font-medium">
-                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
-                                ⏳ Đang tải video lên YouTube...
-                            </span>
-                        )}
-                        {!isUploading && isAIProcessing && (
-                            <span className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded-full animate-pulse flex items-center gap-2 font-medium">
-                                <span className="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
-                                🧠 Video đã tải lên, AI đang phân tích bài giảng (Vui lòng reload sau 3-5p)...
-                            </span>
-                        )}
                         {!isUploading && !isAIProcessing && hasError && (
                             <span className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded-full flex items-center gap-2 font-medium" title={lesson.transcript || ""}>
                                 <span className="w-2 h-2 bg-red-500 rounded-full"></span>
@@ -90,6 +79,8 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
             </div>
 
             <div className="max-w-4xl mx-auto">
+                <LessonProcessingProgress lessonId={lesson.id} />
+
                 <LessonManagerClient
                     lessonId={lesson.id}
                     lessonTitle={lesson.title}
@@ -102,4 +93,4 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
             </div>
         </div>
     );
-}
+}

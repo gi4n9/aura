@@ -438,7 +438,245 @@ async function cleanMergedTranscriptSafely(
 }
 
 /**
- * Hàm điều phối chính (Orchestrator): Transcribe âm thanh bằng Gemini-First
+ * Hiệu chỉnh 1 khối văn bản nhỏ (dưới 3500 ký tự) bằng Local Gemini 3.6 Flash
+ */
+async function correctSingleBlockWithLocalGemini36(
+  rawBlockText: string,
+  courseTitle: string,
+  chapterTitle: string,
+  lessonTitle: string
+): Promise<string> {
+  const localBaseUrl = process.env.OPENAI_BASE_URL || "http://localhost:8081/v1";
+  const prompt = `
+Bạn là chuyên gia hiệu chỉnh bản ghi âm (transcript) tiếng Việt bài giảng CNTT/Lập trình.
+Dưới đây là một đoạn transcript bóc băng từ audio bài giảng.
+
+NGỮ CẢNH BÀI HỌC:
+- Khóa học: "${courseTitle}"
+- Chương: "${chapterTitle}"
+- Bài học: "${lessonTitle}"
+
+VĂN BẢN STT GỐC:
+"""
+${rawBlockText}
+"""
+
+RÀNG BUỘC BẮT BUỘC:
+1. Hãy sửa các lỗi chính tả, đặc biệt là các thuật ngữ tiếng Anh bị nhận dạng sai thành tiếng Việt hoặc từ vô nghĩa (ví dụ: "Asian Skill" -> "Agentic Skill", "ây-dần" -> "Agent", "phải tôn" -> "Python").
+2. TUYỆT ĐỐI KHÔNG TÓM TẮT, KHÔNG CẮT BỎ BẤT KỲ CÂU NÀO. Bắt buộc giữ nguyên 100% tất cả các câu và ý trong đoạn văn bản gốc.
+3. Ngắt câu rõ ràng và giữ nguyên mạch nội dung bài giảng.
+
+Trả về duy nhất toàn bộ đoạn văn bản đã được hiệu chỉnh chính tả, không kèm bất kỳ giải thích nào khác.
+`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s per block
+
+    const res = await fetch(`${localBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY || "sk-gemini"}`
+      },
+      body: JSON.stringify({
+        model: "gemini-3.6-flash",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content?.trim();
+      
+      // Bảo vệ chống tóm tắt: Nếu kết quả ngắn hơn 75% văn bản gốc, loại bỏ tóm tắt và dùng văn bản gốc của block đó
+      if (text && text.length >= rawBlockText.length * 0.75) {
+        return text;
+      } else if (text) {
+        console.warn(`⚠️ Block AI hiệu chỉnh bị tóm tắt ngắn bất thường (Gốc: ${rawBlockText.length} -> AI: ${text.length}). Giữ nguyên block gốc.`);
+      }
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ Lỗi hiệu chỉnh block Local Gemini 3.6: ${err.message}`);
+  }
+
+  return rawBlockText;
+}
+
+/**
+ * Hiệu chỉnh toàn bộ transcript bằng Local Gemini 3.6 Flash (chia khối thông minh chống tóm tắt & tràn token)
+ */
+async function correctWithLocalGemini36(
+  rawText: string,
+  courseTitle: string,
+  chapterTitle: string,
+  lessonTitle: string
+): Promise<string> {
+  if (!rawText || rawText.trim().length === 0) return rawText;
+
+  // Nếu văn bản ngắn (<= 3500 ký tự), xử lý trực tiếp 1 lần
+  if (rawText.length <= 3500) {
+    console.log(`🤖 Đang gửi transcript (${rawText.length} ký tự) sang Local Gemini 3.6 Flash để hiệu chỉnh...`);
+    const corrected = await correctSingleBlockWithLocalGemini36(rawText, courseTitle, chapterTitle, lessonTitle);
+    console.log(`🚀 [LOCAL GEMINI 3.6 FLASH] Hiệu chỉnh thành công (${corrected.length} ký tự).`);
+    return corrected;
+  }
+
+  // Nếu văn bản dài (> 3500 ký tự), chia thành các khối 3000 ký tự theo câu để tránh bị AI tóm tắt hoặc cắt cụt
+  console.log(`📝 Transcript dài (${rawText.length} ký tự). Đang chia thành các khối ~3000 ký tự để hiệu chỉnh không mất câu...`);
+  
+  const sentences = rawText.match(/[^.!?。]+[.!?。]+[\])'"\u201d]*|[^.!?。]+$/g) || [rawText];
+  const blocks: string[] = [];
+  let currentBlock = "";
+
+  for (const sentence of sentences) {
+    if (currentBlock.length + sentence.length > 3000) {
+      blocks.push(currentBlock);
+      currentBlock = sentence;
+    } else {
+      currentBlock += (currentBlock ? " " : "") + sentence;
+    }
+  }
+  if (currentBlock) {
+    blocks.push(currentBlock);
+  }
+
+  console.log(`📦 Đã chia thành ${blocks.length} khối. Đang bắt đầu hiệu chỉnh từng khối song song...`);
+  const correctedBlocks = await Promise.all(
+    blocks.map((block, idx) => {
+      console.log(`🧹 Đang hiệu chỉnh khối ${idx + 1}/${blocks.length} (${block.length} ký tự)...`);
+      return correctSingleBlockWithLocalGemini36(block, courseTitle, chapterTitle, lessonTitle);
+    })
+  );
+
+  const finalResult = correctedBlocks.join(" ");
+  console.log(`✨ [LOCAL GEMINI 3.6 FLASH] Hoàn tất hiệu chỉnh toàn bộ ${blocks.length} khối. Độ dài ban đầu: ${rawText.length} -> Kết quả: ${finalResult.length} ký tự.`);
+
+  // Kiểm tra lần cuối: nếu tổng độ dài < 75% văn bản gốc, fallback dùng transcript Whisper gốc
+  if (finalResult.length < rawText.length * 0.75) {
+    console.warn(`⚠️ Tổng kết quả AI ngắn hơn 75% gốc (Gốc: ${rawText.length} -> AI: ${finalResult.length}). Khôi phục 100% transcript Whisper gốc.`);
+    return rawText;
+  }
+
+  return finalResult;
+}
+
+
+export interface SemanticChunk {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface DetailedTranscriptionResult {
+  text: string;
+  chunks: SemanticChunk[];
+}
+
+/**
+ * Gom nhóm các câu nói dựa trên khoảng lặng (Gap >= 2.5s) hoặc độ dài tối đa (500 ký tự)
+ */
+export function buildSemanticChunksFromSegments(segments: any[]): SemanticChunk[] {
+  if (!segments || segments.length === 0) return [];
+
+  const chunks: SemanticChunk[] = [];
+  let currentChunkText = "";
+  let currentStart = segments[0].start || 0;
+  let currentEnd = segments[0].end || 0;
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const segStart = Number(seg.start) || 0;
+    const segEnd = Number(seg.end) || 0;
+    const segText = (seg.text || "").trim();
+
+    if (!segText) continue;
+
+    const gap = i > 0 ? segStart - currentEnd : 0;
+
+    // Ngắt chunk khi giảng viên ngắt lời >= 2.5s hoặc văn bản vượt quá 500 ký tự
+    if (currentChunkText.length > 0 && (gap >= 2.5 || currentChunkText.length + segText.length > 500)) {
+      chunks.push({
+        text: currentChunkText.trim(),
+        start: Math.round(currentStart * 10) / 10,
+        end: Math.round(currentEnd * 10) / 10,
+      });
+
+      currentChunkText = segText;
+      currentStart = segStart;
+      currentEnd = segEnd;
+    } else {
+      currentChunkText += (currentChunkText ? " " : "") + segText;
+      currentEnd = segEnd;
+    }
+  }
+
+  if (currentChunkText.trim()) {
+    chunks.push({
+      text: currentChunkText.trim(),
+      start: Math.round(currentStart * 10) / 10,
+      end: Math.round(currentEnd * 10) / 10,
+    });
+  }
+
+  return chunks;
+}
+
+/**
+ * Chi tiết STT Pipeline Siêu Tốc trả về cả rawText và mảng Semantic Chunks với mốc thời gian
+ */
+export async function transcribeWithGeminiDetailed(
+  audioFilePath: string,
+  courseTitle: string,
+  chapterTitle: string,
+  lessonTitle: string
+): Promise<DetailedTranscriptionResult> {
+  console.log(`🎬 Bắt đầu STT Pipeline Siêu Tốc (verbose_json + Semantic Chunks) cho bài học: "${lessonTitle}"`);
+
+  let rawText = "";
+  let rawSegments: any[] = [];
+
+  try {
+    const audioStats = fs.statSync(audioFilePath);
+    if (audioStats.size <= 25 * 1024 * 1024) {
+      console.log(`⚡ Audio size ${(audioStats.size / 1024 / 1024).toFixed(2)}MB <= 25MB. Đang chạy Groq Whisper Direct (verbose_json)...`);
+      const startTime = Date.now();
+      const whisperRes: any = await groq.audio.transcriptions.create({
+        file: fs.createReadStream(audioFilePath),
+        model: "whisper-large-v3",
+        language: "vi",
+        response_format: "verbose_json",
+      });
+
+      rawText = whisperRes.text || "";
+      rawSegments = whisperRes.segments || [];
+      console.log(`⚡ Groq Whisper (verbose_json) hoàn tất trong ${((Date.now() - startTime) / 1000).toFixed(1)}s! Segments: ${rawSegments.length}`);
+    }
+  } catch (fastErr: any) {
+    console.warn(`⚠️ Direct Whisper verbose_json error: ${fastErr.message}`);
+  }
+
+  if (!rawText) {
+    rawText = await transcribeWithGemini(audioFilePath, courseTitle, chapterTitle, lessonTitle);
+  } else {
+    // Hiệu chỉnh qua Local Gemini 3.6 Flash / Groq Llama
+    rawText = await correctWithLocalGemini36(rawText, courseTitle, chapterTitle, lessonTitle);
+  }
+
+  const semanticChunks = buildSemanticChunksFromSegments(rawSegments);
+  console.log(`🧩 Đã xây dựng ${semanticChunks.length} Semantic Chunks dựa trên mốc ngắt lời & khoảng lặng.`);
+
+  return {
+    text: rawText,
+    chunks: semanticChunks
+  };
+}
+
+/**
+ * Hàm điều phối chính (Orchestrator): Transcribe âm thanh Siêu Tốc
  */
 export async function transcribeWithGemini(
   audioFilePath: string,
@@ -446,7 +684,34 @@ export async function transcribeWithGemini(
   chapterTitle: string,
   lessonTitle: string
 ): Promise<string> {
-  console.log(`🎬 Bắt đầu STT Pipeline (Gemini-First) cho bài học: "${lessonTitle}"`);
+  console.log(`🎬 Bắt đầu STT Pipeline Siêu Tốc cho bài học: "${lessonTitle}"`);
+
+  // 0. Thử đường truyền Siêu Tốc: Groq Whisper Direct + Local Gemini 3.6 Flash (2-5 giây)
+  try {
+    const audioStats = fs.statSync(audioFilePath);
+    // Nếu audio <= 25MB (Whisper API limit), chạy trực tiếp
+    if (audioStats.size <= 25 * 1024 * 1024) {
+      console.log(`⚡ Audio size ${(audioStats.size / 1024 / 1024).toFixed(2)}MB <= 25MB. Đang chạy Groq Whisper Direct STT...`);
+      const startTime = Date.now();
+      const whisperRes = await groq.audio.transcriptions.create({
+        file: fs.createReadStream(audioFilePath),
+        model: "whisper-large-v3",
+        language: "vi",
+        response_format: "json",
+      });
+      const rawText = whisperRes.text || "";
+      console.log(`⚡ Groq Whisper hoàn tất trong ${((Date.now() - startTime) / 1000).toFixed(1)}s! Ký tự: ${rawText.length}`);
+
+      if (rawText.trim().length > 0) {
+        console.log(`🤖 Đang hiệu chỉnh qua Local Gemini 3.6 Flash / Groq Llama...`);
+        const polishedText = await correctWithLocalGemini36(rawText, courseTitle, chapterTitle, lessonTitle);
+        console.log(`✨ Bóc băng Siêu Tốc hoàn tất thành công! Tong thoi gian: ${((Date.now() - startTime) / 1000).toFixed(1)}s.`);
+        return polishedText;
+      }
+    }
+  } catch (fastErr: any) {
+    console.warn(`⚠️ Chế độ Siêu Tốc Direct gặp lỗi: ${fastErr.message}. Fallback sang Chunks Adaptive Pipeline...`);
+  }
 
   // 1. Lấy tổng độ dài audio
   const duration = await getAudioDuration(audioFilePath);

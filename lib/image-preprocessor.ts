@@ -31,9 +31,11 @@ export async function optimizeImageForOCR(
                 fit: "inside",
                 withoutEnlargement: true
             })
-            .grayscale() // Chuyển sang ảnh xám (Grayscale) 8-bit
+            .grayscale() // Chuyển sang ảnh xám 8-bit
+            .gamma(1.2) // Điều chỉnh gamma lọc bớt bóng râm
+            .linear(1.1, -10) // Tăng tương phản loại bỏ nét nhòe xám
             .normalize() // Cân bằng dải sáng (Auto-contrast)
-            .sharpen({ sigma: 1.2 }); // Làm nét các nét chữ bị mờ
+            .sharpen({ sigma: 1.5, m1: 1.0, m2: 2.0 }); // Sharp nét chữ nghiêng và phông in mờ
 
         if (binarize) {
             pipeline = pipeline.threshold(thresholdValue);
