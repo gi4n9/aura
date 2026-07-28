@@ -1,12 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, ShieldCheck, Search, HelpCircle, Flame, Trophy, Clock, Target, Calendar, ChevronDown, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Users, ShieldCheck, Search, HelpCircle, Flame, Trophy, Clock, Target, Calendar, ChevronDown, Plus, Lock, Loader2, UserCheck } from 'lucide-react';
 import Image from 'next/image';
 import GroupChatBox from '@/app/components/chat/GroupChatBox';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useTheme } from '@/lib/theme/ThemeContext';
+import { joinGroup } from '@/app/actions/community-actions';
 
 interface GroupDetailClientProps {
     group: {
@@ -19,6 +21,9 @@ interface GroupDetailClientProps {
             participants: number;
         };
     };
+    currentUserId?: string | null;
+    isParticipant?: boolean;
+    userRole?: string | null;
 }
 
 const mockLeaderboard = [
@@ -28,58 +33,101 @@ const mockLeaderboard = [
     { id: 4, name: 'huynhhainguyen0706_f...', pomodoros: 0, minutes: 0, xp: 0, rank: 4, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=nguyen' },
 ];
 
-export default function GroupDetailClient({ group }: GroupDetailClientProps) {
+export default function GroupDetailClient({ group, currentUserId, isParticipant = false, userRole }: GroupDetailClientProps) {
+    const router = useRouter();
     const { t } = useLanguage();
     const { theme } = useTheme();
     const isDark = theme === "dark";
+
+    const [isJoined, setIsJoined] = useState(isParticipant);
+    const [joining, setJoining] = useState(false);
+
+    const handleJoinGroup = async () => {
+        if (!currentUserId) {
+            router.push(`/login?redirectTo=/community/${group.id}`);
+            return;
+        }
+
+        setJoining(true);
+        const res = await joinGroup(group.id);
+        setJoining(false);
+
+        if (res.success) {
+            setIsJoined(true);
+            router.refresh();
+        } else {
+            alert(res.error || "Không thể tham gia nhóm");
+        }
+    };
 
     return (
         <div className={`min-h-screen pt-24 pb-12 transition-colors duration-500 ${isDark ? "bg-[#080808] text-white" : "bg-[#F9F8F4] text-stone-900"}`}>
             <div className="container mx-auto px-4 max-w-7xl">
 
                 {/* Header Navigation */}
-                <div className="flex items-center gap-4 mb-6">
-                    <Link
-                        href="/community"
-                        className={`w-10 h-10 flex items-center justify-center rounded-full border transition-colors shadow-sm ${
-                            isDark ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10 hover:text-white" : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50 hover:text-stone-900"
-                        }`}
-                    >
-                        <ArrowLeft size={20} />
-                    </Link>
-                    <div className={`flex items-center gap-3 px-4 py-2 rounded-full shadow-sm border ${
-                        isDark ? "bg-white/5 border-white/10" : "bg-white border-stone-200"
-                    }`}>
-                        {group.avatarUrl ? (
-                            <Image src={group.avatarUrl} alt={group.name || ''} width={32} height={32} className="rounded-full object-cover" />
-                        ) : (
-                            <div className="w-8 h-8 rounded-full bg-[#C5A059] flex items-center justify-center text-white">
-                                <span className="font-serif font-bold text-sm">
-                                    {(group.name || 'G').charAt(0).toUpperCase()}
-                                </span>
-                            </div>
-                        )}
-                        <div>
-                            <h1 className={`font-bold text-sm leading-tight ${isDark ? "text-white" : "text-stone-800"}`}>
-                                {group.name || t("community.unnamedGroup", "Group không tên")}
-                            </h1>
-                            <div className={`flex items-center gap-2 text-xs mt-0.5 ${isDark ? "text-stone-400" : "text-stone-500"}`}>
-                                <span className="flex items-center gap-1">
-                                    <Users size={12} /> {group._count.participants} / {group.maxMembers} {t("community.members", "thành viên")}
-                                </span>
-                            </div>
-                        </div>
-                        <div className={`ml-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
-                            group.isPublic
-                                ? isDark ? "bg-green-500/10 text-green-400" : "bg-green-50 text-green-600"
-                                : isDark ? "bg-stone-800 text-stone-400" : "bg-stone-100 text-stone-500"
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href="/community"
+                            className={`w-10 h-10 flex items-center justify-center rounded-full border transition-colors shadow-sm ${
+                                isDark ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10 hover:text-white" : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+                            }`}
+                        >
+                            <ArrowLeft size={20} />
+                        </Link>
+                        <div className={`flex items-center gap-3 px-4 py-2 rounded-full shadow-sm border ${
+                            isDark ? "bg-white/5 border-white/10" : "bg-white border-stone-200"
                         }`}>
-                            {group.isPublic ? (
-                                <><ShieldCheck size={12} /> {t("community.public", "Công khai")}</>
+                            {group.avatarUrl ? (
+                                <Image src={group.avatarUrl} alt={group.name || ''} width={32} height={32} className="rounded-full object-cover" />
                             ) : (
-                                <><ShieldCheck size={12} className="text-stone-500" /> {t("community.private", "Riêng tư")}</>
+                                <div className="w-8 h-8 rounded-full bg-[#C5A059] flex items-center justify-center text-white">
+                                    <span className="font-serif font-bold text-sm">
+                                        {(group.name || 'G').charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
                             )}
+                            <div>
+                                <h1 className={`font-bold text-sm leading-tight ${isDark ? "text-white" : "text-stone-800"}`}>
+                                    {group.name || t("community.unnamedGroup", "Group không tên")}
+                                </h1>
+                                <div className={`flex items-center gap-2 text-xs mt-0.5 ${isDark ? "text-stone-400" : "text-stone-500"}`}>
+                                    <span className="flex items-center gap-1">
+                                        <Users size={12} /> {group._count.participants} / {group.maxMembers} {t("community.members", "thành viên")}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className={`ml-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
+                                group.isPublic
+                                    ? isDark ? "bg-green-500/10 text-green-400" : "bg-green-50 text-green-600"
+                                    : isDark ? "bg-stone-800 text-stone-400" : "bg-stone-100 text-stone-500"
+                            }`}>
+                                {group.isPublic ? (
+                                    <><ShieldCheck size={12} /> {t("community.public", "Công khai")}</>
+                                ) : (
+                                    <><ShieldCheck size={12} className="text-stone-500" /> {t("community.private", "Riêng tư")}</>
+                                )}
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Role & Join Status Button */}
+                    <div className="flex items-center gap-3">
+                        {isJoined ? (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 rounded-full text-xs font-bold shadow-sm">
+                                <UserCheck size={14} />
+                                <span>Đã tham gia ({userRole || 'MEMBER'})</span>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={handleJoinGroup}
+                                disabled={joining}
+                                className="flex items-center gap-2 px-5 py-2 bg-[#C5A059] hover:bg-[#b08d4b] text-white rounded-full text-xs font-bold transition-all shadow-md disabled:opacity-50"
+                            >
+                                {joining ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                                <span>Tham gia nhóm ngay</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -89,7 +137,42 @@ export default function GroupDetailClient({ group }: GroupDetailClientProps) {
                     {/* Left Column (Chat & Q&A) */}
                     <div className="flex-1 flex flex-col gap-6">
 
-                        <GroupChatBox groupId={group.id} />
+                        {!isJoined && !group.isPublic ? (
+                            <div className={`rounded-2xl border p-10 flex flex-col items-center justify-center text-center shadow-sm ${
+                                isDark ? "bg-white/[0.03] border-white/10" : "bg-white border-stone-200"
+                            }`}>
+                                <div className="w-16 h-16 rounded-full bg-stone-100 dark:bg-white/10 flex items-center justify-center text-stone-400 mb-4">
+                                    <Lock size={32} />
+                                </div>
+                                <h3 className="text-lg font-bold mb-2">Nhóm này là Nhóm riêng tư</h3>
+                                <p className="text-sm text-stone-500 max-w-md mb-6">
+                                    Bạn chưa phải là thành viên của nhóm này. Vui lòng bấm vào nút "Tham gia nhóm" bên dưới để đăng ký thành viên và bắt đầu tham gia thảo luận.
+                                </p>
+                                <button
+                                    onClick={handleJoinGroup}
+                                    disabled={joining}
+                                    className="px-6 py-2.5 bg-[#C5A059] hover:bg-[#b08d4b] text-white font-bold rounded-full text-sm transition-all shadow-md flex items-center gap-2"
+                                >
+                                    {joining && <Loader2 size={16} className="animate-spin" />}
+                                    <span>Tham gia nhóm</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                {!isJoined && (
+                                    <div className="p-3 px-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-medium flex items-center justify-between">
+                                        <span>💡 Bạn chưa là thành viên chính thức. Hãy tham gia nhóm để gửi tin nhắn và theo dõi tiến độ học tập cùng nhóm.</span>
+                                        <button
+                                            onClick={handleJoinGroup}
+                                            className="px-3 py-1 bg-[#C5A059] text-white rounded-lg font-bold hover:bg-[#b08d4b] transition-colors ml-3 shrink-0"
+                                        >
+                                            Tham gia ngay
+                                        </button>
+                                    </div>
+                                )}
+                                <GroupChatBox groupId={group.id} />
+                            </>
+                        )}
 
                         {/* Q&A Box */}
                         <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[400px] ${

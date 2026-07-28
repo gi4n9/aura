@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/deno": "^2.7.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
