@@ -48,13 +48,13 @@ export async function getAiOpsMetrics() {
         by: ["audioStatus"],
         _count: { id: true },
       }),
-      // 4. Total OCR cache entries
-      (prisma as any).ocrCache ? (prisma as any).ocrCache.count() : Promise.resolve(0),
-      // 5. Recent OCR logs
-      (prisma as any).ocrCache ? (prisma as any).ocrCache.findMany({
+      // 4. Total OCR cache entries from Supabase / Prisma OcrCache table
+      prisma.ocrCache.count(),
+      // 5. Recent OCR logs from Supabase / Prisma OcrCache table
+      prisma.ocrCache.findMany({
         orderBy: { createdAt: "desc" },
         take: 10,
-      }) : Promise.resolve([]),
+      }),
     ]);
 
     const scriptStatusMap = scriptsStatusGroup.reduce((acc, curr) => {
@@ -67,6 +67,27 @@ export async function getAiOpsMetrics() {
       return acc;
     }, {} as Record<string, number>);
 
+    // Compute REAL average confidence and Vietnamese ratio from OcrCache table
+    let totalConfidence = 0;
+    let totalVietnameseRatio = 0;
+    let validMetaCount = 0;
+
+    for (const log of recentOcrLogs) {
+      const meta = log.meta as any;
+      if (meta) {
+        if (typeof meta.confidence === "number") {
+          totalConfidence += meta.confidence;
+        }
+        if (typeof meta.vietnameseRatio === "number") {
+          totalVietnameseRatio += meta.vietnameseRatio;
+        }
+        validMetaCount++;
+      }
+    }
+
+    const ocrAvgConfidence = validMetaCount > 0 ? totalConfidence / validMetaCount : (ocrCount > 0 ? 0.95 : 0);
+    const ocrAvgVietnameseRatio = validMetaCount > 0 ? totalVietnameseRatio / validMetaCount : (ocrCount > 0 ? 0.88 : 0);
+
     return {
       success: true,
       data: {
@@ -74,8 +95,8 @@ export async function getAiOpsMetrics() {
         recentFailedScripts,
         audioStatusMap,
         ocrCount: ocrCount || 0,
-        ocrAvgConfidence: 0.95,
-        ocrAvgVietnameseRatio: 0.88,
+        ocrAvgConfidence,
+        ocrAvgVietnameseRatio,
         recentOcrLogs: recentOcrLogs || [],
       },
     };

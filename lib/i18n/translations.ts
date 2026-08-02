@@ -316,8 +316,16 @@ export const translations = {
       step: "B",
       skip: "Bỏ qua",
       skipped: "Đã bỏ qua",
-      readyForAction: "Sẵn sàng thực chiến",
+      readyForAction: "Sẵn sàng hành động",
       noData: "Chưa có dữ liệu lộ trình học tập",
+    },
+    searchPage: {
+      title: "Tìm kiếm kiến thức thông minh",
+      placeholder: "Hỏi về nội dung bài học (VD: machine learning là gì?)...",
+      resultsCount: "Kết quả phù hợp",
+      highAccuracy: "Độ chính xác cao",
+      notFound: "Không tìm thấy nội dung phù hợp.",
+      failed: "Tìm kiếm thất bại"
     }
   },
   en: {
@@ -637,6 +645,14 @@ export const translations = {
       skipped: "Skipped",
       readyForAction: "Ready for Action",
       noData: "No learning path data available",
+    },
+    searchPage: {
+      title: "Smart Knowledge Search",
+      placeholder: "Search lesson content (e.g., what is machine learning?)...",
+      resultsCount: "Matching results",
+      highAccuracy: "High Accuracy",
+      notFound: "No matching content found.",
+      failed: "Search failed"
     }
   }
 };

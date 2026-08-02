@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "@/app/actions/auth";
 import LoginModal from "../auth/LoginModal";
 import RegisterModal from "../auth/RegisterModal";
+import SearchModal from "../SearchModal";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useTheme } from "@/lib/theme/ThemeContext";
@@ -24,6 +25,7 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isPendingLogout, startTransitionLogout] = useTransition();
   const [imgError, setImgError] = useState(false);
 
@@ -131,9 +133,13 @@ export default function Header() {
             <ThemeSwitcher />
             <LanguageSwitcher />
 
-            <button className={`transition-colors p-2 rounded-full ${
-              isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
-            }`}>
+            <button
+              onClick={() => setIsSearchModalOpen(true)}
+              className={`transition-colors p-2 rounded-full ${
+                isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
+              }`}
+              title={t("hero.searchBtn", "Tìm kiếm")}
+            >
               <Search size={18} />
             </button>
 
@@ -256,6 +262,15 @@ export default function Header() {
           <div className="md:hidden flex items-center gap-2 relative z-50">
             <ThemeSwitcher />
             <LanguageSwitcher />
+            <button
+              onClick={() => setIsSearchModalOpen(true)}
+              className={`p-2 rounded-md transition-colors ${
+                isDark ? "text-white hover:bg-white/10" : "text-stone-900 hover:bg-stone-200/70"
+              }`}
+              title={t("hero.searchBtn", "Tìm kiếm")}
+            >
+              <Search size={20} />
+            </button>
             <button className={`p-2 rounded-md transition-colors ${
               isDark ? "text-white hover:bg-white/10" : "text-stone-900 hover:bg-stone-200/70"
             }`} onClick={toggleMenu}>
@@ -355,6 +370,10 @@ export default function Header() {
           setIsRegisterModalOpen(false);
           setIsLoginModalOpen(true);
         }}
+      />
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
       />
     </>
   );

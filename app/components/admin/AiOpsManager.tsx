@@ -33,7 +33,7 @@ export default function AiOpsManager({ initialData }: AiOpsManagerProps) {
           <Cpu className="text-[#C5A059]" /> Giám Sát Hệ Thống AI & DevOps (AI Ops Monitor)
         </h1>
         <p className="text-stone-500 mt-1">
-          Theo dõi tiến trình sinh bài giảng AI, hàng đợi âm thanh TTS và hiệu suất OCR Cache.
+          Theo dõi tiến trình sinh bài giảng AI, hàng đợi âm thanh TTS và hiệu suất OCR Cache từ CSDL Supabase.
         </p>
       </div>
 
@@ -93,7 +93,7 @@ export default function AiOpsManager({ initialData }: AiOpsManagerProps) {
         {/* OCR Cache Metrics */}
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Quản Lý Cache OCR</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Quản Lý Cache OCR (Supabase)</span>
             <FileSearch size={20} className="text-cyan-600" />
           </div>
           <div className="space-y-2">
@@ -152,33 +152,58 @@ export default function AiOpsManager({ initialData }: AiOpsManagerProps) {
       {/* Detailed Section: Recent OCR Scans */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-4">
         <h3 className="font-bold text-stone-900 text-lg flex items-center gap-2">
-          <FileSearch className="text-cyan-600" /> Nhật Ký Quét OCR Gần Đây (OcrCache)
+          <FileSearch className="text-cyan-600" /> Nhật Ký Quét OCR Gần Đây (Supabase OcrCache)
         </h3>
 
         {recentOcrLogs.length === 0 ? (
-          <p className="text-stone-400 text-sm italic py-4">Chưa có nhật ký quét OCR.</p>
+          <div className="text-center py-8 text-stone-400">
+            <FileSearch size={36} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm font-medium">Chưa có dữ liệu nhật ký quét OCR trong CSDL Supabase OcrCache.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-stone-700">
               <thead className="bg-stone-50 text-xs font-bold uppercase text-stone-500">
                 <tr>
-                  <th className="p-3">Hash SHA256</th>
+                  <th className="p-3">Loại (Type)</th>
+                  <th className="p-3">Mã Hash SHA256</th>
+                  <th className="p-3">Nội Dung Trích Xuất (Snippet)</th>
                   <th className="p-3">Độ Chính Xác</th>
                   <th className="p-3">Tỷ Lệ Tiếng Việt</th>
                   <th className="p-3">Thời Gian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 font-medium">
-                {recentOcrLogs.map((o, idx) => (
-                  <tr key={o.id || o.hash || o.sha256 || `ocr-${idx}`}>
-                    <td className="p-3 font-mono text-xs text-stone-600">{(o.hash || o.sha256)?.slice(0, 16) || "N/A"}...</td>
-                    <td className="p-3 font-bold text-emerald-600">{((o.confidence || 0.95) * 100).toFixed(1)}%</td>
-                    <td className="p-3 font-bold text-blue-600">{((o.vietnameseRatio || 0.88) * 100).toFixed(1)}%</td>
-                    <td className="p-3 text-xs text-stone-400 whitespace-nowrap">
-                      {o.createdAt ? new Date(o.createdAt).toLocaleString("vi-VN") : "N/A"}
-                    </td>
-                  </tr>
-                ))}
+                {recentOcrLogs.map((o, idx) => {
+                  const meta = o.meta || {};
+                  const confidence = typeof meta.confidence === "number" ? meta.confidence : (o.confidence || 0.95);
+                  const vietnameseRatio = typeof meta.vietnameseRatio === "number" ? meta.vietnameseRatio : (o.vietnameseRatio || 0.88);
+
+                  return (
+                    <tr key={o.hash || `ocr-${idx}`}>
+                      <td className="p-3">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                          o.type === "pdf" ? "bg-red-50 text-red-600 border border-red-100" :
+                          o.type === "audio" ? "bg-purple-50 text-purple-600 border border-purple-100" :
+                          "bg-cyan-50 text-cyan-600 border border-cyan-100"
+                        }`}>
+                          {o.type || "image"}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono text-xs text-stone-600" title={o.hash}>
+                        {o.hash ? `${o.hash.slice(0, 12)}...` : "N/A"}
+                      </td>
+                      <td className="p-3 text-xs text-stone-700 max-w-xs truncate" title={o.text}>
+                        {o.text ? `"${o.text.slice(0, 60)}..."` : "N/A"}
+                      </td>
+                      <td className="p-3 font-bold text-emerald-600">{(confidence * 100).toFixed(1)}%</td>
+                      <td className="p-3 font-bold text-blue-600">{(vietnameseRatio * 100).toFixed(1)}%</td>
+                      <td className="p-3 text-xs text-stone-400 whitespace-nowrap">
+                        {o.createdAt ? new Date(o.createdAt).toLocaleString("vi-VN") : "N/A"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
