@@ -241,6 +241,19 @@ a:active {
 }
 
 /* Utility Classes */
+@keyframes border-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.7), 0 0 8px rgba(236, 72, 153, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(168, 85, 247, 1), 0 0 18px rgba(236, 72, 153, 0.9);
+  }
+}
+
+.animate-glow-cosmic {
+  animation: border-glow-pulse 2s ease-in-out infinite;
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }

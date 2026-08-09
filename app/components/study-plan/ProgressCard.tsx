@@ -44,8 +44,8 @@ export default function ProgressCard({
     const status = isBehind ? "behind" : "ahead";
 
     return (
-        <div className={`rounded-3xl overflow-hidden sticky top-24 transition-all duration-300 liquid-glass ${
-            isDark ? "text-white" : "text-stone-900 shadow-md"
+        <div className={`rounded-3xl overflow-hidden sticky top-24 transition-all duration-300 border ${
+            isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-md"
         }`}>
             {/* Header Stats */}
             <div className={`p-6 border-b ${isDark ? "border-white/10" : "border-stone-200"}`}>

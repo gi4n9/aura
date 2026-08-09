@@ -7,6 +7,9 @@ import {
     User, BookOpen, Trophy, Clock, Target, Award,
     Mail, Calendar, TrendingUp, CheckCircle2, Star, Flame
 } from "lucide-react";
+import LevelProgressCard from "@/app/components/profile/LevelProgressCard";
+import ProfileCustomizer from "@/app/components/profile/ProfileCustomizer";
+import { getUserGamificationData } from "@/app/actions/gamification-actions";
 
 export const metadata = {
     title: "Learning Profile | Aura Learning",
@@ -31,6 +34,9 @@ export default async function ProfilePage() {
             createdAt: true,
         }
     });
+
+    // Fetch gamification data
+    const gamiData = await getUserGamificationData(user.id);
 
     // Fetch enrollment stats
     const enrollments = await db.enrollment.findMany({
@@ -68,47 +74,99 @@ export default async function ProfilePage() {
     // Categories learned
     const categories = [...new Set(enrollments.map(e => e.course.category?.name).filter(Boolean))];
 
+    // Equipped cosmetic styles
+    const equippedBannerId = gamiData?.stats?.equippedBanner || 'banner_default';
+    const equippedFrameId = gamiData?.stats?.equippedFrame || 'frame_default';
+    const equippedTitle = gamiData?.stats?.equippedTitle || 'Tân binh Aura';
+
+    const bannerObj = gamiData?.catalog?.banners?.find(b => b.id === equippedBannerId) || gamiData?.catalog?.banners?.[0];
+    const frameObj = gamiData?.catalog?.frames?.find(f => f.id === equippedFrameId) || gamiData?.catalog?.frames?.[0];
+    const titleObj = gamiData?.catalog?.titles?.find(t => t.name === equippedTitle || t.id === equippedTitle) || gamiData?.catalog?.titles?.[0];
+
     return (
-        <div className="pt-[80px] pb-12">
-            {/* PROFILE HEADER */}
+        <div className="pt-[80px] pb-12 space-y-8">
+            {/* PROFILE HEADER WITH EQUIPPED COSMETICS */}
             <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden mb-8">
                 {/* Cover Background */}
-                <div className="h-32 bg-gradient-to-r from-[#1a1a1a] via-stone-800 to-[#1a1a1a] relative">
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-10" />
-                    <div className="absolute -bottom-16 left-8">
-                        <div className="w-32 h-32 rounded-2xl border-4 border-white bg-stone-100 overflow-hidden shadow-lg relative">
-                            {profile?.avatarUrl ? (
-                                <Image src={profile.avatarUrl} alt="Avatar" fill className="object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-[#C5A059] text-4xl font-bold">
-                                    {(profile?.fullName?.[0] || "U").toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <div className={`h-36 w-full relative transition-all duration-500 ${bannerObj?.previewStyle || 'bg-gradient-to-r from-[#1a1a1a] via-stone-800 to-[#1a1a1a]'}`} />
 
                 {/* Profile Info */}
-                <div className="pt-20 px-8 pb-8">
-                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                        <div>
-                            <h1 className="text-3xl font-serif font-bold text-stone-900 mb-1">{profile?.fullName || "Người dùng"}</h1>
-                            <div className="flex items-center gap-4 text-sm text-stone-500">
-                                <span className="flex items-center gap-1"><Mail size={14} /> {profile?.email}</span>
-                                <span className="flex items-center gap-1"><Calendar size={14} /> Tham gia {joinDate}</span>
+                <div className="px-8 pb-8 relative -mt-14">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-7">
+                            {/* Avatar with Frame */}
+                            <div className={`w-28 h-28 rounded-full border-4 border-white bg-stone-100 overflow-hidden shadow-xl relative shrink-0 transition-all duration-300 ${frameObj?.previewStyle}`}>
+                                {profile?.avatarUrl ? (
+                                    <Image src={profile.avatarUrl} alt="Avatar" fill className="object-cover rounded-full" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a] text-[#C5A059] text-3xl font-bold font-serif">
+                                        {(profile?.fullName?.[0] || "U").toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* User details */}
+                            <div className="pb-1 pl-2">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <h1 className="text-3xl font-serif font-bold text-stone-900">{profile?.fullName || "Người dùng"}</h1>
+                                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#C5A059] text-white">
+                                        Cấp {gamiData?.stats?.level || 1}
+                                    </span>
+                                    <span className={`text-xs px-2.5 py-0.5 rounded-md border border-stone-200 bg-stone-50 ${titleObj?.previewStyle || 'text-[#C5A059] font-semibold'}`}>
+                                        {titleObj?.name || equippedTitle}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-stone-500 mt-2">
+                                    <span className="flex items-center gap-1.5"><Mail size={15} /> {profile?.email}</span>
+                                    <span className="flex items-center gap-1.5"><Calendar size={15} /> Tham gia {joinDate}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
+
+                        <div className="flex items-center gap-3 shrink-0 pb-1">
                             <div className="flex items-center gap-2 bg-amber-50 text-[#C5A059] px-4 py-2 rounded-xl border border-amber-100 font-bold text-sm">
-                                <Trophy size={18} /> {totalCups} Cups
+                                <Trophy size={18} /> {gamiData?.stats?.totalXp || 0} XP
                             </div>
-                            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl border border-emerald-100 font-bold text-sm">
-                                <Flame size={18} /> {completedLessons} bài học
+                            <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-xl border border-orange-100 font-bold text-sm">
+                                <Flame size={18} /> {gamiData?.stats?.currentStreak || 0} ngày Streak 🔥
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* LEVEL & STREAK PROGRESS CARD */}
+            {gamiData && (
+                <LevelProgressCard
+                    level={gamiData.levelProgress.currentLevel}
+                    currentXp={gamiData.levelProgress.currentXp}
+                    currentLevelXp={gamiData.levelProgress.currentLevelXp}
+                    nextLevelXp={gamiData.levelProgress.nextLevelXp}
+                    progressPercentage={gamiData.levelProgress.progressPercentage}
+                    currentStreak={gamiData.stats.currentStreak}
+                    longestStreak={gamiData.stats.longestStreak}
+                    equippedTitle={gamiData.stats.equippedTitle}
+                    isDark={false}
+                />
+            )}
+
+            {/* PROFILE CUSTOMIZER (AVATAR FRAMES, BANNERS, TITLES) */}
+            {gamiData && (
+                <ProfileCustomizer
+                    user={{
+                        name: profile?.fullName || user.email?.split('@')[0] || "Học viên Aura",
+                        email: profile?.email || user.email || "",
+                        avatarUrl: profile?.avatarUrl
+                    }}
+                    level={gamiData.levelProgress.currentLevel}
+                    unlockedItems={gamiData.stats.unlockedItems}
+                    equippedFrame={gamiData.stats.equippedFrame}
+                    equippedBanner={gamiData.stats.equippedBanner}
+                    equippedTitle={gamiData.stats.equippedTitle}
+                    catalog={gamiData.catalog}
+                    isDark={false}
+                />
+            )}
 
             {/* STATS GRID */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

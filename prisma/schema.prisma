@@ -96,8 +96,17 @@ model Profile {
   studySchedules StudySchedule[]
   
   // Community / Gamification
-  userStats      UserStats?
-  groupQuestions GroupQuestion[]
+  bio              String?
+  learningGoal     String?
+  viewsCount       Int              @default(0)
+  userStats        UserStats?
+  groupQuestions   GroupQuestion[]
+  cheersSent       ProfileCheer[]   @relation("CheerSender")
+  cheersReceived   ProfileCheer[]   @relation("CheerReceiver")
+  reactionsSent    ProfileReaction[] @relation("ReactionSender")
+  reactionsReceived ProfileReaction[] @relation("ReactionReceiver")
+  groupAnswers     GroupQuestionAnswer[]
+  questionUpvotes  QuestionUpvote[]
   
   // Group Invitations
   invitationsSent     GroupInvitation[] @relation("InvitationsSent")
@@ -695,28 +704,70 @@ model UserStats {
   longestStreak  Int      @default(0)
   lastStudyDate  DateTime?
   
-  // Leaderboard data
+  // Leaderboard & Gamification Level
   totalXp        Int      @default(0)
+  level          Int      @default(1)
   totalPomodoros Int      @default(0)
   totalStudyMins Int      @default(0)
+  
+  // Profile Customization & Unlocked Themes
+  unlockedItems  String[] @default(["frame_default", "banner_default", "title_newbie"])
+  equippedFrame  String   @default("frame_default")
+  equippedBanner String   @default("banner_default")
+  equippedTitle  String   @default("Tân binh Aura")
   
   updatedAt      DateTime @updatedAt
 }
 
 model GroupQuestion {
   id             String       @id @default(uuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String?      // Có thể gắn vào 1 nhóm học tập cụ thể hoặc null nếu công khai
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   
   authorId       String
   author         Profile      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   
   title          String
   content        String       @db.Text
+  categoryId     String?      
   isResolved     Boolean      @default(false)
+  upvotesCount   Int          @default(0)
+  viewsCount     Int          @default(0)
   
+  answers        GroupQuestionAnswer[]
+  upvotes        QuestionUpvote[]
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+model GroupQuestionAnswer {
+  id          String        @id @default(uuid())
+  questionId  String
+  question    GroupQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      Profile       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  content     String        @db.Text
+  isAccepted  Boolean       @default(false) // Câu trả lời đúng chuẩn
+  upvotesCount Int          @default(0)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model QuestionUpvote {
+  id          String         @id @default(uuid())
+  userId      String
+  user        Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  questionId  String?
+  question    GroupQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime       @default(now())
+
+  @@unique([userId, questionId])
 }
 
 // ================= 6. VECTOR SEARCH =================
@@ -866,4 +917,28 @@ model SystemSetting {
   createdAt DateTime @default(now())
 }
 
+// ================= 9. PROFILE CHEERS & REACTIONS =================
+model ProfileCheer {
+  id           String   @id @default(uuid())
+  senderId     String
+  sender       Profile  @relation("CheerSender", fields: [senderId], references: [id], onDelete: Cascade)
+  targetUserId String
+  targetUser   Profile  @relation("CheerReceiver", fields: [targetUserId], references: [id], onDelete: Cascade)
+  message      String
+  createdAt    DateTime @default(now())
 
+  @@index([targetUserId])
+}
+
+model ProfileReaction {
+  id           String   @id @default(uuid())
+  senderId     String
+  sender       Profile  @relation("ReactionSender", fields: [senderId], references: [id], onDelete: Cascade)
+  targetUserId String
+  targetUser   Profile  @relation("ReactionReceiver", fields: [targetUserId], references: [id], onDelete: Cascade)
+  type         String   // "heart", "thumb", "idea", "star"
+  createdAt    DateTime @default(now())
+
+  @@unique([senderId, targetUserId, type])
+  @@index([targetUserId])
+}

@@ -6,7 +6,7 @@ echoLauncherHeader();
 console.log("=======================================================\n");
 
 function echoLauncherHeader() {
-    console.log("🚀 [Aura Launcher] Starting Next.js Dev Server + Local PaddleOCR Service...");
+    console.log("🚀 [Aura Launcher] Starting Next.js Dev Server + Local PaddleOCR Service + Gemini Web2API...");
 }
 
 const fs = require("fs");
@@ -18,7 +18,7 @@ const ocrScriptPath = path.join(__dirname, "../ocr-service/main.py");
 const venvPythonWin = path.join(__dirname, "../ocr-service/venv/Scripts/python.exe");
 const venvPythonUnix = path.join(__dirname, "../ocr-service/venv/bin/python");
 
-let pythonCmd = "python";
+let pythonCmd = process.platform === "win32" ? "python" : "python3";
 if (fs.existsSync(venvPythonWin)) {
     pythonCmd = `"${venvPythonWin}"`;
 } else if (fs.existsSync(venvPythonUnix)) {
@@ -37,21 +37,45 @@ ocrProcess.on("error", (err) => {
     console.warn("👉 Next.js will continue to run with Tesseract.js fallback mode.");
 });
 
-// 2. Khởi chạy Next.js Dev Server
+// Đường dẫn tới gemini-web2api
+const geminiScriptPath = path.join(__dirname, "../gemini-web2api/gemini_web2api.py");
+const geminiVenvPythonWin = path.join(__dirname, "../gemini-web2api/venv/Scripts/python.exe");
+const geminiVenvPythonUnix = path.join(__dirname, "../gemini-web2api/venv/bin/python");
+
+let geminiPythonCmd = process.platform === "win32" ? "python" : "python3";
+if (fs.existsSync(geminiVenvPythonWin)) {
+    geminiPythonCmd = `"${geminiVenvPythonWin}"`;
+} else if (fs.existsSync(geminiVenvPythonUnix)) {
+    geminiPythonCmd = `"${geminiVenvPythonUnix}"`;
+}
+
+// 2. Khởi chạy Gemini Web2API Process
+console.log(`🤖 Launching Gemini Web2API Service (${geminiPythonCmd})...`);
+const geminiProcess = spawn(geminiPythonCmd, [geminiScriptPath], {
+    stdio: "inherit",
+    shell: true,
+    cwd: path.join(__dirname, "../gemini-web2api")
+});
+
+geminiProcess.on("error", (err) => {
+    console.warn("⚠️ [Gemini Web2API Warning] Unable to launch Python process:", err.message);
+});
+
+// 3. Khởi chạy Next.js Dev Server
 console.log("⚡ Launching Next.js Development Server...");
 const nextProcess = spawn("npx", ["next", "dev"], {
     stdio: "inherit",
     shell: true
 });
 
-// 3. Xử lý tắt sạch sẽ cả 2 tiến trình khi nhấn Ctrl+C
+// 4. Xử lý tắt sạch sẽ các tiến trình khi nhấn Ctrl+C
 let isShuttingDown = false;
 
 function shutdown() {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
-    console.log("\n🛑 [Aura Launcher] Stopping Next.js Dev Server and PaddleOCR Service...");
+    console.log("\n🛑 [Aura Launcher] Stopping Next.js Dev Server, PaddleOCR, and Gemini Web2API...");
 
     const killProc = (proc, name) => {
         if (!proc || !proc.pid) return;
@@ -69,6 +93,7 @@ function shutdown() {
     };
 
     killProc(ocrProcess, "PaddleOCR Service");
+    killProc(geminiProcess, "Gemini Web2API Service");
     killProc(nextProcess, "Next.js Dev Server");
 
     setTimeout(() => {

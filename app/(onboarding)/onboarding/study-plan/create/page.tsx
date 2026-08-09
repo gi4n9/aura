@@ -194,7 +194,7 @@ export default function CreatePlanPage() {
         }`}>
             {/* Header */}
             <div className="mb-8">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-[#C5A059] liquid-glass mb-3">
+                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-[#C5A059] border border-[#C5A059]/30 bg-[#C5A059]/10 mb-3">
                     <Sparkles size={14} /> Aura Pathfinder
                 </span>
                 <h1 className={`text-3xl sm:text-4xl font-serif font-bold mb-2 ${isDark ? "text-white" : "text-stone-900"}`}>
@@ -217,8 +217,8 @@ export default function CreatePlanPage() {
                     <h2 className="text-xl font-serif font-bold">Bạn muốn học những khóa nào?</h2>
 
                     {courses.length === 0 ? (
-                        <div className={`p-8 rounded-3xl border border-dashed text-center liquid-glass ${
-                            isDark ? "border-white/10 text-stone-400" : "border-stone-300 text-stone-500"
+                        <div className={`p-8 rounded-3xl border border-dashed text-center ${
+                            isDark ? "border-white/10 text-stone-400 bg-[#0e0e0e]" : "border-stone-300 text-stone-500 bg-white"
                         }`}>
                             Không tìm thấy khóa học nào trong lộ trình của bạn. Hãy thiết lập lại lộ trình nhé!
                         </div>
@@ -228,12 +228,12 @@ export default function CreatePlanPage() {
                                 <div
                                     key={course.id}
                                     onClick={() => toggleCourse(course.id)}
-                                    className={`p-5 rounded-3xl transition-all duration-300 cursor-pointer flex items-start gap-4 liquid-glass ${
+                                    className={`p-5 rounded-3xl transition-all duration-300 cursor-pointer flex items-start gap-4 border ${
                                         selectedCourses.includes(course.id)
-                                            ? "border-2 border-[#C5A059] shadow-lg shadow-[#C5A059]/20"
+                                            ? "border-2 border-[#C5A059] bg-[#C5A059]/10 shadow-lg shadow-[#C5A059]/10"
                                             : isDark
-                                            ? "text-white hover:border-white/30"
-                                            : "text-stone-900 shadow-sm hover:border-stone-300"
+                                            ? "bg-[#0e0e0e] border-white/10 text-white hover:border-white/30"
+                                            : "bg-white border-stone-200 text-stone-900 shadow-sm hover:border-stone-300"
                                     }`}
                                 >
                                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
@@ -287,7 +287,7 @@ export default function CreatePlanPage() {
             {step === 2 && (
                 <div className="space-y-8">
                     {/* Plan Name */}
-                    <div className={`p-6 rounded-3xl liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-sm"}`}>
+                    <div className={`p-6 rounded-3xl border ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"}`}>
                         <label className="block text-sm font-bold mb-2">Tên kế hoạch</label>
                         <input
                             type="text"
@@ -303,7 +303,7 @@ export default function CreatePlanPage() {
 
                     {/* Start Date & Duration */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className={`p-6 rounded-3xl liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-sm"}`}>
+                        <div className={`p-6 rounded-3xl border ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"}`}>
                             <label className="block text-sm font-bold mb-2 flex items-center gap-2">
                                 <Calendar size={16} className="text-[#C5A059]" /> Ngày bắt đầu
                             </label>
@@ -318,7 +318,7 @@ export default function CreatePlanPage() {
                                 }`}
                             />
                         </div>
-                        <div className={`p-6 rounded-3xl liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-sm"}`}>
+                        <div className={`p-6 rounded-3xl border ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"}`}>
                             <label className="block text-sm font-bold mb-2 flex items-center gap-2">
                                 <Clock size={16} className="text-[#C5A059]" /> Thời gian học mỗi ngày
                             </label>
@@ -341,7 +341,7 @@ export default function CreatePlanPage() {
                     </div>
 
                     {/* Days of Week */}
-                    <div className={`p-6 rounded-3xl liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-sm"}`}>
+                    <div className={`p-6 rounded-3xl border ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"}`}>
                         <label className="block text-sm font-bold mb-4">Bạn rảnh vào những ngày nào trong tuần?</label>
                         <div className="flex flex-wrap gap-3">
                             {[
@@ -371,7 +371,7 @@ export default function CreatePlanPage() {
                     </div>
 
                     {/* RESULT PREVIEW */}
-                    <div className="p-6 rounded-3xl liquid-glass-gold shadow-lg">
+                    <div className={`p-6 rounded-3xl border border-[#C5A059]/40 bg-[#C5A059]/10 shadow-lg ${isDark ? "text-white" : "text-stone-900"}`}>
                         <div className="flex items-start gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-[#C5A059] text-[#080808] flex items-center justify-center flex-shrink-0 shadow-md">
                                 <Flag size={24} />
@@ -419,7 +419,7 @@ export default function CreatePlanPage() {
             {/* PAYMENT MODAL */}
             {showPaymentModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className={`rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col liquid-glass-strong border ${
+                    <div className={`rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col border ${
                         isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
                     }`}>
                         <div className="p-6 border-b border-stone-500/20">

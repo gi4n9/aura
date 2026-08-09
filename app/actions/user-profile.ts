@@ -103,3 +103,119 @@ export async function syncGoogleAvatar() {
     return { success: false, error: "Không thể cập nhật avatar từ Google." };
   }
 }
+
+export async function sendProfileCheer(targetUserId: string, message: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Bạn cần đăng nhập để gửi lời cổ vũ" };
+
+  try {
+    const cheer = await prisma.profileCheer.create({
+      data: {
+        senderId: user.id,
+        targetUserId,
+        message: message.trim() || "🎉 Chúc mừng bạn nhé!"
+      },
+      include: {
+        sender: {
+          select: { fullName: true, email: true, avatarUrl: true }
+        }
+      }
+    });
+
+    revalidatePath("/profile");
+    return { success: true, cheer };
+  } catch (error) {
+    console.error("Lỗi sendProfileCheer:", error);
+    return { success: false, error: "Không thể gửi lời cổ vũ." };
+  }
+}
+
+export async function toggleProfileReaction(targetUserId: string, type: 'heart' | 'thumb' | 'idea' | 'star') {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Bạn cần đăng nhập để thả cảm xúc" };
+
+  try {
+    const existing = await prisma.profileReaction.findUnique({
+      where: {
+        senderId_targetUserId_type: {
+          senderId: user.id,
+          targetUserId,
+          type
+        }
+      }
+    });
+
+    if (existing) {
+      await prisma.profileReaction.delete({ where: { id: existing.id } });
+    } else {
+      await prisma.profileReaction.create({
+        data: {
+          senderId: user.id,
+          targetUserId,
+          type
+        }
+      });
+    }
+
+    revalidatePath("/profile");
+    return { success: true };
+  } catch (error) {
+    console.error("Lỗi toggleProfileReaction:", error);
+    return { success: false, error: "Có lỗi khi thả cảm xúc." };
+  }
+}
+
+export async function incrementProfileViews(targetUserId: string) {
+  try {
+    await prisma.profile.update({
+      where: { id: targetUserId },
+      data: { viewsCount: { increment: 1 } }
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+export async function getPublicUserProfileData(targetUserId: string) {
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { id: targetUserId },
+      include: {
+        userStats: true,
+        cheersReceived: {
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            sender: {
+              select: { id: true, fullName: true, avatarUrl: true, email: true }
+            }
+          }
+        },
+        reactionsReceived: true
+      }
+    });
+
+    if (!profile) return null;
+
+    // Reaction counts
+    const reactionsCount = {
+      heart: profile.reactionsReceived.filter(r => r.type === 'heart').length,
+      thumb: profile.reactionsReceived.filter(r => r.type === 'thumb').length,
+      idea: profile.reactionsReceived.filter(r => r.type === 'idea').length,
+      star: profile.reactionsReceived.filter(r => r.type === 'star').length,
+      total: profile.reactionsReceived.length
+    };
+
+    return {
+      profile,
+      reactionsCount,
+      cheers: profile.cheersReceived
+    };
+  } catch (error) {
+    console.error("Lỗi getPublicUserProfileData:", error);
+    return null;
+  }
+}

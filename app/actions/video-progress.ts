@@ -66,7 +66,18 @@ export async function saveVideoProgress(
       console.error("Failed to update course progress from video", e);
     }
 
-    return { success: true, progress };
+    // --- GAMIFICATION: Ghi nhận Streak & XP khi hoàn thành bài học (>= 90%) ---
+    let gamificationResult = null;
+    if (isCompleted) {
+      try {
+        const { recordLessonCompletion } = await import('./gamification-actions');
+        gamificationResult = await recordLessonCompletion(user.id, lessonId);
+      } catch (e) {
+        console.error("Failed to record gamification completion", e);
+      }
+    }
+
+    return { success: true, progress, gamification: gamificationResult };
   } catch (error) {
     console.error("Error saving video progress:", error);
     return { error: "Failed to save progress" };
@@ -175,6 +186,14 @@ export async function markVideoCompleted(lessonId: string, duration: number) {
         isCompleted: true,
       },
     });
+
+    // --- GAMIFICATION ---
+    try {
+      const { recordLessonCompletion } = await import('./gamification-actions');
+      await recordLessonCompletion(user.id, lessonId);
+    } catch (e) {
+      console.error("Failed to record gamification on mark completed", e);
+    }
 
     return { success: true, progress };
   } catch (error) {

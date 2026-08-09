@@ -96,8 +96,8 @@ const SessionCard = ({ session, isDark }: { session: StudySession; isDark: boole
 
     return (
         <div className={`
-            rounded-3xl p-5 transition-all duration-300 flex flex-col h-full overflow-hidden group relative liquid-glass
-            ${isToday(session.date) ? "border-2 border-[#C5A059] shadow-lg shadow-[#C5A059]/20" : isDark ? "text-white" : "text-stone-900 shadow-sm"}
+            rounded-3xl p-5 transition-all duration-300 flex flex-col h-full overflow-hidden group relative border
+            ${isToday(session.date) ? "border-2 border-[#C5A059] shadow-lg shadow-[#C5A059]/20 bg-[#C5A059]/5" : isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"}
         `}>
             {/* Floating Cup Tag */}
             {sessionCups > 0 && (
@@ -259,8 +259,8 @@ export default function StudyTimeline({ initialSchedule }: { initialSchedule: an
     // EMPTY STATE
     if (!initialSchedule || sessions.length === 0) {
         return (
-            <div className={`p-12 text-center rounded-3xl border border-dashed liquid-glass ${
-                isDark ? "border-white/10 text-white" : "border-stone-300 text-stone-900"
+            <div className={`p-12 text-center rounded-3xl border border-dashed ${
+                isDark ? "border-white/10 bg-[#0e0e0e] text-white" : "border-stone-300 bg-white text-stone-900"
             }`}>
                 <div className="w-16 h-16 rounded-2xl bg-[#C5A059]/20 text-[#C5A059] flex items-center justify-center mx-auto mb-4">
                     <CalendarIcon size={32} />
@@ -300,8 +300,8 @@ export default function StudyTimeline({ initialSchedule }: { initialSchedule: an
     return (
         <div className="space-y-8">
             {/* TOOLBAR */}
-            <div className={`p-4 rounded-3xl flex flex-wrap items-center justify-between gap-4 liquid-glass ${
-                isDark ? "text-white" : "text-stone-900 shadow-sm"
+            <div className={`p-4 rounded-3xl flex flex-wrap items-center justify-between gap-4 border ${
+                isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
             }`}>
                 <div className="flex gap-2">
                     <button className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${

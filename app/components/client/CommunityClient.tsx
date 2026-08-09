@@ -2,9 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Users, Plus, Link as LinkIcon, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Plus, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import GroupCard from '@/app/components/community/GroupCard';
 import CreateGroupModal from '@/app/components/community/CreateGroupModal';
+import CommunityTabs from '@/app/components/community/CommunityTabs';
+import LeaderboardView from '@/app/components/community/LeaderboardView';
+import StreakDashboardView from '@/app/components/community/StreakDashboardView';
+import QAForumView from '@/app/components/community/QAForumView';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
@@ -16,6 +20,7 @@ interface Category {
 interface CommunityClientProps {
     userId: string | null;
     categoryId?: string;
+    initialTab?: 'groups' | 'leaderboard' | 'streaks' | 'qa';
     page: number;
     myPage: number;
     categories: Category[];
@@ -26,11 +31,15 @@ interface CommunityClientProps {
     totalPages: number;
     nextCursor: string | null;
     enrolledCourses: { id: string; title: string; thumbnailUrl?: string | null }[];
+    leaderboardUsers?: any[];
+    userGamiData?: any;
+    qaQuestions?: any[];
 }
 
 export default function CommunityClient({
     userId,
     categoryId,
+    initialTab = 'groups',
     page,
     myPage,
     categories,
@@ -40,11 +49,15 @@ export default function CommunityClient({
     availableGroups,
     totalPages,
     nextCursor,
-    enrolledCourses
+    enrolledCourses,
+    leaderboardUsers = [],
+    userGamiData,
+    qaQuestions = []
 }: CommunityClientProps) {
     const { t } = useLanguage();
     const { theme } = useTheme();
     const isDark = theme === "dark";
+    const [activeTab, setActiveTab] = useState<'groups' | 'leaderboard' | 'streaks' | 'qa'>(initialTab);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const renderPagination = (currentPage: number, total: number, paramName: 'page' | 'mypage', nextCursorStr: string | null) => {
@@ -62,6 +75,7 @@ export default function CommunityClient({
         const buildUrl = (p: number, isNext: boolean = false) => {
             const params = new URLSearchParams();
             if (categoryId) params.set('category', categoryId);
+            params.set('tab', activeTab);
             
             if (paramName === 'page' && myPage > 1) params.set('mypage', myPage.toString());
             if (paramName === 'mypage' && page > 1) params.set('page', page.toString());
@@ -99,10 +113,10 @@ export default function CommunityClient({
                                 href={buildUrl(p as number)}
                                 className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
                                     isCurrent
-                                        ? 'border-[#C5A059] bg-[#C5A059] text-white'
+                                        ? "border-[#C5A059] bg-[#C5A059] text-[#080808] font-bold"
                                         : isDark
-                                            ? 'border-transparent hover:bg-white/5 text-stone-400'
-                                            : 'border-transparent hover:bg-white text-stone-600'
+                                        ? "border-white/10 hover:bg-white/5 text-stone-300"
+                                        : "border-stone-200 hover:bg-stone-50 text-stone-700"
                                 }`}
                             >
                                 {p}
@@ -123,131 +137,157 @@ export default function CommunityClient({
     };
 
     return (
-        <div className={`min-h-screen pt-24 pb-12 transition-colors duration-500 ${isDark ? "bg-[#080808]" : "bg-[#F9F8F4]"}`}>
-            <div className="container mx-auto px-4 max-w-6xl">
+        <div className={`min-h-screen py-10 pt-[90px] ${isDark ? "bg-[#080808] text-white" : "bg-[#F9F8F4] text-stone-900"}`}>
+            <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
                 
-                {/* Header */}
-                <div className="mb-10">
-                    <h1 className={`text-3xl font-serif font-bold mb-2 ${isDark ? "text-white" : "text-stone-800"}`}>
-                        {t("communityPage.title", "Nhóm học tập")}
-                    </h1>
-                    <p className={`mb-6 ${isDark ? "text-stone-400" : "text-stone-500"}`}>
-                        {t("communityPage.subtitle", "Tham gia hoặc tạo nhóm học tập để học cùng các sinh viên khác")}
-                    </p>
-                    
-                    <div className="flex flex-wrap items-center gap-4">
-                        <button className={`flex items-center gap-2 px-5 py-2.5 border rounded-full font-bold hover:shadow-sm transition-all text-sm ${
-                            isDark
-                                ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10"
-                                : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
-                        }`}>
-                            <LinkIcon size={16} />
-                            {t("communityPage.joinByCode", "Tham gia bằng mã")}
-                        </button>
-                        <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-[#C5A059] text-white rounded-full font-bold hover:bg-[#b08d4b] hover:shadow-md transition-all text-sm shadow-sm">
-                            <Plus size={16} />
-                            {t("communityPage.createGroup", "Tạo nhóm")}
-                        </button>
+                {/* PAGE HEADER */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-serif font-bold tracking-tight">Cộng Đồng Aura</h1>
+                        <p className={`text-sm mt-1 ${isDark ? "text-stone-400" : "text-stone-600"}`}>
+                            Kết nối học viên, thi đua xếp hạng, duy trì streak và trao đổi tri thức
+                        </p>
                     </div>
-                </div>
 
-                <div className={`flex justify-between items-start mb-4 border-b pb-4 gap-4 ${isDark ? "border-white/10" : "border-stone-200"}`}>
-                    {/* Category Tabs */}
-                    <div className="flex flex-wrap gap-2 flex-1">
-                        <Link 
-                            href="/community" 
-                            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
-                                !categoryId
-                                    ? isDark ? 'bg-white/10 text-white' : 'bg-stone-800 text-white'
-                                    : isDark ? 'bg-white/5 border border-white/10 text-stone-400 hover:bg-white/10' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
-                            }`}
+                    {activeTab === 'groups' && userId && (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="px-5 py-3 rounded-2xl bg-[#C5A059] text-[#080808] font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-[#b59049] transition-all shadow-lg shadow-[#C5A059]/20 cursor-pointer self-start sm:self-auto"
                         >
-                            {t("communityPage.allCategories", "Tất cả lĩnh vực")}
-                        </Link>
-                        {categories.map(cat => (
-                            <Link 
-                                key={cat.id}
-                                href={`/community?category=${cat.id}`} 
-                                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
-                                    categoryId === cat.id
-                                        ? isDark ? 'bg-white/10 text-white' : 'bg-stone-800 text-white'
-                                        : isDark ? 'bg-white/5 border border-white/10 text-stone-400 hover:bg-white/10' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
-                                }`}
-                            >
-                                {cat.name}
-                            </Link>
-                        ))}
-                    </div>
-
-                    <div className={`flex items-center gap-1 border rounded-lg p-1 shadow-sm ml-4 h-fit ${
-                        isDark ? "bg-white/5 border-white/10" : "bg-white border-stone-200"
-                    }`}>
-                        <button className={`p-1.5 rounded ${isDark ? "bg-white/10 text-white" : "bg-stone-100 text-stone-700"}`}><LayoutGrid size={18} /></button>
-                        <button className={`p-1.5 ${isDark ? "text-stone-500 hover:text-white" : "text-stone-400 hover:text-stone-700"}`}><List size={18} /></button>
-                    </div>
-                </div>
-
-                {/* Nhóm của tôi (Chỉ hiện khi không filter category và có user) */}
-                {!categoryId && userId && myGroups.length > 0 && (
-                    <div className="mb-12">
-                        <div className="flex items-center gap-2 mb-6">
-                            <Users className="text-[#C5A059]" size={24} />
-                            <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-stone-800"}`}>
-                                {t("communityPage.myGroups", "Nhóm của tôi")}
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {myGroups.map(group => (
-                                <GroupCard key={group.id} group={group} isMine={true} currentUserId={userId} />
-                            ))}
-                        </div>
-
-                        {/* Pagination Nhóm của tôi */}
-                        {renderPagination(myPage, myTotalPages, 'mypage', myNextCursor)}
-                    </div>
-                )}
-
-                {/* Nhóm có sẵn */}
-                <div>
-                    <div className="flex items-center gap-2 mb-6">
-                        <Users className={isDark ? "text-stone-500" : "text-stone-400"} size={24} />
-                        <h2 className={`text-xl font-bold ${isDark ? "text-white" : "text-stone-800"}`}>
-                            {categoryId 
-                                ? `${t("communityPage.availableGroups", "Nhóm có sẵn")} (${categories.find(c => c.id === categoryId)?.name})` 
-                                : t("communityPage.availableGroups", "Nhóm có sẵn (Mới nhất)")}
-                        </h2>
-                    </div>
-
-                    {availableGroups.length > 0 ? (
-                        <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {availableGroups.map(group => (
-                                    <GroupCard key={group.id} group={group} isMine={false} currentUserId={userId} />
-                                ))}
-                            </div>
-
-                            {/* Pagination Nhóm có sẵn */}
-                            {renderPagination(page, totalPages, 'page', nextCursor)}
-                        </>
-                    ) : (
-                        <div className={`text-center py-12 rounded-2xl border ${
-                            isDark ? "bg-white/[0.02] border-white/10" : "bg-white border-stone-200"
-                        }`}>
-                            <p className={isDark ? "text-stone-500" : "text-stone-500"}>
-                                {t("communityPage.noGroupsFound", "Không tìm thấy nhóm nào trong lĩnh vực này.")}
-                            </p>
-                        </div>
+                            <Plus size={16} /> Tạo Nhóm Mới
+                        </button>
                     )}
                 </div>
 
+                {/* NAVIGATION TABS */}
+                <CommunityTabs
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    isDark={isDark}
+                />
+
+                {/* TAB CONTENT: GROUPS */}
+                {activeTab === 'groups' && (
+                    <div className="space-y-12">
+                        {/* 1. Nhóm của tôi */}
+                        {userId && (
+                            <section>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-serif font-bold flex items-center gap-2">
+                                        <Users className="text-[#C5A059]" size={20} />
+                                        Nhóm Của Tôi ({myGroups.length})
+                                    </h2>
+                                </div>
+
+                                {myGroups.length === 0 ? (
+                                    <div className={`p-8 rounded-3xl border text-center ${isDark ? "bg-[#0e0e0e] border-white/10 text-stone-400" : "bg-white border-stone-200 text-stone-500"}`}>
+                                        <p className="text-sm">Bạn chưa tham gia nhóm học tập nào.</p>
+                                        <button
+                                            onClick={() => setIsCreateModalOpen(true)}
+                                            className="mt-3 text-xs font-bold text-[#C5A059] hover:underline"
+                                        >
+                                            + Tạo nhóm học tập đầu tiên
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {myGroups.map((group) => (
+                                            <GroupCard key={group.id} group={group} isMine={true} currentUserId={userId} />
+                                        ))}
+                                    </div>
+                                )}
+                                {renderPagination(myPage, myTotalPages, 'mypage', myNextCursor)}
+                            </section>
+                        )}
+
+                        {/* 2. Nhóm có sẵn */}
+                        <section>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                <h2 className="text-xl font-serif font-bold flex items-center gap-2">
+                                    <LinkIcon className="text-[#C5A059]" size={20} />
+                                    Tất Cả Nhóm Học Tập ({availableGroups.length})
+                                </h2>
+
+                                {/* Category Filters */}
+                                <div className="flex flex-wrap gap-2">
+                                    <Link
+                                        href="/community?tab=groups"
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                            !categoryId
+                                                ? "bg-[#C5A059] text-[#080808]"
+                                                : isDark ? "bg-white/5 text-stone-400 hover:text-white" : "bg-stone-200 text-stone-700"
+                                        }`}
+                                    >
+                                        Tất cả
+                                    </Link>
+                                    {categories.map((cat) => (
+                                        <Link
+                                            key={cat.id}
+                                            href={`/community?tab=groups&category=${cat.id}`}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                                categoryId === cat.id
+                                                    ? "bg-[#C5A059] text-[#080808]"
+                                                    : isDark ? "bg-white/5 text-stone-400 hover:text-white" : "bg-stone-200 text-stone-700"
+                                            }`}
+                                        >
+                                            {cat.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {availableGroups.length === 0 ? (
+                                <div className={`p-12 text-center rounded-3xl border ${isDark ? "bg-[#0e0e0e] border-white/10 text-stone-400" : "bg-white border-stone-200 text-stone-500"}`}>
+                                    <p className="text-sm">Không tìm thấy nhóm học tập phù hợp.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {availableGroups.map((group) => (
+                                        <GroupCard key={group.id} group={group} isMine={false} currentUserId={userId} />
+                                    ))}
+                                </div>
+                            )}
+                            {renderPagination(page, totalPages, 'page', nextCursor)}
+                        </section>
+                    </div>
+                )}
+
+                {/* TAB CONTENT: LEADERBOARD */}
+                {activeTab === 'leaderboard' && (
+                    <LeaderboardView
+                        topUsers={leaderboardUsers}
+                        currentUserId={userId || undefined}
+                        isDark={isDark}
+                    />
+                )}
+
+                {/* TAB CONTENT: STREAKS */}
+                {activeTab === 'streaks' && (
+                    <StreakDashboardView
+                        currentStreak={userGamiData?.stats?.currentStreak || 0}
+                        longestStreak={userGamiData?.stats?.longestStreak || 0}
+                        totalXp={userGamiData?.stats?.totalXp || 0}
+                        lastStudyDate={userGamiData?.stats?.lastStudyDate}
+                        isDark={isDark}
+                    />
+                )}
+
+                {/* TAB CONTENT: Q&A FORUM */}
+                {activeTab === 'qa' && (
+                    <QAForumView
+                        questions={qaQuestions}
+                        currentUserId={userId || undefined}
+                        isDark={isDark}
+                    />
+                )}
+
             </div>
 
-            {/* Create Group Modal */}
+            {/* CREATE GROUP MODAL */}
             <CreateGroupModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
                 enrolledCourses={enrolledCourses}
+                onClose={() => setIsCreateModalOpen(false)}
             />
         </div>
     );

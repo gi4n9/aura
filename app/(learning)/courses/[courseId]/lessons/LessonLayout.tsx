@@ -273,7 +273,7 @@ export default function LessonLayout({
                             </div>
 
                             {/* Timeline Section */}
-                            <div className={`p-6 rounded-3xl transition-all liquid-glass ${isDark ? "text-white" : "text-stone-900 shadow-md"
+                            <div className={`p-6 rounded-3xl transition-all border ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
                                 }`}>
                                 <h3 className={`font-serif text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? "text-white" : "text-stone-900"
                                     }`}>
@@ -373,7 +373,7 @@ export default function LessonLayout({
                                     </p>
                                 )}
                                 <div className={`transition-all duration-500 ${!isVideoVisible
-                                    ? "max-w-3xl mx-auto rounded-3xl p-8 min-h-fit liquid-glass"
+                                    ? `max-w-3xl mx-auto rounded-3xl p-8 min-h-fit border ${isDark ? "bg-[#0e0e0e] border-white/10" : "bg-white border-stone-200 shadow-sm"}`
                                     : "w-full pb-10"
                                     }`}>
                                     <QuizPlayer

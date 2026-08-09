@@ -85,7 +85,7 @@ export default function OnboardingWizard() {
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold uppercase tracking-widest text-[#C5A059] liquid-glass mb-4"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold uppercase tracking-widest text-[#C5A059] border border-[#C5A059]/30 bg-[#C5A059]/10 mb-4"
                     >
                         <Sparkles size={16} />
                         {t("roadmapPage.startSetupBtn", "Thiết lập lộ trình")}
@@ -131,8 +131,10 @@ export default function OnboardingWizard() {
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => handleSelectParent(category.id)}
-                                                className={`p-6 rounded-3xl text-left transition-all duration-300 flex items-start gap-5 group cursor-pointer liquid-glass-gold ${
-                                                    isDark ? "text-white" : "text-stone-900 shadow-md"
+                                                className={`p-6 rounded-3xl text-left transition-all duration-300 flex items-start gap-5 group cursor-pointer border ${
+                                                    isDark
+                                                        ? "bg-[#0e0e0e] border-white/10 text-white hover:border-[#C5A059]/60"
+                                                        : "bg-white border-stone-200 text-stone-900 shadow-md hover:border-[#C5A059]"
                                                 }`}
                                             >
                                                 <div className="p-4 rounded-2xl bg-[#C5A059] text-[#080808] flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -192,8 +194,8 @@ export default function OnboardingWizard() {
                                                 isSelected
                                                     ? "bg-[#C5A059] text-[#080808] border-[#C5A059] font-bold shadow-lg"
                                                     : isDark
-                                                    ? "liquid-glass text-white border-white/10"
-                                                    : "liquid-glass text-stone-900 border-stone-200 shadow-sm"
+                                                    ? "bg-[#0e0e0e] text-white border-white/10 hover:border-white/30"
+                                                    : "bg-white text-stone-900 border-stone-200 shadow-sm hover:border-stone-300"
                                             }`}
                                         >
                                             <span className="font-semibold text-sm">{child.name}</span>

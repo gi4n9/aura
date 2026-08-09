@@ -168,22 +168,18 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   }, [saveProgress]);
 
   return (
-    <div className={`relative flex flex-col gap-6 p-6 sm:p-8 md:p-10 rounded-[36px] sm:rounded-[44px] transition-all duration-500 overflow-hidden group liquid-glass-strong ${
-      isDark ? "text-white" : "text-stone-900"
+    <div className={`relative flex flex-col gap-6 p-6 sm:p-8 md:p-10 rounded-[36px] sm:rounded-[44px] transition-all duration-500 overflow-hidden group border ${
+      isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
     }`}>
 
-      {/* GLOWING AMBIENT LIGHT REFLECTIONS */}
-      <div className="absolute -top-32 -left-32 w-[450px] h-[450px] bg-[#C5A059]/20 rounded-full blur-[100px] pointer-events-none group-hover:bg-[#C5A059]/30 transition-all duration-700" />
-      <div className="absolute -bottom-32 -right-32 w-[450px] h-[450px] bg-amber-500/15 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* TOP LIQUID GLASS CONTROL BAR */}
+      {/* TOP CONTROL BAR */}
       <div className={`flex items-center justify-between px-3 pb-3 border-b text-[11px] font-mono tracking-wider transition-colors ${
         isDark ? "border-white/10 text-stone-300" : "border-stone-200/80 text-stone-700"
       }`}>
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]" />
           <span className="font-bold uppercase tracking-widest text-[#C5A059] text-[11px] flex items-center gap-1.5">
-            <Tv size={14} /> AURA CINEMA 4K LIQUID GLASS
+            <Tv size={14} /> AURA CINEMA 4K
           </span>
         </div>
         <div className="flex items-center gap-3 text-[10px] uppercase font-bold opacity-90">

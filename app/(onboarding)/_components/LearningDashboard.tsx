@@ -107,8 +107,8 @@ export default function LearningDashboard({
         </div>
 
         <div className="flex items-center gap-3 self-start lg:self-auto">
-          <button className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all liquid-glass ${
-            isDark ? "text-stone-300 hover:text-white" : "text-stone-700 hover:text-stone-900 shadow-sm"
+          <button className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all border ${
+            isDark ? "bg-[#0e0e0e] border-white/10 text-stone-300 hover:text-white" : "bg-white border-stone-200 text-stone-700 hover:text-stone-900 shadow-sm"
           }`}>
             <Settings size={20} />
           </button>
@@ -158,8 +158,8 @@ export default function LearningDashboard({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
             {/* CARD 1: OPERATIONS / LESSONS COMPLETED */}
-            <div className={`p-6 rounded-3xl transition-all relative overflow-hidden flex flex-col justify-between liquid-glass ${
-              isDark ? "text-white" : "text-stone-900 shadow-md"
+            <div className={`p-6 rounded-3xl transition-all relative overflow-hidden flex flex-col justify-between border ${
+              isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-md"
             }`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -281,8 +281,8 @@ export default function LearningDashboard({
           </div>
 
           {/* MAIN CHART SECTION (STATISTICS MATCHING REFERENCE IMAGE) */}
-          <div className={`p-6 sm:p-8 rounded-3xl transition-all relative overflow-hidden liquid-glass ${
-            isDark ? "text-white" : "text-stone-900 shadow-md"
+          <div className={`p-6 sm:p-8 rounded-3xl transition-all relative overflow-hidden border ${
+            isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-md"
           }`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-6">
@@ -368,8 +368,8 @@ export default function LearningDashboard({
           <div className="grid grid-cols-2 gap-4">
             <Link
               href="/community"
-              className={`p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-3 transition-all hover:scale-105 liquid-glass ${
-                isDark ? "text-white" : "text-stone-900 shadow-sm"
+              className={`p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-3 transition-all hover:scale-105 border ${
+                isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
               }`}
             >
               <div className="w-10 h-10 rounded-2xl bg-[#C5A059]/15 text-[#C5A059] flex items-center justify-center">
@@ -380,8 +380,8 @@ export default function LearningDashboard({
 
             <Link
               href="/courses"
-              className={`p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-3 transition-all hover:scale-105 liquid-glass ${
-                isDark ? "text-white" : "text-stone-900 shadow-sm"
+              className={`p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-3 transition-all hover:scale-105 border ${
+                isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
               }`}
             >
               <div className="w-10 h-10 rounded-2xl bg-amber-400/15 text-amber-500 flex items-center justify-center">
@@ -394,8 +394,8 @@ export default function LearningDashboard({
           {/* CARD 1: HELP CENTER */}
           <Link
             href="/contact"
-            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden liquid-glass ${
-              isDark ? "text-white" : "text-stone-900 shadow-sm"
+            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden border ${
+              isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
             }`}
           >
             <div className="flex items-center justify-between mb-3">
@@ -413,8 +413,8 @@ export default function LearningDashboard({
           {/* CARD 2: PARTNER DIRECTORY / AI ROADMAP */}
           <Link
             href="/roadmap"
-            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden liquid-glass ${
-              isDark ? "text-white" : "text-stone-900 shadow-sm"
+            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden border ${
+              isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
             }`}
           >
             <div className="flex items-center justify-between mb-3">
@@ -432,8 +432,8 @@ export default function LearningDashboard({
           {/* CARD 3: BLOG & KNOWLEDGE HUB */}
           <Link
             href="/about"
-            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden liquid-glass ${
-              isDark ? "text-white" : "text-stone-900 shadow-sm"
+            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden border ${
+              isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
             }`}
           >
             <div className="flex items-center justify-between mb-3">
@@ -451,8 +451,8 @@ export default function LearningDashboard({
           {/* CARD 4: PRACTICE & EXAMS */}
           <Link
             href="/onboarding/practice"
-            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden liquid-glass ${
-              isDark ? "text-white" : "text-stone-900 shadow-sm"
+            className={`p-6 rounded-3xl transition-all block group relative overflow-hidden border ${
+              isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900 shadow-sm"
             }`}
           >
             <div className="flex items-center justify-between mb-3">

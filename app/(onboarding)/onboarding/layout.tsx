@@ -61,7 +61,7 @@ export default function OnboardingLayout({
           mass: 0.8
         }}
         style={{ transformOrigin: "right center" }}
-        className={`h-full relative flex-shrink-0 flex flex-col p-3 rounded-[32px] shadow-2xl backdrop-blur-2xl liquid-glass-strong overflow-visible z-[80] origin-right ${
+        className={`h-full relative flex-shrink-0 flex flex-col p-3 rounded-[32px] shadow-2xl backdrop-blur-2xl overflow-visible z-[80] origin-right ${
           isDark ? "bg-[#0e0e0e]/95 text-white border border-white/10" : "bg-white/95 text-stone-900 border border-stone-200 shadow-xl"
         }`}
       >
@@ -181,7 +181,7 @@ export default function OnboardingLayout({
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-visible gap-3 sm:gap-4 relative z-10">
 
         {/* TOP HEADER BAR (OVERFLOW-VISIBLE ALLOWS LANGUAGE DROPDOWN TO RENDER ON TOP) */}
-        <header className={`h-16 flex-shrink-0 rounded-[24px] backdrop-blur-2xl flex items-center justify-between px-6 shadow-lg liquid-glass-strong overflow-visible relative z-50 ${
+        <header className={`h-16 flex-shrink-0 rounded-[24px] backdrop-blur-2xl flex items-center justify-between px-6 shadow-lg overflow-visible relative z-50 ${
           isDark ? "bg-[#0e0e0e]/80 border border-white/10" : "bg-white/85 border border-stone-200"
         }`}>
 
