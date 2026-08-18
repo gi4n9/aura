@@ -23,6 +23,8 @@ export default async function CommunityPage(props: {
     const tabParam = typeof searchParams.tab === 'string' ? searchParams.tab : 'groups';
     const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
     const myPage = typeof searchParams.mypage === 'string' ? parseInt(searchParams.mypage) : 1;
+    const lpage = typeof searchParams.lpage === 'string' ? parseInt(searchParams.lpage) : 1;
+    const period = (typeof searchParams.period === 'string' && ['xp', 'streak', 'mins'].includes(searchParams.period)) ? (searchParams.period as 'xp' | 'streak' | 'mins') : 'xp';
     
     // Cursors
     const cursor = typeof searchParams.cursor === 'string' ? searchParams.cursor : undefined;
@@ -34,7 +36,7 @@ export default async function CommunityPage(props: {
     const { groups: availableGroups, totalPages, nextCursor } = await getAvailableGroups(userId, categoryId, page, 10, cursor);
 
     // 4. Fetch Gamification, Leaderboard & Q&A Data
-    const leaderboardUsers = await getLeaderboard('xp');
+    const leaderboardData = await getLeaderboard(period, lpage, 10);
     const userGamiData = userId ? await getUserGamificationData(userId) : null;
     const qaQuestions = await getGroupQuestions('all');
 
@@ -80,7 +82,11 @@ export default async function CommunityPage(props: {
             totalPages={totalPages}
             nextCursor={nextCursor}
             enrolledCourses={enrolledCourses}
-            leaderboardUsers={leaderboardUsers}
+            leaderboardUsers={leaderboardData.users}
+            leaderboardTop3={leaderboardData.top3}
+            leaderboardPage={leaderboardData.page}
+            leaderboardTotalPages={leaderboardData.totalPages}
+            leaderboardPeriod={period}
             userGamiData={userGamiData}
             qaQuestions={qaQuestions as any}
         />

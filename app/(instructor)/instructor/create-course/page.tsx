@@ -91,7 +91,7 @@ export default function CreateCoursePage() {
                         name="title"
                         required
                         placeholder="Ví dụ: Lập trình Next.js từ cơ bản đến nâng cao..."
-                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
+                        className="text-black w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
                     />
                 </div>
 
@@ -101,7 +101,7 @@ export default function CreateCoursePage() {
                     <select
                         name="category"
                         required
-                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
+                        className="text-black w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all"
                     >
                         <option value="">Chọn lĩnh vực</option>
                         {categories.map((category) => (
@@ -119,7 +119,7 @@ export default function CreateCoursePage() {
                         <input
                             disabled
                             value={authorName}
-                            className="w-full p-3 pl-10 border border-stone-200 bg-stone-100 text-stone-500 rounded-lg cursor-not-allowed select-none"
+                            className="text-black w-full p-3 pl-10 border border-stone-200 bg-stone-100 text-stone-500 rounded-lg cursor-not-allowed select-none"
                         />
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                     </div>
@@ -135,7 +135,7 @@ export default function CreateCoursePage() {
                         name="description"
                         rows={4}
                         placeholder="Giới thiệu sơ lược về nội dung khóa học..."
-                        className="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all resize-none"
+                        className="text-black w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none transition-all resize-none"
                     />
                 </div>
 

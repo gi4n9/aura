@@ -197,10 +197,11 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             setStatus("Đang xử lý cục bộ: Ghép file → Trích xuất Audio → Smart Keyframes...");
 
             // 3. Gọi Server Action để lắp ghép và xử lý
+            const videoTitle = file.name.replace(/\.[^/.]+$/, "").trim() || "Video bài giảng Aura";
             const result = await processVideoUpload(
                 fileName,
                 totalChunks,
-                file.name.replace(".mp4", ""),
+                videoTitle,
                 selectedChapterId
             );
 

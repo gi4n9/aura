@@ -221,48 +221,62 @@ export async function getUserGamificationData(targetUserId?: string) {
     };
 }
 
-export async function getLeaderboard(period: 'xp' | 'streak' | 'mins' = 'xp') {
+export async function getLeaderboard(period: 'xp' | 'streak' | 'mins' = 'xp', page: number = 1, limit: number = 10) {
     let orderBy: any = { totalXp: 'desc' };
     if (period === 'streak') orderBy = { currentStreak: 'desc' };
     if (period === 'mins') orderBy = { totalStudyMins: 'desc' };
 
-    const topStats = await db.userStats.findMany({
-        take: 50,
-        orderBy,
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    fullName: true,
-                    avatarUrl: true,
-                    email: true,
-                    createdAt: true
-                }
-            }
+    const total = await db.userStats.count();
+    const totalPages = Math.ceil(total / limit) || 1;
+    const safePage = Math.max(1, Math.min(page, totalPages));
+
+    const selectUser = {
+        select: {
+            id: true,
+            fullName: true,
+            avatarUrl: true,
+            email: true,
+            createdAt: true
         }
-    });
+    };
 
-    const userIds = topStats.map(s => s.userId);
+    // Fetch Top 3 for Podium and paginated stats for table
+    const [top3Stats, pageStats] = await Promise.all([
+        db.userStats.findMany({
+            take: 3,
+            orderBy,
+            include: { user: selectUser }
+        }),
+        db.userStats.findMany({
+            skip: (safePage - 1) * limit,
+            take: limit,
+            orderBy,
+            include: { user: selectUser }
+        })
+    ]);
 
-    // BATCH QUERY 1: Aggregated question counts for all 50 users in 1 single SQL statement
-    const questionCountGroups = await db.groupQuestion.groupBy({
+    // Unique user IDs for batch queries
+    const allUserIds = Array.from(new Set([...top3Stats.map(s => s.userId), ...pageStats.map(s => s.userId)]));
+
+    // BATCH QUERY 1: Aggregated question counts
+    const questionCountGroups = allUserIds.length > 0 ? await db.groupQuestion.groupBy({
         by: ['authorId'],
-        where: { authorId: { in: userIds } },
+        where: { authorId: { in: allUserIds } },
         _count: { id: true }
-    });
+    }) : [];
     const questionCountMap = new Map<string, number>();
     questionCountGroups.forEach(g => questionCountMap.set(g.authorId, g._count.id));
 
-    // BATCH QUERY 2: Aggregated group membership counts for all 50 users in 1 single SQL statement
-    const groupCountGroups = await db.conversationParticipant.groupBy({
+    // BATCH QUERY 2: Aggregated group membership counts
+    const groupCountGroups = allUserIds.length > 0 ? await db.conversationParticipant.groupBy({
         by: ['userId'],
-        where: { userId: { in: userIds } },
+        where: { userId: { in: allUserIds } },
         _count: { id: true }
-    });
+    }) : [];
     const groupCountMap = new Map<string, number>();
     groupCountGroups.forEach(g => groupCountMap.set(g.userId, g._count.id));
 
-    return topStats.map((stat, index) => {
+    const mapStatToUser = (stat: typeof pageStats[0], rank: number) => {
         const equippedFrame = stat.equippedFrame || "frame_default";
         const equippedBanner = stat.equippedBanner || "banner_default";
         const equippedTitle = stat.equippedTitle || "Tân binh Aura";
@@ -298,7 +312,7 @@ export async function getLeaderboard(period: 'xp' | 'streak' | 'mins' = 'xp') {
         };
 
         return {
-            rank: index + 1,
+            rank,
             userId: stat.userId,
             name,
             avatarUrl: stat.user.avatarUrl,
@@ -311,7 +325,19 @@ export async function getLeaderboard(period: 'xp' | 'streak' | 'mins' = 'xp') {
             equippedTitle,
             userSummary
         };
-    });
+    };
+
+    const top3 = top3Stats.map((stat, idx) => mapStatToUser(stat, idx + 1));
+    const users = pageStats.map((stat, idx) => mapStatToUser(stat, (safePage - 1) * limit + idx + 1));
+
+    return {
+        users,
+        top3,
+        total,
+        totalPages,
+        page: safePage,
+        limit
+    };
 }
 
 export async function getUserProfileSummary(targetUserId: string) {

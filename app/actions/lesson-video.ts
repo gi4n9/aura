@@ -241,13 +241,14 @@ export async function updateLessonVideoDetails(
       return { success: false, error: "No YouTube video linked" };
     }
 
-    // 2. Update YouTube
+    // 2. Update YouTube (Safe title length for YouTube snippet API)
+    const ytSnippetTitle = title.length > 100 ? title.substring(0, 97) + "..." : title;
     await youtube.videos.update({
       part: ["snippet"],
       requestBody: {
         id: lesson.youtubeVideoId,
         snippet: {
-          title: title, // Update YouTube Title
+          title: ytSnippetTitle, // Update YouTube Title (safe length)
           description: description, // Update YouTube Description
           categoryId: "27", // Education
         },

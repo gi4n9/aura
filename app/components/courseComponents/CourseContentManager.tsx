@@ -238,7 +238,7 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                                 value={newChapterTitle}
                                 onChange={(e) => setNewChapterTitle(e.target.value)}
                                 placeholder="Tên chương..."
-                                className="px-3 py-1.5 border border-stone-300 rounded-md text-sm outline-none focus:ring-1 focus:ring-[#C5A059]"
+                                className="px-3 py-1.5 border border-stone-300 rounded-md text-black outline-none focus:ring-1 focus:ring-[#C5A059]"
                                 autoFocus
                             />
                             <button

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { Trophy, Flame, Zap, Award, Crown, Medal, Clock, BookOpen, Star, Info, ShieldCheck, History, Gift } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Flame, Zap, Award, Crown, Medal, Clock, BookOpen, Star, Info, ShieldCheck, History, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { AVATAR_FRAMES } from "@/lib/gamification";
 import UserProfileHoverCard from "@/app/components/community/UserProfileHoverCard";
 
@@ -23,16 +24,26 @@ interface LeaderboardUser {
 
 interface LeaderboardViewProps {
     topUsers: LeaderboardUser[];
+    top3Users?: LeaderboardUser[];
+    currentPage?: number;
+    totalPages?: number;
+    period?: 'xp' | 'streak' | 'mins';
     currentUserId?: string;
     isDark?: boolean;
 }
 
 export default function LeaderboardView({
     topUsers,
+    top3Users,
+    currentPage = 1,
+    totalPages = 1,
+    period = 'xp',
     currentUserId,
     isDark = true
 }: LeaderboardViewProps) {
-    const [subTab, setSubTab] = useState<'weekly' | 'overall' | 'streak' | 'history' | 'honor' | 'cert'>('weekly');
+    const [subTab, setSubTab] = useState<'weekly' | 'overall' | 'streak' | 'history' | 'honor' | 'cert'>(
+        period === 'streak' ? 'streak' : 'weekly'
+    );
     
     // Countdown Timer (Mock for week reset)
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 5, minutes: 38, seconds: 44 });
@@ -49,10 +60,10 @@ export default function LeaderboardView({
         return () => clearInterval(timer);
     }, []);
 
-    const top1 = topUsers[0];
-    const top2 = topUsers[1];
-    const top3 = topUsers[2];
-    const restUsers = topUsers.slice(3);
+    const podiumUsers = top3Users && top3Users.length > 0 ? top3Users : topUsers;
+    const top1 = podiumUsers[0];
+    const top2 = podiumUsers[1];
+    const top3 = podiumUsers[2];
 
     const currentUserRank = topUsers.find(u => u.userId === currentUserId) || {
         rank: 406,
@@ -152,30 +163,33 @@ export default function LeaderboardView({
 
             {/* 4. SUB-TABS NAVIGATION BAR */}
             <div className="bg-[#121212] border border-white/10 rounded-2xl p-1.5 flex flex-wrap gap-1 text-xs font-semibold overflow-x-auto">
-                <button
+                <Link
+                    href="/community?tab=leaderboard&lpage=1&period=xp"
                     onClick={() => setSubTab('weekly')}
                     className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                         subTab === 'weekly' ? "bg-[#C5A059] text-[#080808] font-bold" : "text-stone-400 hover:text-white"
                     }`}
                 >
                     🔥 Tuần này
-                </button>
-                <button
+                </Link>
+                <Link
+                    href="/community?tab=leaderboard&lpage=1&period=xp"
                     onClick={() => setSubTab('overall')}
                     className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                         subTab === 'overall' ? "bg-[#C5A059] text-[#080808] font-bold" : "text-stone-400 hover:text-white"
                     }`}
                 >
                     ⭐ Tổng thể
-                </button>
-                <button
+                </Link>
+                <Link
+                    href="/community?tab=leaderboard&lpage=1&period=streak"
                     onClick={() => setSubTab('streak')}
                     className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
                         subTab === 'streak' ? "bg-[#C5A059] text-[#080808] font-bold" : "text-stone-400 hover:text-white"
                     }`}
                 >
                     🔥 Chuỗi học
-                </button>
+                </Link>
                 <button
                     onClick={() => setSubTab('history')}
                     className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -424,6 +438,67 @@ export default function LeaderboardView({
                         </tbody>
                     </table>
                 </div>
+
+                {/* PAGINATION CONTROLS */}
+                {totalPages > 1 && (
+                    <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs font-medium ${isDark ? "text-stone-400" : "text-stone-500"}`}>
+                        <span>Trang {currentPage} / {totalPages}</span>
+                        <div className="flex gap-2 items-center">
+                            {currentPage > 1 && (
+                                <Link
+                                    href={`/community?tab=leaderboard&lpage=${currentPage - 1}&period=${period}`}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                                        isDark ? "border-white/10 hover:bg-white/5 text-stone-300" : "border-stone-200 hover:bg-stone-50 text-stone-700"
+                                    }`}
+                                >
+                                    <ChevronLeft size={16} />
+                                </Link>
+                            )}
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                                        acc.push('...');
+                                    }
+                                    acc.push(p);
+                                    return acc;
+                                }, [])
+                                .map((p, idx) => {
+                                    if (p === '...') {
+                                        return <span key={`dots-${idx}`} className="px-1 text-stone-500">...</span>;
+                                    }
+                                    const isCurrent = p === currentPage;
+                                    return (
+                                        <Link
+                                            key={p}
+                                            href={`/community?tab=leaderboard&lpage=${p}&period=${period}`}
+                                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                                                isCurrent
+                                                    ? "border-[#C5A059] bg-[#C5A059] text-[#080808] font-bold"
+                                                    : isDark
+                                                    ? "border-white/10 hover:bg-white/5 text-stone-300"
+                                                    : "border-stone-200 hover:bg-stone-50 text-stone-700"
+                                            }`}
+                                        >
+                                            {p}
+                                        </Link>
+                                    );
+                                })}
+
+                            {currentPage < totalPages && (
+                                <Link
+                                    href={`/community?tab=leaderboard&lpage=${currentPage + 1}&period=${period}`}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
+                                        isDark ? "border-white/10 hover:bg-white/5 text-stone-300" : "border-stone-200 hover:bg-stone-50 text-stone-700"
+                                    }`}
+                                >
+                                    <ChevronRight size={16} />
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                )}
 
             </div>
 

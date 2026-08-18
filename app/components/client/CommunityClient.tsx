@@ -32,6 +32,10 @@ interface CommunityClientProps {
     nextCursor: string | null;
     enrolledCourses: { id: string; title: string; thumbnailUrl?: string | null }[];
     leaderboardUsers?: any[];
+    leaderboardTop3?: any[];
+    leaderboardPage?: number;
+    leaderboardTotalPages?: number;
+    leaderboardPeriod?: 'xp' | 'streak' | 'mins';
     userGamiData?: any;
     qaQuestions?: any[];
 }
@@ -51,6 +55,10 @@ export default function CommunityClient({
     nextCursor,
     enrolledCourses,
     leaderboardUsers = [],
+    leaderboardTop3,
+    leaderboardPage = 1,
+    leaderboardTotalPages = 1,
+    leaderboardPeriod = 'xp',
     userGamiData,
     qaQuestions = []
 }: CommunityClientProps) {
@@ -256,6 +264,10 @@ export default function CommunityClient({
                 {activeTab === 'leaderboard' && (
                     <LeaderboardView
                         topUsers={leaderboardUsers}
+                        top3Users={leaderboardTop3}
+                        currentPage={leaderboardPage}
+                        totalPages={leaderboardTotalPages}
+                        period={leaderboardPeriod}
                         currentUserId={userId || undefined}
                         isDark={isDark}
                     />

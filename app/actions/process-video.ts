@@ -241,7 +241,16 @@ export async function processVideoUpload(
   let geminiFileName = "";
 
   try {
-    console.log(`🚀 [START] Bắt đầu xử lý (Prompt Engineering Mode): ${title}`);
+    // Sanitize title for DB & AI (Keep FULL title untruncated)
+    let safeTitle = (title || "")
+      .replace(/[<>]/g, "")
+      .trim();
+
+    if (!safeTitle) {
+      safeTitle = `Video bài giảng Aura - ${new Date().toLocaleDateString('vi-VN')}`;
+    }
+
+    console.log(`🚀 [START] Bắt đầu xử lý (Prompt Engineering Mode): ${safeTitle}`);
 
     // =========================================================
     // BƯỚC 1: TẢI TỪNG PHẦN TỪ SUPABASE VÀ GHÉP NỐI
@@ -333,7 +342,7 @@ export async function processVideoUpload(
     // Tạo Lesson với trạng thái "Đang xử lý ngầm"
     const lesson = await prisma.lesson.create({
       data: {
-        title: title,
+        title: safeTitle,
         chapterId: chapterId,
         position: newPosition,
         duration: Math.round(durationInSeconds),
@@ -348,7 +357,7 @@ export async function processVideoUpload(
     // Chạy ngầm (Fire and forget)
     runBackgroundVideoProcessing(
       lesson.id,
-      title,
+      safeTitle,
       chapterId,
       tempFilePath,
       audioFilePath,
@@ -408,16 +417,29 @@ async function runBackgroundVideoProcessing(
     const chapterTitle = chapter?.title || "";
     console.log(`📚 Ngữ cảnh khóa học: "${courseTitle}" | Chương: "${chapterTitle}"`);
 
+    // Ensure safe title for YouTube API (non-empty, max 100 chars, no HTML tags)
+    let ytTitle = (title || "")
+      .replace(/[<>]/g, "")
+      .trim();
+
+    if (!ytTitle) {
+      ytTitle = `Video bài giảng Aura - ${new Date().toLocaleDateString('vi-VN')}`;
+    }
+
+    if (ytTitle.length > 100) {
+      ytTitle = ytTitle.substring(0, 97) + "...";
+    }
+
     // =========================================================
     // BƯỚC 2: UPLOAD YOUTUBE & STT TRANSCRIPT BẰNG WHISPER + LOCAL GEMINI 3.6
     // =========================================================
     await updateProcessingStep(lessonId, 2, "Bóc băng âm thanh & Hiệu chỉnh (Local Gemini 3.6 Flash)", 35, 25);
-    console.log("⚡ Đang upload lên YouTube và bóc băng bằng Groq Whisper + Local Gemini 3.6...");
+    console.log(`⚡ Đang upload lên YouTube ("${ytTitle}") và bóc băng bằng Groq Whisper + Local Gemini 3.6...`);
     const youtubeUploadPromise = youtube.videos.insert({
       part: ["snippet", "status"],
       requestBody: {
         snippet: {
-          title: title,
+          title: ytTitle,
           description: "Video bài giảng thuộc hệ thống Aura LMS.",
         },
         status: { privacyStatus: "unlisted" },
