@@ -110,8 +110,8 @@ export default function Testimonials() {
                     {testimonial.initials}
                   </div>
                   <div>
-                    <h4 className={`font-bold text-xs ${isDark ? "text-white" : "text-stone-900"}`}>{testimonial.name}</h4>
-                    <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-500" : "text-stone-500"}`}>{testimonial.role}</p>
+                    <h3 className={`font-bold text-xs ${isDark ? "text-white" : "text-stone-900"}`}>{testimonial.name}</h3>
+                    <p className={`text-[10px] uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{testimonial.role}</p>
                   </div>
                 </div>
                 <div className={`px-2 py-1 border text-[9px] font-bold uppercase tracking-wider rounded-full ${

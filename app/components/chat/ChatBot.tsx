@@ -297,6 +297,7 @@ export default function ChatBot() {
                       if (!currentUser) setIsLoginModalOpen(true);
                     }}
                     disabled={isBusy}
+                    aria-label="Nhập câu hỏi cho trợ lý AI Aura"
                     placeholder={
                       !currentUser
                         ? "Đăng nhập để trò chuyện với Aura AI..."
@@ -308,6 +309,7 @@ export default function ChatBot() {
                   />
                   <button
                     type="submit"
+                    aria-label={!currentUser ? "Đăng nhập để chat" : "Gửi tin nhắn"}
                     disabled={isBusy || (!currentUser ? false : !input.trim())}
                     className="w-10 h-10 rounded-full bg-[#C5A059] text-[#1a1a1a] flex items-center justify-center hover:bg-[#1a1a1a] hover:text-[#C5A059] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                   >
@@ -323,6 +325,8 @@ export default function ChatBot() {
         <motion.button
           className="w-14 h-14 bg-[#1a1a1a] text-[#C5A059] rounded-full shadow-2xl border border-[#C5A059]/50 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Đóng trợ lý AI Aura" : "Mở trợ lý AI Aura"}
+          aria-expanded={isOpen}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
         >

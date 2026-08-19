@@ -58,6 +58,25 @@ const getVideoDuration = (filePath: string): Promise<number> => {
   });
 };
 
+function getFileSize(filePath: string): number {
+  if (!filePath) return 0;
+  try {
+    return fs.statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+
+function safeUnlink(filePath?: string): void {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      console.warn("safeUnlink error:", err);
+    }
+  }
+}
+
 export async function cleanupFailedUpload(baseFileName: string, totalChunks: number) {
   try {
     const tempDir = path.join(process.cwd(), "tmp");
@@ -300,7 +319,7 @@ export async function processVideoUpload(
       writeStream.on('error', reject);
     });
 
-    const finalVideoSize = fs.statSync(tempFilePath).size;
+    const finalVideoSize = getFileSize(tempFilePath);
     console.log(`💾 Đã ghép file tạm thành công. Kích thước tổng: ${(finalVideoSize / 1024 / 1024).toFixed(2)} MB`);
     console.log("⏱️ Đang tính toán thời lượng video (ffmpeg)...");
 
@@ -314,9 +333,9 @@ export async function processVideoUpload(
     audioFilePath = tempFilePath.replace(/\.[^.]+$/, '_audio.m4a');
     await extractAudio(tempFilePath, audioFilePath);
 
-    const audioSize = fs.statSync(audioFilePath).size;
-    const videoSize = fs.statSync(tempFilePath).size;
-    console.log(`📊 Kích thước: Video=${(videoSize / 1024 / 1024).toFixed(1)}MB → Audio=${(audioSize / 1024 / 1024).toFixed(1)}MB (giảm ${((1 - audioSize / videoSize) * 100).toFixed(0)}%)`);
+    const audioSize = getFileSize(audioFilePath);
+    const videoSize = getFileSize(tempFilePath);
+    console.log(`📊 Kích thước: Video=${(videoSize / 1024 / 1024).toFixed(1)}MB → Audio=${(audioSize / 1024 / 1024).toFixed(1)}MB (giảm ${((1 - audioSize / (videoSize || 1)) * 100).toFixed(0)}%)`);
 
     console.log("📸 Đang phát hiện scene changes trong video (smart keyframe)...");
     keyframeDir = path.join(path.dirname(tempFilePath), `keyframes_${Date.now()}`);
@@ -656,19 +675,19 @@ async function runBackgroundVideoProcessing(
     // BƯỚC 8: DỌN DẸP TÀI NGUYÊN (bao gồm audio + keyframes)
     // =========================================================
     try {
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
+      if (tempFilePath) {
+        safeUnlink(tempFilePath);
         console.log("🧹 Đã xóa file video tạm local.");
       }
-      if (audioFilePath && fs.existsSync(audioFilePath)) {
-        fs.unlinkSync(audioFilePath);
+      if (audioFilePath) {
+        safeUnlink(audioFilePath);
         console.log("🧹 Đã xóa file audio tạm local.");
       }
       if (keyframeDir && fs.existsSync(keyframeDir)) {
         // Xóa toàn bộ keyframe files và thư mục
         const files = fs.readdirSync(keyframeDir);
         for (const file of files) {
-          fs.unlinkSync(path.join(keyframeDir, file));
+          safeUnlink(path.join(keyframeDir, file));
         }
         fs.rmdirSync(keyframeDir);
         console.log("🧹 Đã xóa thư mục keyframes tạm.");

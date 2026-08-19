@@ -68,7 +68,7 @@ export default function CTASection() {
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               href="/courses"
-              className="px-10 py-4 bg-[#C5A059] text-white rounded-full text-[11px] font-bold tracking-[0.18em] uppercase hover:bg-[#b08d47] transition-all duration-300 shadow-[0_0_40px_rgba(197,160,89,0.35)] hover:shadow-[0_0_60px_rgba(197,160,89,0.55)]"
+              className="px-10 py-4 bg-[#C5A059] text-[#080808] rounded-full text-[11px] font-bold tracking-[0.18em] uppercase hover:bg-[#e9c176] transition-all duration-300 shadow-[0_0_40px_rgba(197,160,89,0.35)] hover:shadow-[0_0_60px_rgba(197,160,89,0.55)]"
             >
               {t("cta.enrollNow")}
             </Link>
@@ -85,7 +85,7 @@ export default function CTASection() {
           </div>
 
           {/* Guarantee */}
-          <p className={`text-[13px] ${isDark ? "text-stone-600" : "text-stone-500"}`}>{t("cta.guarantee")}</p>
+          <p className={`text-[13px] ${isDark ? "text-stone-400" : "text-stone-600"}`}>{t("cta.guarantee")}</p>
         </motion.div>
       </div>
     </section>

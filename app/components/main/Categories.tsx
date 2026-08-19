@@ -122,13 +122,13 @@ export default function Categories() {
 
                 {/* Bottom */}
                 <div>
-                  <h4
+                  <h3
                     className={`font-serif text-xl md:text-2xl font-bold mb-2 leading-snug transition-colors ${
                       isDark ? "text-white" : "text-stone-900"
                     } group-hover:text-[#C5A059]`}
                   >
                     {t(cat.titleKey as any)}
-                  </h4>
+                  </h3>
                   <p
                     className={`text-sm leading-relaxed ${
                       isDark ? "text-stone-400" : "text-stone-600"

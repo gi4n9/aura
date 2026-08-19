@@ -76,7 +76,7 @@ function FeaturedCourseCardItem({ course, i, isDark, t, language }: { course: Co
               <div className="relative w-7 h-7 rounded-full overflow-hidden border border-stone-200 bg-stone-800 flex-shrink-0">
                 <Image
                   src={course.instructor?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
-                  alt="Avatar"
+                  alt={`Ảnh đại diện của ${course.instructor?.fullName || "giảng viên"}`}
                   fill
                   sizes="28px"
                   className="object-cover"

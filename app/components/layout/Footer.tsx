@@ -36,8 +36,20 @@ export default function Footer() {
               {t("footer.description")}
             </p>
             <div className="flex gap-4">
-              {[Facebook, Github, Youtube, Mail].map((Icon, idx) => (
-                <a key={idx} href="#" className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-[#080808] transition-all">
+              {[
+                { Icon: Facebook, name: "Facebook", href: "https://facebook.com/auralearning" },
+                { Icon: Github, name: "GitHub", href: "https://github.com/auralearning" },
+                { Icon: Youtube, name: "YouTube", href: "https://youtube.com/@auralearning" },
+                { Icon: Mail, name: "Email", href: "mailto:support@aura-learning.vn" },
+              ].map(({ Icon, name, href }, idx) => (
+                <a
+                  key={idx}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Theo dõi Aura Learning trên ${name}`}
+                  className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-[#C5A059] hover:border-[#C5A059] hover:text-[#080808] transition-all"
+                >
                   <Icon size={16} />
                 </a>
               ))}
@@ -46,37 +58,47 @@ export default function Footer() {
 
           {/* Links Column 1 */}
           <div>
-            <h4 className="text-white font-serif font-bold mb-6">{t("footer.quickLinks")}</h4>
+            <h3 className="text-white font-serif font-bold text-base mb-6">{t("footer.quickLinks")}</h3>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/courses" className="hover:text-[#C5A059] transition-colors">{t("nav.courses")}</Link></li>
-              <li><Link href="/categories" className="hover:text-[#C5A059] transition-colors">{t("nav.categories")}</Link></li>
-              <li><Link href="/community" className="hover:text-[#C5A059] transition-colors">{t("nav.community")}</Link></li>
-              <li><Link href="/roadmap" className="hover:text-[#C5A059] transition-colors">{t("nav.roadmap")}</Link></li>
+              <li><Link href="/courses" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.courses")}</Link></li>
+              <li><Link href="/categories" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.categories")}</Link></li>
+              <li><Link href="/community" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.community")}</Link></li>
+              <li><Link href="/roadmap" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.roadmap")}</Link></li>
             </ul>
           </div>
 
           {/* Links Column 2 */}
           <div>
-            <h4 className="text-white font-serif font-bold mb-6">{t("footer.support")}</h4>
+            <h3 className="text-white font-serif font-bold text-base mb-6">{t("footer.support")}</h3>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/about" className="hover:text-[#C5A059] transition-colors">{t("nav.about")}</Link></li>
-              <li><Link href="/contact" className="hover:text-[#C5A059] transition-colors">{t("nav.contact")}</Link></li>
-              <li><Link href="#" className="hover:text-[#C5A059] transition-colors">{t("footer.privacy")}</Link></li>
-              <li><Link href="#" className="hover:text-[#C5A059] transition-colors">{t("footer.terms")}</Link></li>
+              <li><Link href="/about" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.about")}</Link></li>
+              <li><Link href="/contact" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("nav.contact")}</Link></li>
+              <li><Link href="/about" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("footer.privacy")}</Link></li>
+              <li><Link href="/contact" className="text-stone-300 hover:text-[#C5A059] transition-colors">{t("footer.terms")}</Link></li>
             </ul>
           </div>
 
           {/* Newsletter */}
           <div>
-            <h4 className="text-white font-serif font-bold mb-6">{t("footer.contact")}</h4>
-            <p className="text-xs mb-4 opacity-60">Aura Learning AI Platform</p>
+            <h3 className="text-white font-serif font-bold text-base mb-6">{t("footer.contact")}</h3>
+            <p className="text-xs mb-4 text-stone-400">Aura Learning AI Platform</p>
             <form className="flex flex-col gap-2" onSubmit={(e) => e.preventDefault()}>
+              <label htmlFor="newsletter-email" className="sr-only">
+                Địa chỉ email
+              </label>
               <input
+                id="newsletter-email"
+                name="email"
                 type="email"
-                placeholder="Email..."
-                className="bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-[#C5A059] transition-colors placeholder:text-stone-500"
+                placeholder="Email của bạn..."
+                aria-label="Địa chỉ email nhận bản tin"
+                className="bg-white/5 border border-white/10 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-[#C5A059] transition-colors placeholder:text-stone-400"
               />
-              <button className="bg-[#C5A059] text-[#080808] font-bold uppercase text-xs tracking-wider py-3 rounded-xl hover:bg-[#e9c176] transition-colors">
+              <button
+                type="submit"
+                aria-label="Đăng ký nhận bản tin"
+                className="bg-[#C5A059] text-[#080808] font-bold uppercase text-xs tracking-wider py-3 rounded-xl hover:bg-[#e9c176] transition-colors"
+              >
                 {t("footer.subscribe")}
               </button>
             </form>
@@ -85,12 +107,12 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className={`pt-8 border-t flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold tracking-widest uppercase ${
-          isDark ? "border-white/5 text-stone-600" : "border-stone-800 text-stone-500"
+          isDark ? "border-white/5 text-stone-400" : "border-stone-800 text-stone-400"
         }`}>
           <p>{t("footer.copyright")}</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-[#C5A059] transition-colors">{t("footer.privacy")}</a>
-            <a href="#" className="hover:text-[#C5A059] transition-colors">{t("footer.terms")}</a>
+            <Link href="/about" className="hover:text-[#C5A059] transition-colors">{t("footer.privacy")}</Link>
+            <Link href="/contact" className="hover:text-[#C5A059] transition-colors">{t("footer.terms")}</Link>
           </div>
         </div>
       </div>

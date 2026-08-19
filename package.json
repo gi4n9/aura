@@ -6,7 +6,7 @@
     "dev": "node scripts/dev-runner.js",
     "dev:next": "next dev",
     "dev:ocr": "python ocr-service/main.py",
-    "build": "next build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "lint": "eslint"
   },

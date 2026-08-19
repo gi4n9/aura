@@ -139,6 +139,7 @@ export default function Header() {
                 isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
               }`}
               title={t("hero.searchBtn", "Tìm kiếm")}
+              aria-label="Tìm kiếm khóa học"
             >
               <Search size={18} />
             </button>
@@ -150,6 +151,7 @@ export default function Header() {
                   isDark ? "text-stone-300 hover:text-white hover:bg-white/10" : "text-stone-700 hover:text-stone-900 hover:bg-stone-200/60"
                 }`}
                 title={t("nav.messages")}
+                aria-label="Hộp thư tin nhắn"
               >
                 <MessageCircle size={20} />
               </Link>
@@ -158,16 +160,21 @@ export default function Header() {
             {user ? (
               <div className="relative" ref={dropdownRef}>
                 {/* AVATAR BUTTON */}
-                <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className={`flex items-center gap-2 pl-3 border-l focus:outline-none ${
-                  isDark ? "border-white/10" : "border-stone-300"
-                }`}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  aria-label="Menu tài khoản người dùng"
+                  aria-expanded={isDropdownOpen}
+                  className={`flex items-center gap-2 pl-3 border-l focus:outline-none ${
+                    isDark ? "border-white/10" : "border-stone-300"
+                  }`}
+                >
                   <div className="text-right hidden xl:block">
                     <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? "text-stone-400" : "text-stone-500"}`}>{t("nav.account")}</p>
                   </div>
                   {avatarUrl && !imgError ? (
                     <img
                       src={avatarUrl}
-                      alt={profile?.fullName || user.email || "Avatar"}
+                      alt={profile?.fullName || user.email || "Avatar người dùng"}
                       referrerPolicy="no-referrer"
                       onError={() => setImgError(true)}
                       className="w-9 h-9 rounded-full object-cover border border-[#C5A059] shadow-sm"
@@ -268,12 +275,18 @@ export default function Header() {
                 isDark ? "text-white hover:bg-white/10" : "text-stone-900 hover:bg-stone-200/70"
               }`}
               title={t("hero.searchBtn", "Tìm kiếm")}
+              aria-label="Tìm kiếm khóa học"
             >
               <Search size={20} />
             </button>
-            <button className={`p-2 rounded-md transition-colors ${
-              isDark ? "text-white hover:bg-white/10" : "text-stone-900 hover:bg-stone-200/70"
-            }`} onClick={toggleMenu}>
+            <button
+              className={`p-2 rounded-md transition-colors ${
+                isDark ? "text-white hover:bg-white/10" : "text-stone-900 hover:bg-stone-200/70"
+              }`}
+              onClick={toggleMenu}
+              aria-label={isMenuOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
+              aria-expanded={isMenuOpen}
+            >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>

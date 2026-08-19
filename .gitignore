@@ -59,6 +59,9 @@ dist/
 build/
 .pytest_cache/
 
+# Local Services
+gemini-web2api/
+
 # PaddleOCR Models & Cache
 .paddleocr/
 *.pdmodel

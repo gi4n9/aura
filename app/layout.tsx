@@ -25,9 +25,56 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { ThemeProvider } from "@/lib/theme/ThemeContext";
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://aura-learning.vn";
+
 export const metadata: Metadata = {
-  title: "Aura Learning",
-  description: "Nền tảng học trực tuyến",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Aura Learning - Nền Tảng Học Trực Tuyến & Trợ Lý AI Thông Minh",
+    template: "%s | Aura Learning",
+  },
+  description: "Aura Learning - Nền tảng học lập trình, CNTT và AI hiện đại. Lộ trình học cá nhân hóa với trợ lý AI, bóc băng bài giảng thông minh và bài tập tương tác.",
+  keywords: [
+    "Aura Learning",
+    "học lập trình",
+    "học AI",
+    "khóa học trực tuyến",
+    "trí tuệ nhân tạo",
+    "React",
+    "Next.js",
+    "Python",
+    "fullstack developer",
+  ],
+  authors: [{ name: "Aura Learning Team", url: siteUrl }],
+  creator: "Aura Learning",
+  publisher: "Aura Learning",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "vi_VN",
+    url: siteUrl,
+    title: "Aura Learning - Nền Tảng Học Trực Tuyến & Trợ Lý AI Thông Minh",
+    description: "Khám phá các khóa học công nghệ đỉnh cao với lộ trình bài bản và trợ lý AI thông minh tại Aura Learning.",
+    siteName: "Aura Learning",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aura Learning - Nền Tảng Học Trực Tuyến & Trợ Lý AI",
+    description: "Nâng cao kỹ năng lập trình và AI với nền tảng học tập thông minh Aura Learning.",
+  },
 };
 
 export default async function RootLayout({
@@ -60,6 +107,24 @@ export default async function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning className={`${beVietnamPro.variable} ${plusJakartaSans.variable}`}>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "EducationalOrganization",
+              "name": "Aura Learning",
+              "url": siteUrl,
+              "logo": `${siteUrl}/logo.png`,
+              "description": "Nền tảng học trực tuyến về Lập trình, Trí tuệ nhân tạo và Công nghệ thông tin hiện đại.",
+              "sameAs": [
+                "https://facebook.com/auralearning",
+                "https://github.com/auralearning",
+                "https://youtube.com/@auralearning"
+              ]
+            }),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
