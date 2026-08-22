@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI, SchemaType, Schema, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { off } from "process";
 import Groq from "groq-sdk";
+import { callLocalGeminiJSON } from "@/lib/local-gemini";
 
 // Initialize Gemini & Groq
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
@@ -115,76 +116,67 @@ export async function generateMindmap(lessonId: string, transcript: string, skip
 
     try {
         const prompt = `
-        Tạo mindmap từ transcript video bài giảng sau. 
-        Bạn PHẢI trả về ĐÚNG ĐỊNH DẠNG JSON hợp lệ. Bắt buộc bắt đầu bằng dấu '{' và kết thúc bằng dấu '}'.
-        Tuyệt đối không có bất kỳ văn bản giải thích nào, chỉ xuất JSON thuần.
+        Bạn là một trợ lý giáo dục AI cao cấp. Hãy phân tích transcript bài giảng dưới đây và xây dựng Sơ đồ tư duy (Mindmap) học thuật chi tiết.
         
-        RÀNG BUỘC QUAN TRỌNG ĐỂ TRÁNH LỖI JSON (CRITICAL RULES):
-        1. KHÔNG SỬ DỤNG dấu ngoặc kép (") hoặc dấu nháy đơn (') bên trong nội dung văn bản (các trường name). 
-        2. KHÔNG xuống dòng (Enter) bên trong chuỗi đoạn text.
-        3. Tên (name) của các node PHẢI NGẮN GỌN VÀ SÚC TÍCH (Tối đa 6-8 từ). 
-        4. Cấu trúc chi tiết, phân tích sâu nội dung: 
-           - 1 root chính. 
-           - Root chứa 4-7 children (những mạch ý chính của video). 
-           - Mỗi child chứa 3-5 details (ý phụ).
-           - Tùy ý có thể lồng sâu thêm 1 cấp (sub-details) nếu kiến thức cần giải thích chi tiết.
-        5. Lược bỏ trường "timestamp" nếu không xác định được. Tên key bắt buộc là "name", mạng lưới con là "children".
-        6. Đảm bảo cấu trúc giống hệt mẫu JSON dưới đây:
-        
-        Mẫu JSON hợp lệ:
+        BẮT BUỘC VỀ NGÔN NGỮ (CRITICAL):
+        - TẤT CẢ các nhánh (root, children, details) BẮT BUỘC PHẢI VIẾT BẰNG TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ, CHUẨN NGỮ PHÁP 100% (Ví dụ: "Phương pháp triển khai", "Quy trình thực hiện", tuyệt đối không viết không dấu).
+        - Giữ nguyên các thuật ngữ kỹ thuật quốc tế nếu có (như React, Next.js, API, Task 1, Man-made Process...).
+
+        RÀNG BUỘC ĐỊNH DẠNG JSON:
+        1. KHÔNG SỬ DỤNG dấu ngoặc kép (") hoặc dấu nháy đơn (') bên trong nội dung văn bản trường name.
+        2. Tên (name) của các node PHẢI NGẮN GỌN VÀ SÚC TÍCH (Tối đa 6-10 từ).
+        3. Cấu trúc chi tiết, phân tích sâu:
+           - 1 root chính.
+           - Root chứa 4-7 nhánh chính (children).
+           - Mỗi nhánh chính chứa 3-5 nhánh con (children).
+        4. Tên key bắt buộc là "name", danh sách con là "children".
+
+        MẪU JSON BẮT BUỘC:
         {
           "root": {
-            "name": "Tên chủ đề chính (vd: Lập trình JavaScript)",
+            "name": "Tên chủ đề chính bài học bằng Tiếng Việt có dấu",
             "children": [
               {
-                "name": "Ý chính 1 (vd: Khái niệm cơ bản)",
+                "name": "Ý chính 1 (Tiếng Việt có dấu)",
                 "children": [
-                  { 
-                    "name": "Ý phụ 1 (vd: Biến và Hằng số)",
-                    "children": [
-                         { "name": "Cách khai báo var, let, const" }
-                    ]
-                  },
-                  { "name": "Ý phụ 2" }
+                  { "name": "Chi tiết 1 (Tiếng Việt có dấu)" },
+                  { "name": "Chi tiết 2 (Tiếng Việt có dấu)" }
                 ]
               }
             ]
           }
         }
-        
+
         Transcript:
-        ${transcript.substring(0, 30000)}
+        ${transcript.substring(0, 35000)}
         `;
 
-        console.log("⏳ Groq đang sinh mindmap...");
-        let responseText = "{}";
+        console.log("⏳ Local Gemini 3.6 Flash đang sinh mindmap (Tiếng Việt có dấu)...");
+        let data: any = {};
         try {
-            const chatCompletion = await groq.chat.completions.create({
+            data = await callLocalGeminiJSON({
                 messages: [
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
+                    { role: "system", content: "You are a backend JSON-only data processing API. You must return only a valid JSON object. Never use interactive widgets, chips, or web tools." },
+                    { role: "user", content: prompt }
                 ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.4,
-            });
-            responseText = chatCompletion.choices[0].message.content || "{}";
-        } catch (groqError: any) {
-            console.error("❌ Lỗi gọi Groq Mindmap:", groqError.message);
-            throw new Error(`Groq Mindmap Error: ${groqError.message}`);
+                model: "gemini-3.6-flash",
+                temperature: 0.2,
+            }, {});
+        } catch (localErr: any) {
+            console.error("❌ Lỗi gọi Local Gemini Mindmap:", localErr.message);
+            throw new Error(`Local Gemini Mindmap Error: ${localErr.message}`);
         }
 
-        const data = cleanAndParseJSON(responseText);
+        // Tự động chuẩn hóa root nếu AI trả về dạng khác
+        let rootNode = data?.root || data?.mindmap || (data?.name && data?.children ? data : null);
 
-        if (!data || !data.root) {
-            console.warn("⚠️ Bỏ qua tạo Mindmap do AI trả về JSON lỗi.");
+        if (!rootNode) {
+            console.warn("⚠️ Bỏ qua tạo Mindmap do AI trả về JSON lỗi:", data);
             return { success: false, error: "Malformed JSON from AI" };
         }
 
         // Convert Tree to React Flow Nodes & Edges
-        const { nodes, edges } = convertTreeToReactFlow(data.root);
+        const { nodes, edges } = convertTreeToReactFlow(rootNode);
         const mindMapData = { nodes, edges };
 
         // Save to DB
@@ -212,60 +204,83 @@ export async function generateFlashcards(lessonId: string, transcript: string, s
 
     try {
         const prompt = `
-        Tạo flashcards học tập từ transcript video bài giảng sau.
+        Bạn là một hệ thống backend bóc tách dữ liệu giáo dục. Nhiệm vụ: Phân tích transcript sau và trích xuất danh sách 10 thẻ học tập (thuật ngữ & giải thích).
         
-        RÀNG BUỘC QUAN TRỌNG ĐỂ TRÁNH LỖI JSON (CRITICAL RULES):
-        1. TUYỆT ĐỐI KHÔNG SỬ DỤNG dấu ngoặc kép (") hoặc dấu nháy đơn (') bên trong nội dung mặt trước (front) và mặt sau (back).
-        2. TUYỆT ĐỐI KHÔNG xuống dòng (Enter) bên trong giá trị chuỗi (string).
-        3. Tạo CHÍNH XÁC 10 flashcards.
-        4. Front ngắn gọn (dưới 15 từ), Back xúc tích (dưới 30 từ).
+        BẮT BUỘC:
+        1. Trả về DUY NHẤT một đối tượng JSON. TUYỆT ĐỐI KHÔNG trả về định dạng widget, canvas, hay link googleusercontent.
+        2. BẮT BUỘC VIẾT BẰNG TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ, chuẩn ngữ pháp.
+        3. TUYỆT ĐỐI KHÔNG SỬ DỤNG dấu ngoặc kép (") hoặc dấu nháy đơn (') bên trong nội dung front và back.
+        4. Front ngắn gọn (dưới 15 từ, dạng câu hỏi hoặc khái niệm trọng tâm).
+        5. Back súc tích (dưới 35 từ, giải thích rõ ràng hoặc câu trả lời cốt lõi).
+        6. Tạo CHÍNH XÁC 10 thẻ ghi nhớ chất lượng cao.
+
+        CẤU TRÚC JSON BẮT BUỘC:
+        \`\`\`json
+        {
+          "flashcards": [
+            {
+              "front": "Khái niệm hoặc câu hỏi ôn tập (Tiếng Việt có dấu)",
+              "back": "Định nghĩa hoặc câu trả lời cốt lõi (Tiếng Việt có dấu)"
+            }
+          ]
+        }
+        \`\`\`
         
         Transcript:
-        ${transcript.substring(0, 30000)}
+        ${transcript.substring(0, 35000)}
         `;
 
-        console.log("⏳ Groq đang sinh flashcards...");
-        let responseText = "{}";
+        console.log("⏳ Local Gemini 3.6 Flash đang sinh flashcards...");
+        let data: any = {};
         try {
-            const chatCompletion = await groq.chat.completions.create({
+            data = await callLocalGeminiJSON({
                 messages: [
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
+                    { role: "system", content: "You are a backend JSON-only API. You always output pure valid JSON without conversational text or interactive chips." },
+                    { role: "user", content: prompt }
                 ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.4,
-            });
-            responseText = chatCompletion.choices[0].message.content || "{}";
-        } catch (groqError: any) {
-            console.error("❌ Lỗi gọi Groq Flashcards:", groqError.message);
-            throw new Error(`Groq Flashcards Error: ${groqError.message}`);
+                model: "gemini-3.6-flash",
+                temperature: 0.1,
+            }, {});
+        } catch (localErr: any) {
+            console.error("❌ Lỗi gọi Local Gemini Flashcards:", localErr.message);
+            throw new Error(`Local Gemini Flashcards Error: ${localErr.message}`);
         }
 
-        const data = cleanAndParseJSON(responseText);
+        // Tự động chuẩn hóa mảng flashcards
+        const cardsList = Array.isArray(data)
+            ? data
+            : (Array.isArray(data?.flashcards) ? data.flashcards : (Array.isArray(data?.cards) ? data.cards : []));
 
-        if (!data || !data.flashcards) {
-            console.warn("⚠️ Bỏ qua tạo Flashcard do AI trả về JSON lỗi.");
+        if (!cardsList || cardsList.length === 0) {
+            console.warn("⚠️ Bỏ qua tạo Flashcard do AI trả về danh sách rỗng hoặc sai cấu trúc:", data);
             return { success: false, error: "Malformed JSON from AI" };
         }
 
-        // Save to DB
-        await db.lesson.update({
-            where: { id: lessonId },
-            data: {
-                flashcards: {
-                    create: data.flashcards.map((fc: any) => ({
-                        front: fc.front,
-                        back: fc.back,
-                        timestamp: fc.timestamp || null
-                    }))
-                }
-            }
+        const formattedCards = cardsList.map((fc: any) => ({
+            front: String(fc.front || fc.question || fc.term || "").trim(),
+            back: String(fc.back || fc.answer || fc.definition || "").trim(),
+            timestamp: typeof fc.timestamp === "number" ? fc.timestamp : null
+        })).filter((fc: any) => fc.front && fc.back);
+
+        // Xóa flashcards cũ và lưu flashcards mới vào database
+        await db.flashcard.deleteMany({
+            where: { lessonId }
         });
 
-        return { message: "Flashcards generated successfully", success: true, data: data.flashcards };
+        const createdFlashcards = await Promise.all(
+            formattedCards.map((fc: any) =>
+                db.flashcard.create({
+                    data: {
+                        lessonId,
+                        front: fc.front,
+                        back: fc.back,
+                        timestamp: fc.timestamp
+                    }
+                })
+            )
+        );
+
+        return { message: "Flashcards generated successfully", success: true, data: createdFlashcards };
 
     } catch (error: any) {
         console.error("Generate Flashcards Error:", error);
@@ -273,7 +288,20 @@ export async function generateFlashcards(lessonId: string, transcript: string, s
     }
 }
 
-export async function generateQuizFromTranscript(lessonId: string, transcript: string, skipAuth: boolean = false) {
+export interface QuizGenerationCounts {
+    multipleChoice?: number;
+    trueFalse?: number;
+    fillInBlank?: number;
+    readingComprehension?: number;
+    essay?: number;
+}
+
+export async function generateQuizFromTranscript(
+    lessonId: string, 
+    transcript: string, 
+    skipAuth: boolean = false,
+    counts?: QuizGenerationCounts
+) {
     if (!skipAuth) {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -281,71 +309,121 @@ export async function generateQuizFromTranscript(lessonId: string, transcript: s
     }
 
     try {
+        const mcCount = counts?.multipleChoice ?? 5;
+        const tfCount = counts?.trueFalse ?? 2;
+        const fibCount = counts?.fillInBlank ?? 2;
+        const rcCount = counts?.readingComprehension ?? 1;
+        const essayCount = counts?.essay ?? 1;
+        const totalCount = mcCount + tfCount + fibCount + rcCount + essayCount;
+
+        if (totalCount === 0) {
+            return { success: false, error: "Vui lòng chọn ít nhất 1 câu hỏi để tạo đề thi." };
+        }
+
         const prompt = `
-        Bạn là một chuyên gia thiết kế đề thi giáo dục chuyên nghiệp.
-        Dưới đây là transcript (bản dịch ghi âm) của một bài giảng video:
+        Bạn là một chuyên gia khảo thí và thiết kế đề thi giáo dục chuyên nghiệp.
+        Dưới đây là transcript của một bài giảng video:
         
         **TRANSCRIPT BÀI GIẢNG:**
-        ${transcript.substring(0, 30000)}
+        ${transcript.substring(0, 35000)}
         
-        Nhiệm vụ của bạn là dựa vào nội dung transcript trên để tạo ra danh sách **10 câu hỏi trắc nghiệm** học thuật chất lượng cao để kiểm tra kiến thức của học viên.
+        Nhiệm vụ của bạn là dựa vào nội dung transcript trên để tạo ra một bộ đề thi học thuật chất lượng cao gồm CHÍNH XÁC các dạng bài sau:
+        - ${mcCount} câu Trắc nghiệm 4 lựa chọn (MULTIPLE_CHOICE)
+        - ${tfCount} câu Đúng/Sai theo 4 mệnh đề a,b,c,d (TRUE_FALSE)
+        - ${fibCount} câu Điền khuyết / Trả lời ngắn (FILL_IN_BLANK)
+        - ${rcCount} câu Đọc hiểu kèm ngữ liệu/đoạn trích (READING_COMPREHENSION)
+        - ${essayCount} câu Tự luận phân tích chuyên sâu kèm đáp án mẫu (ESSAY)
 
-        ### NGUYÊN TẮC TẠO CÂU HỎI (QUAN TRỌNG):
-        1. **CHỈ TẬP TRUNG:** Các định nghĩa, logic code, nguyên lý hoạt động, cú pháp, hoặc kiến thức cốt lõi chuyên môn.
-        2. **TUYỆT ĐỐI BỎ QUA:**
-           - Các chi tiết về giao diện không quan trọng (Ví dụ: "Chữ true màu gì?", "Nút này nằm ở đâu?").
-           - Các câu hỏi về phong cách giảng dạy (Ví dụ: "Giảng viên đã đơn giản hóa thế nào?", "Giảng viên nói câu gì để mở đầu?").
-           - Các lời thoại giao đãi, chào hỏi, kể chuyện bên lề.
-           - **TUYỆT ĐỐI CẤM:** Bất kỳ đề cập nào đến "keyframe", "frame", "ảnh", "hình chụp", "screenshot" hay bất kỳ thuật ngữ kỹ thuật nội bộ nào.
-        3. **ĐỘ KHÓ:** Câu hỏi phải khiến học viên phải suy nghĩ về bài học, không phải câu hỏi quan sát bề nổi.
-        4. **MỖI CÂU HỎI GỒM:**
-           - 4 đáp án A, B, C, D (options).
-           - Đáp án đúng (answer: A, B, C hoặc D).
-           - Giải thích chi tiết dựa trên bài học.
-           - "timestamp" (số nguyên tính bằng giây hoặc null) thể hiện thời điểm xuất hiện kiến thức đó trong bài học.
+        ### NGUYÊN TẮC QUAN TRỌNG:
+        1. **NGÔN NGỮ:** BẮT BUỘC 100% TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ, CHUẨN NGỮ PHÁP.
+        2. **CHỈ TẬP TRUNG:** Kiến thức cốt lõi, phương pháp, nguyên lý hoạt động, định nghĩa hoặc bài tập trong bài.
+        3. **TUYỆT ĐỐI BỎ QUA:** Chi tiết giao diện không quan trọng, lời chào hỏi, không dùng từ "keyframe", "ảnh", "video" trong đề.
 
-        ### CẤU TRÚC JSON ĐẦU RA (BẮT BUỘC):
+        ### CẤU TRÚC JSON ĐẦU RA BẮT BUỘC:
+        \`\`\`json
         {
           "quiz": [
-            {
-              "question": "Nội dung câu hỏi...",
+            ${mcCount > 0 ? `{
+              "type": "MULTIPLE_CHOICE",
+              "question": "Nội dung câu hỏi trắc nghiệm bằng Tiếng Việt có dấu...",
               "options": ["Đáp án A...", "Đáp án B...", "Đáp án C...", "Đáp án D..."],
-              "answer": "A",
-              "explanation": "Giải thích tại sao A đúng...",
+              "correctAnswer": "A",
+              "explanation": "Giải thích chi tiết tại sao đúng...",
               "timestamp": 84
-            }
+            },` : ""}
+            ${tfCount > 0 ? `{
+              "type": "TRUE_FALSE",
+              "question": "Xét tính Đúng/Sai của các nhận định sau:",
+              "subItems": [
+                { "label": "a", "content": "Mệnh đề thứ nhất...", "isCorrect": true },
+                { "label": "b", "content": "Mệnh đề thứ hai...", "isCorrect": false },
+                { "label": "c", "content": "Mệnh đề thứ ba...", "isCorrect": true },
+                { "label": "d", "content": "Mệnh đề thứ tư...", "isCorrect": false }
+              ],
+              "explanation": "Giải thích chi tiết các mệnh đề...",
+              "timestamp": 120
+            },` : ""}
+            ${fibCount > 0 ? `{
+              "type": "FILL_IN_BLANK",
+              "question": "Trong quy trình ..., giai đoạn quan trọng nhất để cố định hình dạng là [_____].",
+              "correctAnswer": "Đổ khuôn",
+              "explanation": "Giải thích đáp án cần điền...",
+              "timestamp": 150
+            },` : ""}
+            ${rcCount > 0 ? `{
+              "type": "READING_COMPREHENSION",
+              "passage": {
+                "title": "Ngữ liệu đọc hiểu về ...",
+                "content": "Nội dung đoạn trích ngữ liệu đọc hiểu được biên soạn dựa trên bài học..."
+              },
+              "question": "Dựa vào đoạn trích trên, ý nào sau đây phản ánh chính xác nhất...?",
+              "options": ["Đáp án A...", "Đáp án B...", "Đáp án C...", "Đáp án D..."],
+              "correctAnswer": "A",
+              "explanation": "Giải thích chi tiết...",
+              "timestamp": 200
+            },` : ""}
+            ${essayCount > 0 ? `{
+              "type": "ESSAY",
+              "question": "Hãy phân tích chi tiết các bước trong ... và nêu rõ các lưu ý quan trọng.",
+              "modelAnswer": "### Hướng dẫn đáp án mẫu chi tiết:\\n- Ý 1: ...\\n- Ý 2: ...\\n- Ý 3: ...",
+              "explanation": "Tiêu chí và thang điểm đánh giá...",
+              "timestamp": null
+            }` : ""}
           ]
         }
+        \`\`\`
         `;
 
-        console.log("⏳ Groq đang sinh quiz...");
-        let responseText = "{}";
+        console.log(`⏳ Local Gemini 3.6 Flash đang sinh bộ đề ${totalCount} câu gồm 5 dạng bài...`);
+        let data: any = {};
         try {
-            const chatCompletion = await groq.chat.completions.create({
+            data = await callLocalGeminiJSON({
                 messages: [
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
+                    { role: "system", content: "You are a backend JSON-only API for an educational test generator. You always output pure valid JSON without conversational text or interactive chips." },
+                    { role: "user", content: prompt }
                 ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.4,
-            });
-            responseText = chatCompletion.choices[0].message.content || "{}";
-        } catch (groqError: any) {
-            console.error("❌ Lỗi gọi Groq Quiz:", groqError.message);
-            throw new Error(`Groq Quiz Error: ${groqError.message}`);
+                model: "gemini-3.6-flash",
+                temperature: 0.2,
+            }, {});
+        } catch (localErr: any) {
+            console.error("❌ Lỗi gọi Local Gemini Quiz:", localErr.message);
+            throw new Error(`Local Gemini Quiz Error: ${localErr.message}`);
         }
 
-        const data = cleanAndParseJSON(responseText);
+        // Tự động chuẩn hóa danh sách câu hỏi
+        const quizList = Array.isArray(data)
+            ? data
+            : (Array.isArray(data?.quiz) ? data.quiz : (Array.isArray(data?.questions) ? data.questions : []));
 
-        if (!data || !data.quiz) {
-            console.warn("⚠️ Bỏ qua tạo Quiz do AI trả về JSON lỗi.");
+        if (!quizList || quizList.length === 0) {
+            console.warn("⚠️ Bỏ qua tạo Quiz do AI trả về JSON không chứa danh sách câu hỏi:", data);
             return { success: false, error: "Malformed JSON from AI" };
         }
 
-        // Xóa câu hỏi AI cũ trước khi tạo mới để tránh bị lặp trùng lặp
+        // Xóa câu hỏi AI cũ trước khi tạo mới để tránh bị trùng lặp
+        await db.passage.deleteMany({
+            where: { lessonId }
+        });
         await db.question.deleteMany({
             where: {
                 lessonId,
@@ -353,23 +431,89 @@ export async function generateQuizFromTranscript(lessonId: string, transcript: s
             }
         });
 
-        // Save to DB
-        await db.question.createMany({
-            data: data.quiz.map((q: any) => ({
-                lessonId,
-                content: q.question || "Câu hỏi đang gặp lỗi",
-                timestamp: q.timestamp || null,
-                options: Array.isArray(q.options) ? q.options.map((opt: string) =>
-                    String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim()
-                ) : ["A", "B", "C", "D"],
-                correctAnswer: q.answer || "A",
-                type: "MULTIPLE_CHOICE",
-                aiExplanation: q.explanation || "Chưa có giải thích.",
-                quizSource: "AI_VIDEO"
-            }))
-        });
+        // Lưu câu hỏi vào database tuần tự để xử lý quan hệ Passage và SubItem
+        const passageMap = new Map<string, string>();
+        const createdQuestions: any[] = [];
 
-        return { message: "Quiz generated successfully", success: true, data: data.quiz };
+        for (const q of quizList) {
+            const rawType = String(q.type || "MULTIPLE_CHOICE").toUpperCase();
+            let qType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "FILL_IN_BLANK" | "READING_COMPREHENSION" | "ESSAY" = "MULTIPLE_CHOICE";
+            if (["MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANK", "READING_COMPREHENSION", "ESSAY"].includes(rawType)) {
+                qType = rawType as any;
+            }
+
+            let passageId: string | null = null;
+            if (q.passage && q.passage.content) {
+                const pKey = String(q.passage.content).trim();
+                if (passageMap.has(pKey)) {
+                    passageId = passageMap.get(pKey)!;
+                } else {
+                    const newPassage = await db.passage.create({
+                        data: {
+                            lessonId,
+                            title: q.passage.title || null,
+                            content: q.passage.content
+                        }
+                    });
+                    passageId = newPassage.id;
+                    passageMap.set(pKey, passageId);
+                }
+            }
+
+            let correctAns: string | null = null;
+            if (qType === "MULTIPLE_CHOICE" || qType === "READING_COMPREHENSION") {
+                if (typeof q.answer === "string" && ["A", "B", "C", "D"].includes(q.answer.toUpperCase())) {
+                    correctAns = q.answer.toUpperCase();
+                } else if (typeof q.correctAnswer === "number" && q.correctAnswer >= 0 && q.correctAnswer <= 3) {
+                    correctAns = ["A", "B", "C", "D"][q.correctAnswer];
+                } else if (typeof q.correctAnswer === "string") {
+                    correctAns = q.correctAnswer.toUpperCase().charAt(0) || "A";
+                } else {
+                    correctAns = "A";
+                }
+            } else if (qType === "FILL_IN_BLANK") {
+                correctAns = String(q.correctAnswer || q.answer || "").trim();
+            }
+
+            // Xử lý subItems cho TRUE_FALSE
+            let subItemsData = undefined;
+            if (qType === "TRUE_FALSE" && Array.isArray(q.subItems) && q.subItems.length > 0) {
+                subItemsData = {
+                    create: q.subItems.map((si: any, idx: number) => ({
+                        label: String(si.label || ["a", "b", "c", "d"][idx] || "a").toLowerCase(),
+                        content: String(si.content || si.statement || "").trim(),
+                        isCorrect: typeof si.isCorrect === "boolean" ? si.isCorrect : (si.answer === "Đúng" || si.answer === true || si.isCorrect === "true"),
+                        position: idx
+                    }))
+                };
+            }
+
+            const createdQ = await db.question.create({
+                data: {
+                    lessonId,
+                    content: String(q.question || q.content || "Nội dung câu hỏi").trim(),
+                    timestamp: typeof q.timestamp === "number" ? q.timestamp : null,
+                    options: (qType === "MULTIPLE_CHOICE" || qType === "READING_COMPREHENSION") && Array.isArray(q.options)
+                        ? q.options.map((opt: string) => String(opt || "").replace(/^([A-D]|[0-9]+)[\.\)]\s*/g, "").trim())
+                        : [],
+                    correctAnswer: correctAns,
+                    modelAnswer: qType === "ESSAY" ? String(q.modelAnswer || q.answer || "").trim() : null,
+                    type: qType,
+                    aiExplanation: String(q.explanation || q.aiExplanation || "").trim(),
+                    quizSource: "AI_VIDEO",
+                    passageId: passageId,
+                    subItems: subItemsData
+                },
+                include: {
+                    passage: true,
+                    subItems: true
+                }
+            });
+
+            createdQuestions.push(createdQ);
+        }
+
+        return { message: "Quiz generated successfully", success: true, data: createdQuestions };
 
     } catch (error: any) {
         console.error("Generate Quiz Error:", error);

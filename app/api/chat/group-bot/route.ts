@@ -5,6 +5,7 @@ import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { encryptMessage, decryptMessage } from "@/lib/security/chat-crypto";
+import { callLocalGemini } from "@/lib/local-gemini";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -115,13 +116,17 @@ Past Q&A Contexts:
 ${messageContext}
         `;
 
-        const groqCompletion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: rerankPrompt }],
-            temperature: 0.1
-        });
+        let rerankedContext = "";
+        try {
+            rerankedContext = await callLocalGemini({
+                messages: [{ role: "user", content: rerankPrompt }],
+                model: "gemini-3.6-flash",
+                temperature: 0.1
+            });
+        } catch {
+            rerankedContext = "";
+        }
 
-        const rerankedContext = groqCompletion.choices[0]?.message?.content || "";
         const finalContext = rerankedContext === "NONE" ? "" : rerankedContext;
 
         // 6. Generate final answer with Gemini

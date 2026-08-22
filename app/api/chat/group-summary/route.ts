@@ -1,6 +1,7 @@
 import { db } from "@/lib/prisma";
 import Groq from "groq-sdk";
 import { decryptMessage } from "@/lib/security/chat-crypto";
+import { callLocalGeminiJSON } from "@/lib/local-gemini";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
         const activeMembers = new Set(unreadMessages.map(m => m.senderId)).size;
         const messageCount = unreadMessages.length;
 
-        // 5. Generate Summary with Groq (llama-3.3-70b-versatile)
+        // 5. Generate Summary with Local Gemini 3.6 Flash
         const systemPrompt = `Bạn là trợ lý AI tóm tắt nội dung thảo luận nhóm.
 Nhiệm vụ: Tóm tắt ngắn gọn, dễ hiểu các tin nhắn đã bị bỏ lỡ.
 Bối cảnh học tập của học viên: ${progressContext || 'Không rõ'}
@@ -93,37 +94,25 @@ Trả về kết quả bằng định dạng JSON nghiêm ngặt:
   "hotQuestions": [{"question": "Câu hỏi?", "answerCount": 2}, ...]
 }`;
 
-        // Truncate messages if too long for prompt to save tokens
-        const maxChars = 20000;
+        // Truncate messages if too long
+        const maxChars = 30000;
         const messagesPrompt = formattedMessages.length > maxChars 
             ? formattedMessages.substring(formattedMessages.length - maxChars) 
             : formattedMessages;
 
-        const groqCompletion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+        const summaryData = await callLocalGeminiJSON({
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: `Messages:\n${messagesPrompt}` }
             ],
-            response_format: { type: "json_object" },
-            temperature: 0.3
-        });
-
-        const responseText = groqCompletion.choices[0]?.message?.content || "{}";
-
-        let summaryData = {
+            model: "gemini-3.6-flash",
+            temperature: 0.2
+        }, {
             summary: "Đã có lỗi trong quá trình tóm tắt.",
             keyTopics: [],
             sharedLinks: [],
             hotQuestions: []
-        };
-
-        try {
-            const jsonText = responseText.replace(/\`\`\`json\n/g, '').replace(/\`\`\`/g, '').trim();
-            summaryData = JSON.parse(jsonText);
-        } catch (e) {
-            console.error("Failed to parse summary JSON", responseText);
-        }
+        });
 
         // 6. Save to cache (ConversationSummary)
         const savedSummary = await db.conversationSummary.create({

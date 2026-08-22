@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User, BookOpen, Clock, Eye, Trash } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User, BookOpen, Clock, Eye, Trash, ZoomIn } from "lucide-react";
 import confetti from "canvas-confetti";
 import { submitQuiz } from "@/app/actions/student-quiz";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import FormattedMarkdown from "../common/FormattedMarkdown";
+import ImageZoomModal from "../common/ImageZoomModal";
 import { parseFileUrls } from "@/app/utils/file-utils";
 import { useTheme } from "@/lib/theme/ThemeContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -57,6 +60,7 @@ export default function QuizPlayer({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [result, setResult] = useState<any>(initialResult || null);
     const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({});
+    const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
 
     const supabase = createClient();
 
@@ -309,18 +313,32 @@ export default function QuizPlayer({
                                     </div>
 
                                     {/* Question Content */}
-                                    <div className="flex-1 min-w-0 flex flex-col gap-2">
-                                        {q.contentImageUrl && (
-                                            <div className="mb-3">
-                                                <img src={q.contentImageUrl} alt="Question image" className="max-h-60 rounded-2xl border border-stone-500/20 object-contain" />
-                                            </div>
-                                        )}
+                                    <div className="flex-1 min-w-0 flex flex-col gap-3">
                                         <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${isDark ? "text-white" : "text-stone-900"
                                             }`}>
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                                 {q.content}
                                             </ReactMarkdown>
                                         </div>
+                                        {q.contentImageUrl && (
+                                            <div className="my-2 flex justify-center md:justify-start">
+                                                <div 
+                                                    onClick={() => setZoomImageSrc(q.contentImageUrl!)}
+                                                    title="Bấm để phóng to / thu nhỏ hình ảnh"
+                                                    className="group relative cursor-zoom-in rounded-2xl border border-stone-500/20 bg-stone-900/10 dark:bg-white/5 p-1.5 shadow-xs hover:border-[#C5A059]/60 hover:shadow-md transition-all overflow-hidden inline-block"
+                                                >
+                                                    <img 
+                                                        src={q.contentImageUrl} 
+                                                        alt="Hình vẽ / Bảng biểu minh họa" 
+                                                        className="max-h-72 max-w-full rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]" 
+                                                    />
+                                                    <div className="absolute bottom-2 right-2 bg-stone-950/80 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg backdrop-blur-md opacity-90 group-hover:opacity-100 flex items-center gap-1.5 shadow-lg border border-white/10 transition-opacity">
+                                                        <ZoomIn size={13} className="text-[#C5A059]" />
+                                                        <span>Phóng to</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -346,7 +364,12 @@ export default function QuizPlayer({
                                                 onClick={() => handleSelectOption(q.id, prefix)}
                                                 className={`w-full p-4 rounded-2xl text-left border transition-all duration-200 text-sm font-medium flex items-center justify-between ${getOptionStyle(q.id, prefix)}`}
                                             >
-                                                <span>{opt}</span>
+                                                <div className="flex-1 [&_p]:inline [&_p]:m-0">
+                                                    <span className="font-bold mr-2 text-[#C5A059]">{prefix}.</span>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                        {opt}
+                                                    </ReactMarkdown>
+                                                </div>
                                             </button>
                                         );
                                     })}
@@ -363,9 +386,11 @@ export default function QuizPlayer({
                                         return (
                                             <div key={sub.id} className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${isDark ? "bg-white/5 border-white/10" : "bg-stone-50 border-stone-200"
                                                 }`}>
-                                                <div className="text-sm font-medium flex-1">
+                                                <div className="text-sm font-medium flex-1 [&_p]:inline [&_p]:m-0">
                                                     <span className="font-bold text-[#C5A059] mr-2">{sub.label}.</span>
-                                                    <span>{sub.content}</span>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                        {sub.content}
+                                                    </ReactMarkdown>
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <button
@@ -656,6 +681,14 @@ export default function QuizPlayer({
                         {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Nộp bài tập ✨"}
                     </button>
                 </div>
+            )}
+
+            {/* Lightbox / Modal phóng to thu nhỏ hình ảnh */}
+            {zoomImageSrc && (
+                <ImageZoomModal 
+                    src={zoomImageSrc} 
+                    onClose={() => setZoomImageSrc(null)} 
+                />
             )}
         </div>
     );

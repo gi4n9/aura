@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   allowRegistration: "true",
   requireEmailVerification: "false",
 
-  defaultAiModel: "groq:llama-3.3-70b-versatile",
+  defaultAiModel: "local:gemini-3.6-flash",
   aiTemperature: "0.3",
   enableGroupSummary: "true",
   enableGroupBot: "true",

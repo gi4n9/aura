@@ -2,6 +2,8 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 export function formatMarkdownText(text: string | null | undefined): string {
     if (!text) return "";
@@ -49,7 +51,8 @@ export default function FormattedMarkdownForInstructors({ content, className = "
     return (
         <div className={`prose prose-sm max-w-none leading-relaxed font-sans text-stone-800 ${className}`}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
                 components={{
                     p: ({ children }) => (
                         <p className="mb-2 last:mb-0 text-justify">

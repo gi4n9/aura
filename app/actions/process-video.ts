@@ -6,6 +6,7 @@ import { GoogleAIFileManager, FileState } from "@google/generative-ai/server";
 import Groq from "groq-sdk";
 import { prisma } from "@/lib/prisma";
 import { transcribeWithGemini } from "@/lib/transcript-gemini";
+import { callLocalGeminiJSON } from "@/lib/local-gemini";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import fs from "fs";
@@ -546,32 +547,30 @@ async function runBackgroundVideoProcessing(
       }
     `;
 
-    console.log("⏳ Groq đang sinh timeline...");
+    console.log("⏳ Local Gemini 3.6 Flash đang sinh timeline...");
 
-    let responseText = "{}";
+    let aiData: any = { timeline: [] };
     try {
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
+      aiData = await callLocalGeminiJSON(
+        {
+          messages: [{ role: "user", content: prompt }],
+          model: "gemini-3.6-flash",
+          temperature: 0.2,
+          timeoutMs: 180000,
+        },
+        { timeline: [] }
+      );
+      console.log(`✨ Local Gemini AI hoàn tất! Timeline: ${aiData.timeline?.length || 0} mốc`);
+    } catch (geminiError: any) {
+      console.error("❌ Lỗi gọi Local Gemini Timeline:", geminiError.message);
+      // Fallback: sinh timeline cơ bản
+      aiData = {
+        timeline: [
+          { time: 0, label: "Bắt đầu bài giảng" },
+          { time: Math.floor(durationInSeconds / 2), label: "Nội dung chính" },
         ],
-        model: "llama-3.3-70b-versatile",
-        response_format: { type: "json_object" },
-        temperature: 0.4,
-      });
-      responseText = chatCompletion.choices[0].message.content || "{}";
-    } catch (groqError: any) {
-      console.error("❌ Lỗi gọi Groq Timeline:", groqError.message);
-      throw new Error(`Groq Timeline Error: ${groqError.message}`);
+      };
     }
-
-    const aiData = cleanAndParseJSON(responseText);
-
-    console.log(
-      `✨ AI hoàn tất! Timeline: ${aiData.timeline?.length || 0} mốc`,
-    );
 
     // =========================================================
     // BƯỚC 5: VALIDATE & CLEAN TIMELINE

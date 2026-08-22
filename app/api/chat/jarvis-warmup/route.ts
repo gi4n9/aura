@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import Groq from "groq-sdk";
+import { callLocalGeminiJSON } from "@/lib/local-gemini";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -102,19 +103,19 @@ Lưu ý đặc biệt quan trọng: Toàn bộ phản hồi bao gồm cả câu 
 
             generatedData = response.object;
         } catch (geminiError: any) {
-            console.warn("⚠️ Gemini Stream Quota Exceeded (jarvis-warmup). Falling back to Groq...", geminiError.message);
+            console.warn("⚠️ Gemini Official Quota Exceeded (jarvis-warmup). Falling back to Local Gemini 3.6 Flash...", geminiError.message);
             
-            const groqRes = await groq.chat.completions.create({
-                model: "llama-3.3-70b-versatile",
+            generatedData = await callLocalGeminiJSON({
                 messages: [{ 
                     role: "user", 
                     content: promptText + "\n\nTRẢ LỜI ĐÚNG ĐỊNH DẠNG JSON với cấu trúc: { \"greeting\": \"...\", \"suggestions\": [\"...\", \"...\", \"...\"] }" 
                 }],
-                response_format: { type: "json_object" },
+                model: "gemini-3.6-flash",
                 temperature: 0.4
+            }, {
+                greeting: "Chào bạn, hãy cùng bắt đầu học bài học này nhé!",
+                suggestions: ["Bài học này có nội dung gì?", "Tóm tắt các ý chính?", "Cho tôi ví dụ thực hành?"]
             });
-            
-            generatedData = JSON.parse(groqRes.choices[0].message?.content || "{}");
         }
 
         // 3. Lưu dữ liệu đã sinh vào database để cache cho các lần tải sau

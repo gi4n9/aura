@@ -43,7 +43,8 @@ async function saveQuestionsWithRelations(lessonId: string, parsedQuestions: Par
                 quizSource: QuizSource.WORKSHEET,
                 timestamp: null,
                 subjectHint: q.subjectHint || null,
-                passageId
+                passageId,
+                contentImageUrl: q.contentImageUrl || null
             }
         });
 

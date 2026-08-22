@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles, CheckSquare, FormInput, BookOpen } from "lucide-react";
+import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles, CheckSquare, FormInput, BookOpen, X, Minus, Sliders, ZoomIn } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
-import { generateQuizFromTranscript } from "@/app/actions/ai-lesson-content";
+import { generateQuizFromTranscript, QuizGenerationCounts } from "@/app/actions/ai-lesson-content";
 
 import { toast } from "sonner";
 import { QuizDisplayMode, QuizSource } from "@prisma/client";
@@ -14,8 +14,7 @@ import AnswerKeyUploader from "./AnswerKeyUploader";
 import EssayGradingPanel from "./EssayGradingPanel";
 import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 import FormattedMarkdownForInstructors from "../common/FormattedMarkdownForInstructors";
-
-
+import ImageZoomModal from "../common/ImageZoomModal";
 
 interface QuestionState {
     id?: string;
@@ -31,7 +30,6 @@ interface QuestionState {
     passage?: { id?: string; title?: string | null; content: string } | null;
 }
 
-
 interface QuizEditorProps {
     lessonId: string;
     initialQuestions: any[];
@@ -40,26 +38,44 @@ interface QuizEditorProps {
 }
 
 export default function QuizEditor({ lessonId, initialQuestions, initialDisplayMode = QuizDisplayMode.BOTH, transcript }: QuizEditorProps) {
+    const mapRawToQuestionState = (q: any): QuestionState => ({
+        id: q.id,
+        content: q.content || "",
+        type: (q.type as any) || "MULTIPLE_CHOICE",
+        options: Array.isArray(q.options) && q.options.length > 0 ? q.options : ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
+        correctAnswer: q.correctAnswer || "A",
+        modelAnswer: q.modelAnswer || "",
+        aiExplanation: q.aiExplanation || "",
+        quizSource: q.quizSource || "MANUAL",
+        contentImageUrl: q.contentImageUrl,
+        subItems: Array.isArray(q.subItems) && q.subItems.length > 0 ? q.subItems.map((si: any, idx: number) => ({
+            id: si.id,
+            label: si.label || ["a", "b", "c", "d"][idx] || "a",
+            content: si.content || "",
+            isCorrect: Boolean(si.isCorrect),
+            position: si.position ?? idx
+        })) : [
+            { label: "a", content: "Mệnh đề A", isCorrect: false },
+            { label: "b", content: "Mệnh đề B", isCorrect: false },
+            { label: "c", content: "Mệnh đề C", isCorrect: false },
+            { label: "d", content: "Mệnh đề D", isCorrect: false }
+        ],
+        passage: q.passage ? {
+            id: q.passage.id,
+            title: q.passage.title,
+            content: q.passage.content || ""
+        } : null
+    });
+
     const [questions, setQuestions] = useState<QuestionState[]>(
-        initialQuestions.map((q) => ({
-            id: q.id,
-            content: q.content,
-            type: q.type || "MULTIPLE_CHOICE",
-            options: Array.isArray(q.options) ? q.options : ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
-            correctAnswer: q.correctAnswer || "A",
-            modelAnswer: q.modelAnswer || "",
-            aiExplanation: q.aiExplanation || "",
-            quizSource: q.quizSource || "MANUAL",
-            contentImageUrl: q.contentImageUrl,
-            subItems: q.subItems && q.subItems.length > 0 ? q.subItems : [
-                { label: "a", content: "Mệnh đề A", isCorrect: false },
-                { label: "b", content: "Mệnh đề B", isCorrect: false },
-                { label: "c", content: "Mệnh đề C", isCorrect: false },
-                { label: "d", content: "Mệnh đề D", isCorrect: false }
-            ],
-            passage: q.passage || null
-        }))
+        (initialQuestions || []).map(mapRawToQuestionState)
     );
+
+    useEffect(() => {
+        if (Array.isArray(initialQuestions)) {
+            setQuestions(initialQuestions.map(mapRawToQuestionState));
+        }
+    }, [initialQuestions]);
 
     const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("ALL");
 
@@ -69,18 +85,43 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
     const [isSaving, setIsSaving] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
+
+    // Cấu hình số lượng cho 5 dạng bài
+    const [aiCounts, setAiCounts] = useState<QuizGenerationCounts>({
+        multipleChoice: 4,
+        trueFalse: 2,
+        fillInBlank: 2,
+        readingComprehension: 1,
+        essay: 1
+    });
+
+    const totalSelectedQuestions = (aiCounts.multipleChoice || 0) + 
+                                  (aiCounts.trueFalse || 0) + 
+                                  (aiCounts.fillInBlank || 0) + 
+                                  (aiCounts.readingComprehension || 0) + 
+                                  (aiCounts.essay || 0);
 
     const handleGenerateQuiz = async () => {
         if (!transcript) {
-            toast.error("Không có Transcript để tạo câu hỏi trắc nghiệm!");
+            toast.error("Không có Transcript để tạo câu hỏi!");
             return;
         }
+        if (totalSelectedQuestions === 0) {
+            toast.error("Vui lòng chọn ít nhất 1 câu hỏi để tạo đề thi!");
+            return;
+        }
+
         setIsGenerating(true);
         try {
-            const res = await generateQuizFromTranscript(lessonId, transcript, false);
+            const res = await generateQuizFromTranscript(lessonId, transcript, false, aiCounts);
             if (res.success && res.data) {
-                toast.success("Tạo câu hỏi AI thành công!");
-                window.location.reload();
+                toast.success(`Tạo thành công ${res.data.length} câu hỏi AI 5 dạng bài!`);
+                const formattedNewQuestions = res.data.map(mapRawToQuestionState);
+                setQuestions(formattedNewQuestions);
+                setSelectedTypeFilter("ALL");
+                setIsAiModalOpen(false);
             } else {
                 throw new Error(res.error || "Lỗi tạo câu hỏi");
             }
@@ -193,37 +234,307 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
             <div className="flex gap-2">
                 {transcript && (
                     <button
-                        onClick={handleGenerateQuiz}
+                        onClick={() => setIsAiModalOpen(true)}
                         disabled={isGenerating}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-semibold shadow-sm ${isGenerating
-                            ? "bg-blue-100 text-blue-400 cursor-not-allowed"
-                            : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-bold shadow-md ${isGenerating
+                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                            : "bg-slate-900 text-white hover:bg-slate-800 active:scale-95 shadow-slate-900/20"
                             }`}
                     >
-                        <Sparkles size={18} className={isGenerating ? "animate-spin" : ""} />
-                        {isGenerating ? "Đang tạo câu hỏi..." : "Tạo câu hỏi bằng AI"}
+                        <Sparkles size={18} className={`text-amber-400 ${isGenerating ? "animate-spin" : ""}`} />
+                        {isGenerating ? "Đang tạo câu hỏi..." : "Tạo câu hỏi AI (5 Dạng Bài)"}
                     </button>
                 )}
                 <button
                     onClick={handleAddQuestion}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-bold transition-colors border border-indigo-200/60"
                 >
                     <Plus size={18} /> Thêm câu hỏi
                 </button>
             </div>
         </div>
 
-        {/* Bộ lọc loại câu hỏi */}
-        <div className="flex flex-wrap gap-2 p-1.5 bg-white border border-slate-100 shadow-sm rounded-xl mb-6">
+        {/* MODAL CẤU HÌNH SỐ LƯỢNG 5 DẠNG BÀI AI QUIZ */}
+        {isAiModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+                    <button
+                        onClick={() => !isGenerating && setIsAiModalOpen(false)}
+                        className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        disabled={isGenerating}
+                    >
+                        <X size={20} />
+                    </button>
+
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shadow-inner">
+                            <Sparkles size={22} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900">Sinh Bộ Đề Thi Bằng AI</h3>
+                            <p className="text-xs text-slate-500 font-medium">Tùy chỉnh số lượng câu hỏi theo 5 dạng bài chuẩn khảo thí</p>
+                        </div>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="mt-4 mb-5 p-3 bg-amber-50/60 rounded-2xl border border-amber-100/80">
+                        <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2">Mẫu gợi ý nhanh:</div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setAiCounts({ multipleChoice: 5, trueFalse: 2, fillInBlank: 1, readingComprehension: 0, essay: 0 })}
+                                className="px-2.5 py-1 text-xs rounded-lg bg-white border border-amber-200 text-amber-900 hover:bg-amber-100/50 font-medium transition-colors"
+                            >
+                                ⚡ Cơ bản (8 câu)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setAiCounts({ multipleChoice: 4, trueFalse: 2, fillInBlank: 2, readingComprehension: 1, essay: 1 })}
+                                className="px-2.5 py-1 text-xs rounded-lg bg-amber-600 text-white font-medium shadow-sm hover:bg-amber-700 transition-colors"
+                            >
+                                🎯 Đầy đủ 5 dạng (10 câu)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setAiCounts({ multipleChoice: 10, trueFalse: 0, fillInBlank: 0, readingComprehension: 0, essay: 0 })}
+                                className="px-2.5 py-1 text-xs rounded-lg bg-white border border-amber-200 text-amber-900 hover:bg-amber-100/50 font-medium transition-colors"
+                            >
+                                📝 Thuần trắc nghiệm (10 câu)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 5 Input Counters */}
+                    <div className="space-y-3">
+                        {/* 1. Multiple Choice */}
+                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:border-amber-300 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+                                    <List size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">1. Trắc nghiệm 4 lựa chọn</div>
+                                    <div className="text-xs text-slate-500">MULTIPLE_CHOICE (4 đáp án A/B/C/D)</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, multipleChoice: Math.max(0, (prev.multipleChoice || 0) - 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="30"
+                                    value={aiCounts.multipleChoice ?? 0}
+                                    onChange={(e) => setAiCounts(prev => ({ ...prev, multipleChoice: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                    className="w-12 h-8 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, multipleChoice: Math.min(30, (prev.multipleChoice || 0) + 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 2. True / False */}
+                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:border-amber-300 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-purple-100 text-purple-700">
+                                    <CheckSquare size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">2. Đúng / Sai theo mệnh đề</div>
+                                    <div className="text-xs text-slate-500">TRUE_FALSE (Cụm 4 ý a, b, c, d)</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, trueFalse: Math.max(0, (prev.trueFalse || 0) - 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="30"
+                                    value={aiCounts.trueFalse ?? 0}
+                                    onChange={(e) => setAiCounts(prev => ({ ...prev, trueFalse: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                    className="w-12 h-8 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, trueFalse: Math.min(30, (prev.trueFalse || 0) + 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 3. Fill in the blank */}
+                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:border-amber-300 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
+                                    <FormInput size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">3. Điền khuyết / Trả lời ngắn</div>
+                                    <div className="text-xs text-slate-500">FILL_IN_BLANK (Nhập kết quả/từ khóa)</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, fillInBlank: Math.max(0, (prev.fillInBlank || 0) - 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="30"
+                                    value={aiCounts.fillInBlank ?? 0}
+                                    onChange={(e) => setAiCounts(prev => ({ ...prev, fillInBlank: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                    className="w-12 h-8 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, fillInBlank: Math.min(30, (prev.fillInBlank || 0) + 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 4. Reading Comprehension */}
+                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:border-amber-300 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-cyan-100 text-cyan-700">
+                                    <BookOpen size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">4. Đọc hiểu kèm ngữ liệu</div>
+                                    <div className="text-xs text-slate-500">READING_COMPREHENSION (Kèm Passage)</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, readingComprehension: Math.max(0, (prev.readingComprehension || 0) - 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="30"
+                                    value={aiCounts.readingComprehension ?? 0}
+                                    onChange={(e) => setAiCounts(prev => ({ ...prev, readingComprehension: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                    className="w-12 h-8 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, readingComprehension: Math.min(30, (prev.readingComprehension || 0) + 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 5. Essay */}
+                        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:border-amber-300 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-orange-100 text-orange-700">
+                                    <AlignLeft size={18} />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">5. Tự luận kèm đáp án mẫu</div>
+                                    <div className="text-xs text-slate-500">ESSAY (Kèm Model Answer & Barem)</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, essay: Math.max(0, (prev.essay || 0) - 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="30"
+                                    value={aiCounts.essay ?? 0}
+                                    onChange={(e) => setAiCounts(prev => ({ ...prev, essay: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                    className="w-12 h-8 text-center text-sm font-bold text-slate-900 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setAiCounts(prev => ({ ...prev, essay: Math.min(30, (prev.essay || 0) + 1) }))}
+                                    className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center hover:bg-slate-100 active:scale-95"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Total & Action Buttons */}
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <div className="text-sm text-slate-600">
+                            Tổng số câu hỏi: <span className="font-bold text-slate-900 text-base">{totalSelectedQuestions} câu</span>
+                        </div>
+                        <div className="flex gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => setIsAiModalOpen(false)}
+                                disabled={isGenerating}
+                                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleGenerateQuiz}
+                                disabled={isGenerating || totalSelectedQuestions === 0}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all ${isGenerating || totalSelectedQuestions === 0
+                                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                    : "bg-slate-900 hover:bg-slate-800 text-white active:scale-95 shadow-slate-900/20"
+                                    }`}
+                            >
+                                <Sparkles size={18} className={`text-amber-400 ${isGenerating ? "animate-spin" : ""}`} />
+                                {isGenerating ? "Đang sinh đề thi..." : `Tạo ${totalSelectedQuestions} câu hỏi`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Bộ lọc loại câu hỏi - High Contrast UI */}
+        <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100/80 border border-slate-200 shadow-xs rounded-2xl mb-6">
             <button
                 onClick={() => setSelectedTypeFilter("ALL")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "ALL"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "ALL"
+                    ? "bg-slate-900 text-white shadow-sm ring-1 ring-slate-900"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
                 Tất cả
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
                     }`}>
                     {countByType.ALL}
                 </span>
@@ -231,13 +542,13 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
             <button
                 onClick={() => setSelectedTypeFilter("MULTIPLE_CHOICE")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "MULTIPLE_CHOICE"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "MULTIPLE_CHOICE"
+                    ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-600"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
-                <List size={14} /> Trắc nghiệm
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "MULTIPLE_CHOICE" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <List size={14} className={selectedTypeFilter === "MULTIPLE_CHOICE" ? "text-white" : "text-blue-600"} /> Trắc nghiệm
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "MULTIPLE_CHOICE" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
                     }`}>
                     {countByType.MULTIPLE_CHOICE}
                 </span>
@@ -245,13 +556,13 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
             <button
                 onClick={() => setSelectedTypeFilter("TRUE_FALSE")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "TRUE_FALSE"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "TRUE_FALSE"
+                    ? "bg-purple-600 text-white shadow-sm ring-1 ring-purple-600"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
-                <CheckSquare size={14} /> Đúng/Sai
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "TRUE_FALSE" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <CheckSquare size={14} className={selectedTypeFilter === "TRUE_FALSE" ? "text-white" : "text-purple-600"} /> Đúng/Sai
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "TRUE_FALSE" ? "bg-white/20 text-white" : "bg-purple-50 text-purple-700"
                     }`}>
                     {countByType.TRUE_FALSE}
                 </span>
@@ -259,13 +570,13 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
             <button
                 onClick={() => setSelectedTypeFilter("FILL_IN_BLANK")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "FILL_IN_BLANK"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "FILL_IN_BLANK"
+                    ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-600"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
-                <FormInput size={14} /> Điền khuyết
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "FILL_IN_BLANK" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <FormInput size={14} className={selectedTypeFilter === "FILL_IN_BLANK" ? "text-white" : "text-emerald-600"} /> Điền khuyết
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "FILL_IN_BLANK" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700"
                     }`}>
                     {countByType.FILL_IN_BLANK}
                 </span>
@@ -273,13 +584,13 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
             <button
                 onClick={() => setSelectedTypeFilter("READING_COMPREHENSION")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "READING_COMPREHENSION"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "READING_COMPREHENSION"
+                    ? "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-600"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
-                <BookOpen size={14} /> Đọc hiểu
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "READING_COMPREHENSION" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <BookOpen size={14} className={selectedTypeFilter === "READING_COMPREHENSION" ? "text-white" : "text-cyan-600"} /> Đọc hiểu
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "READING_COMPREHENSION" ? "bg-white/20 text-white" : "bg-cyan-50 text-cyan-700"
                     }`}>
                     {countByType.READING_COMPREHENSION}
                 </span>
@@ -287,13 +598,13 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
             <button
                 onClick={() => setSelectedTypeFilter("ESSAY")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none ${selectedTypeFilter === "ESSAY"
-                    ? "bg-[#C5A059] text-white shadow-sm shadow-indigo-600/25"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all outline-none ${selectedTypeFilter === "ESSAY"
+                    ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-600"
+                    : "bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-50 border border-slate-200/80"
                     }`}
             >
-                <AlignLeft size={14} /> Tự luận
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${selectedTypeFilter === "ESSAY" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                <AlignLeft size={14} className={selectedTypeFilter === "ESSAY" ? "text-white" : "text-orange-600"} /> Tự luận
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedTypeFilter === "ESSAY" ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700"
                     }`}>
                     {countByType.ESSAY}
                 </span>
@@ -408,11 +719,6 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
 
                     {/* Nội dung câu hỏi chính */}
                     <div className="mb-6">
-                        {q.contentImageUrl && (
-                            <div className="mb-4">
-                                <img src={q.contentImageUrl} alt="Ảnh câu hỏi" className="max-h-60 object-contain rounded-lg border border-slate-200" />
-                            </div>
-                        )}
                         <textarea
                             value={q.content}
                             onChange={(e) => handleChangeField(originalIndex, "content", e.target.value)}
@@ -420,10 +726,29 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                             placeholder={q.type === "TRUE_FALSE" ? "Nhập câu lệnh chung (VD: Cho hàm số y = f(x)...)" : "Nhập nội dung câu hỏi..."}
                             rows={2}
                         />
+                        {q.contentImageUrl && (
+                            <div className="mt-4 flex justify-center md:justify-start">
+                                <div 
+                                    onClick={() => setZoomImageSrc(q.contentImageUrl!)}
+                                    title="Bấm để xem phóng to chi tiết"
+                                    className="group relative cursor-zoom-in rounded-xl border border-slate-200 bg-slate-50 p-1.5 shadow-xs hover:border-indigo-400 hover:shadow-md transition-all inline-block"
+                                >
+                                    <img 
+                                        src={q.contentImageUrl} 
+                                        alt="Ảnh minh họa câu hỏi" 
+                                        className="max-h-64 max-w-full object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.01]" 
+                                    />
+                                    <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg backdrop-blur-md opacity-90 group-hover:opacity-100 flex items-center gap-1.5 shadow-lg border border-white/10 transition-opacity">
+                                        <ZoomIn size={13} className="text-amber-300" />
+                                        <span>Phóng to</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Danh sách đáp án cho MULTIPLE_CHOICE */}
-                    {q.type === "MULTIPLE_CHOICE" && (
+                    {/* Danh sách đáp án cho MULTIPLE_CHOICE hoặc READING_COMPREHENSION */}
+                    {(q.type === "MULTIPLE_CHOICE" || (q.type === "READING_COMPREHENSION" && Array.isArray(q.options) && q.options.length > 0)) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             {(q.options || []).map((opt, optIndex) => {
                                 const label = ["A", "B", "C", "D"][optIndex];
@@ -663,6 +988,14 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                 )}
             </button>
         </div>
+
+        {/* Modal phóng to thu nhỏ hình ảnh */}
+        {zoomImageSrc && (
+            <ImageZoomModal
+                src={zoomImageSrc}
+                onClose={() => setZoomImageSrc(null)}
+            />
+        )}
     </div>
     );
 }

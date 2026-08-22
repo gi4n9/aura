@@ -6,6 +6,7 @@ import { google } from "@ai-sdk/google";
 import { streamText, generateText } from "ai";
 import Groq from "groq-sdk";
 import { encryptMessage } from "@/lib/security/chat-crypto";
+import { callLocalGemini } from "@/lib/local-gemini";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -410,20 +411,19 @@ export async function chatWithVideo3D(lessonId: string, query: string) {
             });
             resultText = result.text;
         } catch (geminiError: any) {
-            console.warn("⚠️ Lỗi Gemini (Có thể do hết quota 429), chuyển sang dùng Groq (Llama 3.3):", geminiError.message);
+            console.warn("⚠️ Lỗi Gemini Official, chuyển sang dùng Local Gemini 3.6 Flash:", geminiError.message);
             try {
-                const chatCompletion = await groq.chat.completions.create({
+                resultText = await callLocalGemini({
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: query }
                     ],
-                    model: "llama-3.3-70b-versatile",
+                    model: "gemini-3.6-flash",
                     temperature: 0.4,
                 });
-                resultText = chatCompletion.choices[0].message.content || "";
-            } catch (groqError: any) {
-                console.error("❌ Lỗi cả Gemini và Groq:", groqError.message);
-                throw new Error(`Cả hai dịch vụ AI (Gemini & Groq) đều gặp sự cố: ${groqError.message}`);
+            } catch (localError: any) {
+                console.error("❌ Lỗi cả Gemini Official và Local Gemini:", localError.message);
+                throw new Error(`Cả hai dịch vụ AI đều gặp sự cố: ${localError.message}`);
             }
         }
 

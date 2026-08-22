@@ -31,6 +31,7 @@ export default function HeroSection() {
         muted
         loop
         playsInline
+        preload="none"
         className={`absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0 w-[120%] h-[120%] pointer-events-none transition-all duration-700 ${
           isDark ? "opacity-35 mix-blend-screen" : "opacity-30 mix-blend-multiply"
         }`}

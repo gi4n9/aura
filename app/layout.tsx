@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import "katex/dist/katex.min.css";
 import { AuthProvider } from "./components/AuthProvider";
 import { createClient } from "@/utils/supabase/server";
 import NextTopLoader from 'nextjs-toploader';
 import { ClientToaster } from "@/app/components/ClientToaster";
 import { db } from "@/lib/prisma";
-import ChatBot from "@/app/components/chat/ChatBot";
+import ClientChatBot from "@/app/components/chat/ClientChatBot";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   display: 'swap',
   variable: '--font-be-vietnam',
 });
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700"],
   display: 'swap',
   variable: '--font-plus-jakarta',
 });
@@ -160,7 +161,7 @@ export default async function RootLayout({
           <LanguageProvider>
             <AuthProvider initialUser={user} initialProfile={userProfile}>
               {children}
-              <ChatBot />
+              <ClientChatBot />
               <ClientToaster />
             </AuthProvider>
           </LanguageProvider>

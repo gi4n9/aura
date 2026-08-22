@@ -67,17 +67,17 @@ export async function POST(req: Request) {
 
             return new Response(stream, { headers });
         } catch (geminiError: any) {
-            console.warn("⚠️ Gemini Stream Quota Exceeded. Falling back to Groq stream...", geminiError.message);
+            console.warn("⚠️ Gemini Stream Quota Exceeded. Falling back to Local Gemini 3.6 Flash stream...", geminiError.message);
             try {
-                // Sử dụng Groq Llama 3.3 làm phương án dự phòng dạng Stream qua chuẩn của Vercel AI
+                // Sử dụng Local Gemini 3.6 Flash làm phương án dự phòng dạng Stream qua chuẩn của Vercel AI
                 const { createOpenAI } = await import("@ai-sdk/openai");
-                const groqAi = createOpenAI({
-                    baseURL: "https://api.groq.com/openai/v1",
-                    apiKey: process.env.GROQ_API_KEY
+                const localAi = createOpenAI({
+                    baseURL: process.env.OPENAI_BASE_URL || "http://127.0.0.1:8081/v1",
+                    apiKey: process.env.OPENAI_API_KEY || "sk-gemini"
                 });
 
                 const groqResult = await streamText({
-                    model: groqAi("llama-3.3-70b-versatile"),
+                    model: localAi("gemini-3.6-flash"),
                     maxRetries: 0,
                     messages: [
                         { role: "system", content: systemPrompt },

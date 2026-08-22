@@ -219,12 +219,13 @@ export default function AdminSettingsClient({ initialSettings }: AdminSettingsCl
               <div>
                 <label className="block text-xs font-bold text-stone-700 uppercase mb-1">Mô Hình AI Tóm Tắt & ChatBot Mặc Định</label>
                 <select
-                  value={settings.defaultAiModel || "groq:llama-3.3-70b-versatile"}
+                  value={settings.defaultAiModel || "local:gemini-3.6-flash"}
                   onChange={(e) => handleChange("defaultAiModel", e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-900 bg-white focus:outline-none focus:border-[#C5A059]"
                 >
-                  <option value="groq:llama-3.3-70b-versatile">Groq: LLaMA-3.3-70B Versatile (Khuyên Dùng - Siêu Nhanh)</option>
+                  <option value="local:gemini-3.6-flash">Local: Gemini 3.6 Flash Web2API (Khuyên Dùng - Siêu Tốc & Không Giới Hạn Token)</option>
                   <option value="google:gemini-2.5-flash">Google: Gemini 2.5 Flash</option>
+                  <option value="groq:openai/gpt-oss-120b">Groq: GPT-OSS 120B</option>
                 </select>
               </div>
 

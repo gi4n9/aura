@@ -1,9 +1,11 @@
+import sharp from "sharp";
 import Tesseract from "tesseract.js";
 import { GoogleGenerativeAI, Schema, SchemaType } from "@google/generative-ai";
 import * as xlsx from "xlsx";
 import Groq from "groq-sdk";
 import { getSha256, getCachedOcr, setCachedOcr } from "./ocr-cache";
 import { optimizeImageForOCR } from "./image-preprocessor";
+import { callLocalGeminiJSON } from "./local-gemini";
 
 // Sửa lỗi DOMMatrix is not defined trên môi trường Node.js mới
 if (typeof global !== "undefined" && !global.DOMMatrix) {
@@ -34,7 +36,7 @@ const questionItemSchema: Schema = {
         },
         content: {
             type: SchemaType.STRING,
-            description: "Nội dung câu hỏi bằng tiếng Việt, bao gồm cả các đoạn mã nguồn, bảng biểu, công thức (nếu có, định dạng bằng Markdown)"
+            description: "Nội dung câu hỏi bằng tiếng Việt, công thức toán/ký hiệu BẮT BUỘC viết dưới dạng LaTeX $...$ hoặc $$...$$. Bao gồm cả mã nguồn, bảng biểu."
         },
         type: {
             type: SchemaType.STRING,
@@ -43,11 +45,11 @@ const questionItemSchema: Schema = {
         options: {
             type: SchemaType.ARRAY,
             items: { type: SchemaType.STRING },
-            description: "Danh sách 4 lựa chọn (A, B, C, D) cho câu hỏi MULTIPLE_CHOICE. Nội dung đáp án không bao gồm chữ cái tiền tố 'A.', 'B.'"
+            description: "Danh sách 4 lựa chọn (A, B, C, D) cho câu hỏi MULTIPLE_CHOICE (định dạng công thức toán trong $...$ nếu có). Nội dung đáp án không bao gồm chữ cái tiền tố 'A.', 'B.'"
         },
         trueFalseStatements: {
             type: SchemaType.ARRAY,
-            description: "Danh sách các mệnh đề Đúng/Sai cho câu hỏi TRUE_FALSE. Thường có 4 mệnh đề a, b, c, d.",
+            description: "Danh sách các mệnh đề Đúng/Sai cho câu hỏi TRUE_FALSE. Thường có 4 mệnh đề a, b, c, d (công thức toán kẹp trong $...$).",
             items: {
                 type: SchemaType.OBJECT,
                 properties: {
@@ -78,6 +80,15 @@ const questionItemSchema: Schema = {
         subjectHint: {
             type: SchemaType.STRING,
             description: "Gợi ý môn học phát hiện từ đề: 'toan', 'ngu_van', 'anh_van', 'ly', 'hoa', 'sinh', 'su', 'dia', 'gdcd', 'tin_hoc'"
+        },
+        imageBbox: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.NUMBER },
+            description: "Tọa độ [ymin, xmin, ymax, xmax] (thang đo chuẩn hóa từ 0 đến 1000) CHỈ bao quanh vùng HÌNH VẼ MINH HỌA, ĐỒ THỊ, HÌNH HỌC KHÔNG GIAN, BẢNG BIẾN THIÊN, BẢNG BIỂU trong đề. BẮT ĐẦU từ mép trên của hình vẽ/bảng (KHÔNG bao gồm phần văn bản câu hỏi ở trên) và KÉO XUỐNG HẾT mép dưới cùng của hình vẽ/bảng (bao gồm cả các đỉnh đáy A'B'C'D', nhãn điểm, mũi tên, hàng cuối của bảng). ĐỂ RỖNG [] nếu câu hỏi không có hình vẽ/bảng minh họa."
+        },
+        pageIndex: {
+            type: SchemaType.INTEGER,
+            description: "Chỉ số trang (0-indexed) chứa hình vẽ này trong danh sách tệp đính kèm."
         }
     },
     required: ["index", "content", "type"]
@@ -258,6 +269,68 @@ export interface ParsedQuestion {
     passageContent?: string; // Nội dung passage (chỉ câu đầu tiên trong nhóm)
     passageGroupId?: string; // ID nhóm passage
     subjectHint?: string; // Gợi ý môn học
+    contentImageUrl?: string; // URL hoặc Data URL ảnh cắt hình vẽ/bảng biến thiên
+    imageBbox?: number[]; // [ymin, xmin, ymax, xmax] tọa độ 0-1000
+    pageIndex?: number; // Chỉ số trang
+}
+
+// ================== CROP ẢNH MINH HỌA TỰ ĐỘNG ==================
+
+export async function extractImageCrop(
+    buffer: Buffer,
+    bbox?: number[]
+): Promise<string | undefined> {
+    if (!bbox || !Array.isArray(bbox) || bbox.length !== 4) return undefined;
+    const [ymin, xmin, ymax, xmax] = bbox;
+    if (ymax <= ymin || xmax <= xmin) return undefined;
+
+    try {
+        const metadata = await sharp(buffer).metadata();
+        if (!metadata.width || !metadata.height) return undefined;
+
+        // Bbox chuẩn hóa theo thang 0-1000
+        const top = Math.max(0, Math.floor((ymin / 1000) * metadata.height));
+        const left = Math.max(0, Math.floor((xmin / 1000) * metadata.width));
+        const bottom = Math.min(metadata.height, Math.ceil((ymax / 1000) * metadata.height));
+        const right = Math.min(metadata.width, Math.ceil((xmax / 1000) * metadata.width));
+
+        const rawWidth = right - left;
+        const rawHeight = bottom - top;
+
+        if (rawWidth < 15 || rawHeight < 15) return undefined;
+
+        // Padding tối ưu:
+        // Top: 0 padding để tuyệt đối không dính dòng chữ câu hỏi ở trên
+        // Bottom: padding 5% + 15px để bao trọn đỉnh đáy, mũi tên, hàng cuối của bảng biến thiên
+        // Left/Right: padding 3% + 10px để không cắt xén nhãn bên
+        const cropLeft = Math.max(0, left - (Math.floor(rawWidth * 0.03) + 10));
+        const cropTop = Math.max(0, top); // Tuyệt đối không pad lên trên để tránh dính chữ đề bài
+        const cropRight = Math.min(metadata.width, right + (Math.floor(rawWidth * 0.03) + 10));
+        const cropBottom = Math.min(metadata.height, bottom + (Math.floor(rawHeight * 0.05) + 15));
+
+        const cropWidth = cropRight - cropLeft;
+        const cropHeight = cropBottom - cropTop;
+
+        // Xử lý làm nét (sharpening), tăng độ tương phản và supersampling chống vỡ ảnh khi zoom
+        let pipeline = sharp(buffer).extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight });
+
+        if (cropWidth < 900) {
+            pipeline = pipeline.resize({
+                width: Math.min(1800, Math.max(cropWidth * 2, 900)),
+                kernel: "lanczos3"
+            });
+        }
+
+        const cropped = await pipeline
+            .sharpen({ sigma: 1.2, m1: 1.5, m2: 0.5 }) // Làm nét viền vẽ hình học & chữ số trong bảng biểu
+            .png({ quality: 100, compressionLevel: 6 })
+            .toBuffer();
+
+        return `data:image/png;base64,${cropped.toString("base64")}`;
+    } catch (err) {
+        console.warn("⚠️ extractImageCrop error:", err);
+        return undefined;
+    }
 }
 
 // ================== SHARED PROMPT & MAPPER ==================
@@ -274,9 +347,9 @@ function normalizeQuestionType(raw: string): QuestionTypeValue {
     if (VALID_QUESTION_TYPES.includes(upper as QuestionTypeValue)) return upper as QuestionTypeValue;
     // Fallback heuristics
     if (upper.includes("TRUE") || upper.includes("FALSE") || upper.includes("DUNG") || upper.includes("SAI")) return "TRUE_FALSE";
-    if (upper.includes("FILL") || upper.includes("BLANK") || upper.includes("DIEN")) return "FILL_IN_BLANK";
     if (upper.includes("READING") || upper.includes("COMPREHENSION") || upper.includes("DOC_HIEU")) return "READING_COMPREHENSION";
     if (upper.includes("MULTIPLE") || upper.includes("CHOICE") || upper.includes("TRAC_NGHIEM")) return "MULTIPLE_CHOICE";
+    if (upper.includes("FILL") || upper.includes("BLANK") || upper.includes("DIEN")) return "FILL_IN_BLANK";
     return "ESSAY";
 }
 
@@ -315,7 +388,12 @@ function sanitizeOptionText(opt: string): string {
 /**
  * Map kết quả AI (raw JSON item) thành ParsedQuestion kèm chuẩn hóa định dạng
  */
-function mapAiItemToParsedQuestion(item: any, fallbackIndex: number, globalSubjectHint?: string): ParsedQuestion {
+async function mapAiItemToParsedQuestion(
+    item: any, 
+    fallbackIndex: number, 
+    globalSubjectHint?: string,
+    fileBuffer?: Buffer
+): Promise<ParsedQuestion> {
     const type = normalizeQuestionType(item.type);
     const content = sanitizeQuestionContent(item.content || "");
 
@@ -334,6 +412,11 @@ function mapAiItemToParsedQuestion(item: any, fallbackIndex: number, globalSubje
         }));
     }
 
+    let contentImageUrl: string | undefined = undefined;
+    if (fileBuffer && item.imageBbox && Array.isArray(item.imageBbox) && item.imageBbox.length === 4) {
+        contentImageUrl = await extractImageCrop(fileBuffer, item.imageBbox);
+    }
+
     return {
         index: item.index || fallbackIndex,
         content,
@@ -344,7 +427,10 @@ function mapAiItemToParsedQuestion(item: any, fallbackIndex: number, globalSubje
         passageTitle: item.passageTitle ? cleanMarkdownAndLatex(item.passageTitle) : undefined,
         passageContent: item.passageContent ? cleanMarkdownAndLatex(item.passageContent) : undefined,
         passageGroupId: item.passageGroupId || undefined,
-        subjectHint: item.subjectHint || globalSubjectHint || undefined
+        subjectHint: item.subjectHint || globalSubjectHint || undefined,
+        contentImageUrl,
+        imageBbox: item.imageBbox || undefined,
+        pageIndex: typeof item.pageIndex === "number" ? item.pageIndex : undefined
     };
 }
 
@@ -354,76 +440,65 @@ function mapAiItemToParsedQuestion(item: any, fallbackIndex: number, globalSubje
 function buildMultiSubjectPrompt(mode: "single" | "batch"): string {
     const batchExtra = mode === "batch" ? `
 Chú ý: Các tệp đính kèm là các trang liên tiếp của MỘT đề thi. Bạn phải nối các trang lại với nhau thành danh sách các câu hỏi hoàn chỉnh.
-Đồng thời, hãy tìm "Mã đề" của đề thi này. Mã đề thường nằm ở đầu hoặc cuối trang (ví dụ "Mã đề 123", "Mã đề thi 0525").
+Đồng thời, hãy tìm "Mã đề" của đề thi này. Mã đề thường nằm ở đầu hoặc cuối trang (ví dụ "Mã đề 123", "Mã đề thi 0525", "Mã đề: 0103").
 ` : "";
 
     return `
 Bạn là một chuyên gia nhận dạng và phân tích đề thi giáo dục Việt Nam (GDPT 2025).
 Nhiệm vụ: Đọc toàn bộ tài liệu đính kèm và trích xuất thành danh sách câu hỏi có cấu trúc.
 ${batchExtra}
+=== QUY TẮC BẮT BUỘC VỀ ĐỊNH DẠNG LATEX CHO TOÁN HỌC & KÝ HIỆU KHOA HỌC ===
+Mọi công thức toán học, ký hiệu, số mũ, chỉ số dưới, vector, hàm số, phương trình, tích phân, hình học BẮT BUỘC PHẢI VIẾT BẰNG LATEX kẹp trong $...$ (inline) hoặc $$...$$ (block):
+1. **Chỉ số dưới (Subscript)**: Viết dạng $u_1$, $u_2$, $u_n$, $u_4 = u_1 \cdot q^3$, $A_1, A_2, \dots, A_{12}$, $A(1; 5; 1)$, $B(3; 3; 1)$, $P(A)$, $P(B)$, $P(AB)$, $Oxyz$.
+2. **Chỉ số trên / Số mũ (Superscript)**: Viết dạng $x^2$, $x^3$, $4x^3$, $f'(x)$, $g'(x)$, $0.001x^3 + 30x + 10$, $S = \\{1; 9\\}$.
+3. **Vector**: Viết dạng $\\vec{AB}$, $\\vec{CD}$, $\\vec{D'C'}$, $\\vec{AA'}$, $\\vec{AD}$, $\\vec{MN}$.
+4. **Phân số**: Viết dạng $\\frac{ax+b}{cx+d}$, $\\frac{1}{3}x^3 - 5x^2 + 9x + 8$, $\\frac{37}{3}$, $\\frac{H}{50}$, $\\frac{x^2}{1.5^2} + \\frac{y^2}{1^2} = 1$.
+5. **Tích phân & Nguyên hàm**: Viết dạng $\\int f(x)dx = \\sin x + C$, $\\int_a^b f(t)dt$, $\\int [3 + f(x)]dx$.
+6. **Logarit & Căn bậc hai**: Viết dạng $\\log_3(x-1) = 1$, $\\sqrt{x}$.
+7. **Hệ phương trình & Tập hợp**: $\\begin{cases} x+y-3 < 0 \\\\ x-y+1 > 0 \\end{cases}$, $\\mathbb{R}$, $\\{0; 1; 2; 3; \\dots; 20\\}$.
+8. **Bảng biến thiên / Bảng số liệu**: Dùng định dạng Markdown Table chuẩn kết hợp LaTeX trong các ô, HOẶC xác định tọa độ \`imageBbox\` để cắt ảnh bảng biến thiên.
+
+=== QUY TẮC TRÍCH XUẤT HÌNH VẼ / BẢNG BIẾN THIÊN / BẢNG SỐ LIỆU / ĐA GIÁC (imageBbox) ===
+ĐẶC BIỆT CHÚ Ý: Phải focus CHÍNH XÁC vào hình vẽ/bảng biểu, TUYỆT ĐỐI KHÔNG cắt dính câu hỏi chữ bên trên:
+1. **BẢNG BIẾN THIÊN & BẢNG SỐ LIỆU & BẢNG Ô VUÔNG**:
+   - \`ymin\` (mép trên): BẮT BUỘC đặt tại đường kẻ ngang trên cùng của khung bảng (hàng đầu tiên chứa chữ $x$ hoặc tiêu đề bảng). TUYỆT ĐỐI KHÔNG bắt đầu từ dòng chữ câu hỏi ở trên ("Câu 4: Cho hàm số y = f(x)...").
+   - \`ymax\` (mép dưới): BẮT BUỘC kéo qua đường kẻ đáy dưới cùng của bảng (chứa hàng $y$ và các giá trị $-\\infty, +\\infty$, mũi tên đi xuống).
+2. **HÌNH ĐA GIÁC & HÌNH HỌC KHÔNG GIAN & KHỐI TRÒN XOAY (Hình lập phương ABCD.A'B'C'D', đa giác 12 đỉnh A1..A12, khối elip...)**:
+   - \`ymin\` (mép trên): BẮT BUỘC đặt tại đỉnh cao nhất của hình (ví dụ đỉnh $A_1$, đỉnh $A$). TUYỆT ĐỐI KHÔNG lấy phần chữ "Câu 1: Cho đa giác đều..." ở trên.
+   - \`ymax\` (mép dưới): BẮT BUỘC kéo qua đỉnh thấp nhất của hình (các đỉnh đáy $A', B', C', D'$).
+   - \`xmin, xmax\`: Bao trọn các đỉnh và nhãn ngoài cùng bên trái và bên phải của hình.
+3. \`pageIndex\` (0, 1, 2...): Trang chứa hình vẽ trong danh sách tệp đính kèm.
+4. Nếu câu hỏi KHÔNG có hình vẽ/bảng minh họa trong đề, để \`imageBbox: []\`.
+
 === PHÂN LOẠI CÂU HỎI (type) ===
 
-1. **MULTIPLE_CHOICE**: Trắc nghiệm có 4 đáp án A, B, C, D. Rất phổ biến trong Toán, Lý, Hóa, Sinh, Sử, Địa, GDCD, Ngoại ngữ.
-   → Trích xuất 4 đáp án vào mảng \`options\` (không bao gồm tiền tố "A.", "B.").
+1. **MULTIPLE_CHOICE**: Trắc nghiệm có 4 đáp án A, B, C, D (Đặc trưng của Đề Toán Phần I).
+   → Trích xuất 4 đáp án vào mảng \`options\` (không bao gồm tiền tố "A.", "B."). Công thức toán trong options cũng viết bằng LaTeX $...$.
 
-2. **TRUE_FALSE**: Câu hỏi Đúng/Sai dạng cụm mệnh đề. Thường gặp trong đề Toán THPT.
-   → Cấu trúc đặc trưng: Phần dẫn chung + 4 mệnh đề (a, b, c, d) cần đánh giá Đúng hoặc Sai.
-   → \`content\` = phần dẫn chung (VD: "Cho hàm số y = f(x) có đạo hàm liên tục...").
-   → Trích xuất 4 mệnh đề vào \`trueFalseStatements\` (mỗi item có \`label\` và \`statement\`).
+2. **TRUE_FALSE**: Câu hỏi Đúng/Sai dạng cụm 4 mệnh đề a, b, c, d (Đặc trưng của Đề Toán Phần II).
+   → \`content\` = phần dẫn chung (VD: "Trong không gian xét hệ tọa độ Oxyz...").
+   → Trích xuất 4 mệnh đề vào \`trueFalseStatements\` (mỗi item có \`label\` và \`statement\`). Mệnh đề chứa công thức toán viết bằng LaTeX $...$.
    → KHÔNG trích xuất đáp án (Đúng/Sai) — sẽ được tải lên riêng.
 
-3. **FILL_IN_BLANK**: Điền khuyết / Trả lời ngắn. Phổ biến trong Toán (tính kết quả) và Ngoại ngữ (điền từ).
-   → Câu hỏi yêu cầu nhập một đáp án ngắn (số, từ, cụm từ).
-   → Dấu hiệu: "Kết quả là ___", "Điền vào chỗ trống", câu hỏi yêu cầu tính toán ra 1 đáp số.
-   → \`content\` chứa toàn bộ nội dung câu hỏi. KHÔNG có \`options\`.
+3. **ESSAY**: Tự luận / Câu trả lời ngắn tính toán giải trình (Đặc trưng của Đề Toán Phần III - PHẦN 3 LA MÃ và bài tập tự luận).
+   → \`content\` = toàn bộ câu hỏi và yêu cầu bài toán.
+   → KHÔNG có \`options\`. Học viên sẽ tự luận giải và nhập kết quả.
 
-4. **READING_COMPREHENSION**: Câu hỏi đọc hiểu dựa trên 1 đoạn văn bản chung (passage/ngữ liệu).
-   → Rất phổ biến trong Ngữ văn (phần Đọc hiểu) và Ngoại ngữ (Reading).
-   → Cấu trúc: 1 đoạn văn bản → nhiều câu hỏi bên dưới.
-   → Gán \`passageGroupId\` giống nhau cho tất cả câu hỏi thuộc cùng 1 passage (VD: "passage_1", "passage_2").
+4. **FILL_IN_BLANK**: Điền khuyết từ / cụm từ (Chủ yếu cho Ngoại ngữ).
+
+5. **READING_COMPREHENSION**: Câu hỏi đọc hiểu dựa trên 1 đoạn văn bản chung (passage/ngữ liệu).
+   → Gán \`passageGroupId\` giống nhau cho tất cả câu hỏi thuộc cùng 1 passage.
    → Chỉ gán \`passageContent\` và \`passageTitle\` cho câu hỏi ĐẦU TIÊN trong nhóm.
-   → Câu hỏi đọc hiểu có thể là trắc nghiệm hoặc tự luận — phân loại dựa trên nội dung câu hỏi:
-      * Nếu có 4 đáp án A/B/C/D → dùng MULTIPLE_CHOICE (KHÔNG dùng READING_COMPREHENSION)
-      * Nếu không có đáp án chọn → dùng READING_COMPREHENSION
-      * Câu hỏi reading có passage thì vẫn gán passageGroupId/passageContent dù type là MULTIPLE_CHOICE.
-
-5. **ESSAY**: Tự luận viết dài. Phổ biến trong Ngữ văn (phần Nghị luận) và các môn xã hội.
-   → Câu hỏi yêu cầu viết đoạn văn, bài văn, trình bày quan điểm.
-   → \`content\` chứa toàn bộ yêu cầu.
 
 === NHẬN DẠNG THEO MÔN HỌC ===
 
-Hãy xác định \`subjectHint\` cho toàn bộ đề (ở mức top-level) dựa trên tiêu đề hoặc nội dung:
-- "toan": Toán học (hàm số, hình học, đại số, xác suất)
-- "ngu_van": Ngữ văn (đọc hiểu, nghị luận, phân tích văn học)
-- "anh_van": Tiếng Anh / Ngoại ngữ
-- "ly": Vật lý
-- "hoa": Hóa học
-- "sinh": Sinh học
-- "su": Lịch sử
-- "dia": Địa lý
-- "gdcd": Giáo dục công dân
-- "tin_hoc": Tin học / Lập trình
-
-=== QUY TẮC HIỆU CHỈNH LỖI OCR NGHĨA VĂN BẢN (SEMANTIC HEALING) ===
-
-1. TỰ ĐỘNG KHÔI PHỤC LỖI TỪ NGHĨA DO PHÔNG IN NGHIÊNG VÀ NÉT BÚT TÔ ĐÈ:
-   - Khi văn bản được trích xuất từ OCR có lỗi do phông in nghiêng hoặc vết bút mực đè lên (VD: "tấm bản" -> "văn bản", "[...J" -> "[...]", "giam cầm.|Nó" -> "giam cầm. Nó", "được tôn vinh" -> "được hậu thế tôn vinh"), bạn PHẢI tự động hiệu chỉnh dựa trên ngữ cảnh chuẩn xác của bài đọc hiểu.
-   - Giữ đúng cấu trúc xuống dòng, đoạn văn (1), (2), (3)... và nội dung gốc của bài đọc.
+Hãy xác định \`subjectHint\` cho toàn bộ đề (ở mức top-level): "toan", "ngu_van", "anh_van", "ly", "hoa", "sinh", "su", "dia", "gdcd", "tin_hoc".
 
 === QUY TẮC CHUNG ===
-
 1. Mỗi câu hỏi thường được đánh dấu bằng "Câu X:", "Bài X.", "Question X".
 2. KHÔNG nhận diện hay trích xuất đáp án đúng (correctAnswer) — sẽ được tải lên riêng.
 3. Phải trả về TẤT CẢ các câu hỏi, không bỏ sót. Đọc kỹ từ đầu đến cuối tài liệu.
-4. Bảo toàn nguyên vẹn nội dung (không viết tắt, không bỏ sót).
-5. Định dạng Markdown cho mã nguồn, công thức, bảng biểu trong \`content\`:
-   - Dùng block code (3 backticks) cho mã nguồn, KHÔNG viết trên cùng dòng.
-   - Dùng Markdown table cho bảng số liệu.
-   - Mô tả biểu đồ/hình vẽ bằng text nếu không thể hiển thị.
-6. Đặc biệt chú ý đề Toán: phân biệt rõ 3 dạng (trắc nghiệm 4 đáp án, Đúng/Sai cụm mệnh đề, Điền khuyết).
-7. Đặc biệt chú ý đề Ngữ văn: tách rõ phần Đọc hiểu (READING_COMPREHENSION/MULTIPLE_CHOICE + passage) và phần Nghị luận (ESSAY).
-8. Đặc biệt chú ý đề Ngoại ngữ: nhận dạng phần Reading (có passage), phần Vocabulary/Grammar (MULTIPLE_CHOICE), phần Writing (ESSAY), phần Pronunciation (MULTIPLE_CHOICE).
+4. Bảo toàn nguyên vẹn nội dung, biểu thức và ký hiệu toán học.
 `;
 }
 
@@ -539,12 +614,14 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
         const questionsArray = Array.isArray(parsed.questions) ? parsed.questions : (Array.isArray(parsed) ? parsed : []);
 
         console.log(`✅ [Direct Gemini Vision] Thành công bóc được ${questionsArray.length} câu hỏi từ ảnh/tài liệu.`);
-        return questionsArray.map((item: any, i: number) =>
-            mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint)
+        return await Promise.all(
+            questionsArray.map((item: any, i: number) =>
+                mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint, mimeType.startsWith("image/") ? buffer : undefined)
+            )
         );
 
     } catch (error) {
-        console.warn("⚠️ Gemini failed (parseQuestionsFromFile), falling back to OCR + Groq Llama 3.3...", error);
+        console.warn("⚠️ Gemini failed (parseQuestionsFromFile), falling back to OCR + Local Gemini 3.6 Flash...", error);
         try {
             let text = "";
             if (mimeType === "application/pdf") {
@@ -557,53 +634,22 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
                 throw new Error("Không thể trích xuất văn bản từ tài liệu.");
             }
 
-            console.log(`🧠 Calling Groq Llama 3.3 fallback for multi-subject file parsing...`);
+            console.log(`🧠 Calling Local Gemini 3.6 Flash fallback for multi-subject file parsing...`);
             const groqPrompt = buildMultiSubjectPrompt("single");
-            const chatCompletion = await groq.chat.completions.create({
-                messages: [
-                    {
-                        role: "user",
-                        content: `${groqPrompt}
+            const promptContent = `${groqPrompt}\n\nDưới đây là nội dung văn bản trích xuất từ tài liệu:\n${text}\n\nTrả về JSON theo đúng cấu trúc yêu cầu.`;
 
-Dưới đây là nội dung văn bản trích xuất từ tài liệu:
-${text}
-
-Trả về JSON theo cấu trúc:
-{
-  "subjectHint": "toan" hoặc "ngu_van" hoặc ...,
-  "questions": [
-    {
-      "index": 1,
-      "content": "Nội dung câu hỏi",
-      "type": "MULTIPLE_CHOICE | TRUE_FALSE | FILL_IN_BLANK | READING_COMPREHENSION | ESSAY",
-      "options": ["...", "..."],
-      "trueFalseStatements": [{"label": "a", "statement": "..."}],
-      "passageGroupId": "passage_1",
-      "passageTitle": "...",
-      "passageContent": "..."
-    }
-  ]
-}`
-                    }
-                ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.2
-            });
-
-            const responseText = chatCompletion.choices[0].message.content || "{}";
-            let parsedObj: any;
-            try {
-                parsedObj = JSON.parse(responseText);
-            } catch (e) {
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                parsedObj = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-            }
+            const parsedObj = await callLocalGeminiJSON<any>({
+                messages: [{ role: "user", content: promptContent }],
+                model: "gemini-3.6-flash",
+                temperature: 0.1,
+            }, { questions: [] });
 
             const globalSubjectHint = parsedObj.subjectHint || undefined;
             const questionsArray = Array.isArray(parsedObj.questions) ? parsedObj.questions : [];
-            return questionsArray.map((item: any, i: number) =>
-                mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint)
+            return await Promise.all(
+                questionsArray.map((item: any, i: number) =>
+                    mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint, mimeType.startsWith("image/") ? buffer : undefined)
+                )
             );
         } catch (fallbackError) {
             console.error("❌ Fallback to Groq also failed:", fallbackError);
@@ -669,8 +715,16 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
 
         const globalSubjectHint = parsed.subjectHint || null;
         const questionsArray = Array.isArray(parsed.questions) ? parsed.questions : [];
-        const formattedQuestions = questionsArray.map((item: any, i: number) =>
-            mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint || undefined)
+        const formattedQuestions = await Promise.all(
+            questionsArray.map((item: any, i: number) => {
+                let targetBuf: Buffer | undefined = undefined;
+                if (typeof item.pageIndex === "number" && files[item.pageIndex]) {
+                    targetBuf = files[item.pageIndex].mimeType.startsWith("image/") ? files[item.pageIndex].buffer : undefined;
+                } else if (files[0]?.mimeType.startsWith("image/")) {
+                    targetBuf = files[0].buffer;
+                }
+                return mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint || undefined, targetBuf);
+            })
         );
 
         console.log(`✅ [Direct Gemini Vision Batch] Bóc tách thành công ${formattedQuestions.length} câu hỏi từ ${files.length} file(s).`);
@@ -681,7 +735,7 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
         };
 
     } catch (error) {
-        console.warn("⚠️ Gemini failed (parseQuestionsFromFilesBatch), falling back to OCR + Groq Llama 3.3...", error);
+        console.warn("⚠️ Gemini failed (parseQuestionsFromFilesBatch), falling back to OCR + Local Gemini 3.6 Flash...", error);
         try {
             const texts = [];
             for (const file of files) {
@@ -699,54 +753,27 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
                 throw new Error("Không thể trích xuất văn bản từ tài liệu.");
             }
 
-            console.log(`🧠 Calling Groq Llama 3.3 fallback for multi-subject batch parsing...`);
+            console.log(`🧠 Calling Local Gemini 3.6 Flash fallback for multi-subject batch parsing...`);
             const groqPrompt = buildMultiSubjectPrompt("batch");
-            const chatCompletion = await groq.chat.completions.create({
-                messages: [
-                    {
-                        role: "user",
-                        content: `${groqPrompt}
-
-Dưới đây là nội dung văn bản trích xuất từ các trang liên tiếp:
-${joinedText}
-
-Trả về JSON theo cấu trúc:
-{
-  "examCode": "123" hoặc null,
-  "subjectHint": "toan" hoặc "ngu_van" hoặc ...,
-  "questions": [
-    {
-      "index": 1,
-      "content": "Nội dung câu hỏi",
-      "type": "MULTIPLE_CHOICE | TRUE_FALSE | FILL_IN_BLANK | READING_COMPREHENSION | ESSAY",
-      "options": ["...", "..."],
-      "trueFalseStatements": [{"label": "a", "statement": "..."}],
-      "passageGroupId": "passage_1",
-      "passageTitle": "...",
-      "passageContent": "..."
-    }
-  ]
-}`
-                    }
-                ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.2
-            });
-
-            const responseText = chatCompletion.choices[0].message.content || "{}";
-            let parsedObj: any;
-            try {
-                parsedObj = JSON.parse(responseText);
-            } catch (e) {
-                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                parsedObj = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-            }
+            const promptContent = `${groqPrompt}\n\nDưới đây là nội dung văn bản trích xuất từ các trang liên tiếp:\n${joinedText}\n\nTrả về JSON theo đúng cấu trúc yêu cầu.`;
+            const parsedObj = await callLocalGeminiJSON<any>({
+                messages: [{ role: "user", content: promptContent }],
+                model: "gemini-3.6-flash",
+                temperature: 0.1,
+            }, { questions: [] });
 
             const globalSubjectHint = parsedObj.subjectHint || null;
             const questionsArray = Array.isArray(parsedObj.questions) ? parsedObj.questions : [];
-            const formattedQuestions = questionsArray.map((item: any, i: number) =>
-                mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint || undefined)
+            const formattedQuestions = await Promise.all(
+                questionsArray.map((item: any, i: number) => {
+                    let targetBuf: Buffer | undefined = undefined;
+                    if (typeof item.pageIndex === "number" && files[item.pageIndex]) {
+                        targetBuf = files[item.pageIndex].mimeType.startsWith("image/") ? files[item.pageIndex].buffer : undefined;
+                    } else if (files[0]?.mimeType.startsWith("image/")) {
+                        targetBuf = files[0].buffer;
+                    }
+                    return mapAiItemToParsedQuestion(item, i + 1, globalSubjectHint || undefined, targetBuf);
+                })
             );
 
             return {
@@ -840,14 +867,10 @@ LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
         throw new Error("Không thể trích xuất văn bản từ hình ảnh đáp án.");
     }
 
-    console.log(`🧠 Calling Groq Llama 3.3 for answer key parsing (Direct OCR Mode)...`);
+    console.log("🧠 Calling Local Gemini 3.6 Flash for answer key parsing (Direct OCR Mode)...");
     let responseText = "[]";
     try {
-        const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "user",
-                    content: `
+        const promptContent = `
 Dưới đây là văn bản được trích xuất (OCR) từ một hình ảnh bảng đáp án bằng Tiếng Việt.
 Nhiệm vụ của bạn là trích xuất bảng đáp án từ dữ liệu này.
 ${examCodeInstruction}
@@ -863,25 +886,21 @@ Quy tắc trả về:
   "uuid-cua-cau-1": "A",
   "uuid-cua-cau-2": "Nội dung đáp án mẫu chi tiết của câu tự luận..."
 }
-`
-                    }
-                ],
-                model: "llama-3.3-70b-versatile",
-                response_format: { type: "json_object" },
-                temperature: 0.2
-            });
-
-            const completionContent = chatCompletion.choices[0].message.content || "{}";
-            const parsedObj = JSON.parse(completionContent);
-            const arrayFormat = Object.entries(parsedObj).map(([key, val]) => ({
-                questionId: key,
-                correctAnswer: val
-            }));
-            responseText = JSON.stringify(arrayFormat);
-        } catch (fallbackError: any) {
-            console.error("❌ Fallback answer key to Groq also failed:", fallbackError.message);
-            throw new Error(`Fallback Answer Key Error: ${fallbackError.message}`);
-        }
+`;
+        const parsedObj = await callLocalGeminiJSON({
+            messages: [{ role: "user", content: promptContent }],
+            model: "gemini-3.6-flash",
+            temperature: 0.1,
+        }, {});
+        const arrayFormat = Object.entries(parsedObj).map(([key, val]) => ({
+            questionId: key,
+            correctAnswer: val
+        }));
+        responseText = JSON.stringify(arrayFormat);
+    } catch (fallbackError: any) {
+        console.error("❌ Fallback answer key to Local Gemini also failed:", fallbackError.message);
+        throw new Error(`Fallback Answer Key Error: ${fallbackError.message}`);
+    }
 
     let parsed: Record<string, string> = {};
     try {
@@ -924,15 +943,7 @@ export async function parseAnswerKeyFromExcel(
     const examCodeInstruction = targetExamCode ? `LƯU Ý QUAN TRỌNG: Chỉ trích xuất cột đáp án dành cho Mã đề thi là "${targetExamCode}".` : `If file has multiple columns of exam codes, take the first column of exam codes.`;
 
     const questionsInfo = existingQuestions && existingQuestions.length > 0
-        ? `\nDưới đây là danh sách các câu hỏi đã có trong đề thi (đã được sắp xếp tuần tự theo thứ tự xuất hiện từ trên xuống dưới):\n${existingQuestions.map(q => `- ID: ${q.id} - Câu ${q.index} (Loại: ${q.type}): ${q.content.slice(0, 120)}...`).join("\n")}
-LƯU Ý QUAN TRỌNG VỀ ĐỐI KHỚP:
-- Đề thi tự luận/Ngữ văn thường chia làm các phần (Ví dụ: Phần I Đọc hiểu có các Câu 1, 2, 3, 4 và Phần II Làm văn/Viết có các Câu 1, 2).
-- Tuy nhiên trong CSDL, toàn bộ các câu hỏi này được xếp tuần tự thành danh sách phẳng (ví dụ: các câu đọc hiểu là từ 1 đến 4, câu làm văn sẽ là câu thứ 5, 6...).
-- Do đó, hãy trích xuất các đáp án từ tài liệu tải lên theo thứ tự xuất hiện từ trên xuống dưới của chúng, rồi gán lần lượt cho các ID câu hỏi trong danh sách CSDL ở trên theo đúng thứ tự tuyến tính (ví dụ: đáp án đầu tiên tương ứng ID câu thứ 1, đáp án thứ hai tương ứng ID câu thứ 2... đáp án của Phần II Câu 1 tương ứng ID câu thứ 5).
-- Hãy đối khớp kỹ lưỡng nội dung câu hỏi và ngữ cảnh để gán chính xác ID câu hỏi dạng UUID làm khóa chính cho đáp án đó.
-- YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN (ESSAY):
-  * Đối với các câu hỏi tự luận/làm văn có đáp án chứa nhiều ý nhỏ (như a, b... hoặc Ý 1, Ý 2...), bạn PHẢI GIỮ NGUYÊN cấu trúc cụm đáp án gốc, KHÔNG được phép rút gọn hay tự ý viết lại.
-  * Phải bảo toàn toàn bộ ký tự xuống dòng (sử dụng định dạng danh sách liệt kê bằng Markdown hoặc các dòng riêng biệt kết thúc bằng ký tự '\\n') để nội dung hiển thị phân dòng rõ ràng, ngăn nắp. TUYỆT ĐỐI không được gộp các dòng lại thành một hàng duy nhất hoặc một đoạn văn liền mạch, gây khó đọc cho sinh viên.`
+        ? `\nDưới đây là danh sách các câu hỏi đã có trong đề thi (đã được sắp xếp tuần tự theo thứ tự xuất hiện từ trên xuống dưới):\n${existingQuestions.map(q => `- ID: ${q.id} - Câu ${q.index} (Loại: ${q.type}): ${q.content.slice(0, 120)}...`).join("\n")}`
         : "";
 
     const prompt = `
@@ -953,24 +964,18 @@ Quy tắc trả về:
 }
 `;
 
-    console.log(`🧠 Calling Groq Llama 3.3 for Excel answer key...`);
+    console.log(`🧠 Calling Local Gemini 3.6 Flash for Excel answer key...`);
     let responseText = "{}";
     try {
-        const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
-            temperature: 0.2
-        });
-        responseText = chatCompletion.choices[0].message.content || "{}";
+        const parsedObj = await callLocalGeminiJSON({
+            messages: [{ role: "user", content: prompt }],
+            model: "gemini-3.6-flash",
+            temperature: 0.1,
+        }, {});
+        responseText = JSON.stringify(parsedObj);
     } catch (error: any) {
-        console.error("❌ Lỗi gọi Groq Excel cho bảng đáp án:", error.message);
-        throw new Error(`Groq Excel Answer Key Error: ${error.message}`);
+        console.error("❌ Lỗi gọi Local Gemini Excel cho bảng đáp án:", error.message);
+        throw new Error(`Local Gemini Excel Answer Key Error: ${error.message}`);
     }
 
     let parsed: Record<string, string> = {};

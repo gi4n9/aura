@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 import { prisma } from "@/lib/prisma";
 import { runWithConcurrencyLimit } from "@/lib/ocr-cache";
+import { callLocalGemini } from "@/lib/local-gemini";
 import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
@@ -291,18 +292,18 @@ NHIỆM VỤ:
 Trả về duy nhất đoạn văn bản đã hiệu chỉnh, không kèm bất kỳ giải thích nào khác.
 `;
 
-  const chatCompletion = await groq.chat.completions.create({
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.2,
-  });
-
-  return chatCompletion.choices[0].message.content || rawText;
+  try {
+    const text = await callLocalGemini({
+      messages: [{ role: "user", content: prompt }],
+      model: "gemini-3.6-flash",
+      temperature: 0.1,
+      timeoutMs: 60000,
+    });
+    return text || rawText;
+  } catch (err: any) {
+    console.warn(`⚠️ Local Gemini correction failed: ${err.message}`);
+    return rawText;
+  }
 }
 
 /**
@@ -446,7 +447,7 @@ async function correctSingleBlockWithLocalGemini36(
   chapterTitle: string,
   lessonTitle: string
 ): Promise<string> {
-  const localBaseUrl = process.env.OPENAI_BASE_URL || "http://localhost:8081/v1";
+  const localBaseUrl = process.env.OPENAI_BASE_URL || "http://127.0.0.1:8081/v1";
   const prompt = `
 Bạn là chuyên gia hiệu chỉnh bản ghi âm (transcript) tiếng Việt bài giảng CNTT/Lập trình.
 Dưới đây là một đoạn transcript bóc băng từ audio bài giảng.
