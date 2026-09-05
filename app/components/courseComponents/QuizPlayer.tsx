@@ -15,6 +15,7 @@ import ImageZoomModal from "../common/ImageZoomModal";
 import { parseFileUrls } from "@/app/utils/file-utils";
 import { useTheme } from "@/lib/theme/ThemeContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { formatMathForDisplay } from "@/lib/math-formatter";
 
 interface Question {
     id: string;
@@ -317,7 +318,7 @@ export default function QuizPlayer({
                                         <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${isDark ? "text-white" : "text-stone-900"
                                             }`}>
                                             <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                {q.content}
+                                                {formatMathForDisplay(q.content)}
                                             </ReactMarkdown>
                                         </div>
                                         {q.contentImageUrl && (
@@ -367,7 +368,7 @@ export default function QuizPlayer({
                                                 <div className="flex-1 [&_p]:inline [&_p]:m-0">
                                                     <span className="font-bold mr-2 text-[#C5A059]">{prefix}.</span>
                                                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                        {opt}
+                                                        {formatMathForDisplay(opt)}
                                                     </ReactMarkdown>
                                                 </div>
                                             </button>
@@ -389,7 +390,7 @@ export default function QuizPlayer({
                                                 <div className="text-sm font-medium flex-1 [&_p]:inline [&_p]:m-0">
                                                     <span className="font-bold text-[#C5A059] mr-2">{sub.label}.</span>
                                                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                        {sub.content}
+                                                        {formatMathForDisplay(sub.content)}
                                                     </ReactMarkdown>
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">

@@ -5,6 +5,7 @@ import { db } from "@/lib/prisma";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { QuestionType } from "@prisma/client";
+import { uploadBase64ToStorage } from "@/utils/supabase/admin";
 
 // ============================================
 // ZOD VALIDATION SCHEMAS (VIBE PROTOCOL #3)
@@ -165,6 +166,11 @@ export async function saveLessonQuestions(
           }
         }
 
+        let finalImageUrl = q.contentImageUrl || null;
+        if (finalImageUrl && finalImageUrl.startsWith("data:image/")) {
+          finalImageUrl = await uploadBase64ToStorage(finalImageUrl, validated.lessonId);
+        }
+
         await db.question.create({
           data: {
             lessonId: validated.lessonId,
@@ -175,7 +181,7 @@ export async function saveLessonQuestions(
             type: q.type as QuestionType,
             aiExplanation: q.aiExplanation || "",
             quizSource: q.quizSource as any,
-            contentImageUrl: q.contentImageUrl || null,
+            contentImageUrl: finalImageUrl,
             isArchived: false,
             passageId: passageId,
             subItems: q.subItems && q.subItems.length > 0 ? {

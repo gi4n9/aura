@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { parseQuestionsFromFile, parseQuestionsFromFilesBatch, parseAnswerKeyFromImage, parseAnswerKeyBatch, parseAnswerKeyFromExcel, mergeAnswersWithOverlap, ParsedQuestion } from "@/lib/worksheet-parser";
 import { QuizSource, QuestionType, QuizDisplayMode } from "@prisma/client";
 import { parseFileUrls } from "@/app/utils/file-utils";
+import { uploadBase64ToStorage } from "@/utils/supabase/admin";
 
 /**
  * Helper: Lưu danh sách ParsedQuestion vào DB, tạo Passage/SubItem nếu cần
@@ -33,6 +34,11 @@ async function saveQuestionsWithRelations(lessonId: string, parsedQuestions: Par
     for (const q of parsedQuestions) {
         const passageId = q.passageGroupId ? passageMap.get(q.passageGroupId) || null : null;
 
+        let finalImageUrl = q.contentImageUrl || null;
+        if (finalImageUrl && finalImageUrl.startsWith("data:image/")) {
+            finalImageUrl = await uploadBase64ToStorage(finalImageUrl, lessonId);
+        }
+
         const created = await prisma.question.create({
             data: {
                 lessonId,
@@ -44,7 +50,7 @@ async function saveQuestionsWithRelations(lessonId: string, parsedQuestions: Par
                 timestamp: null,
                 subjectHint: q.subjectHint || null,
                 passageId,
-                contentImageUrl: q.contentImageUrl || null
+                contentImageUrl: finalImageUrl
             }
         });
 

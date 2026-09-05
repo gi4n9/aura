@@ -13,19 +13,44 @@ const ocrVenvUnix = path.join(__dirname, "../ocr-service/venv/bin/python");
 
 let ocrPythonCmd = process.platform === "win32" ? "python" : "python3";
 if (fs.existsSync(ocrVenvWin)) {
-    ocrPythonCmd = `"${ocrVenvWin}"`;
+    ocrPythonCmd = ocrVenvWin;
 } else if (fs.existsSync(ocrVenvUnix)) {
-    ocrPythonCmd = `"${ocrVenvUnix}"`;
+    ocrPythonCmd = ocrVenvUnix;
 }
 
-console.log(`🐍 Launching PaddleOCR Local Service (${ocrPythonCmd})...`);
+const { execSync } = require("child_process");
+
+function freePortSync(port) {
+    try {
+        if (process.platform === "win32") {
+            const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8" });
+            const lines = out.trim().split("\n");
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                const pid = parts[parts.length - 1];
+                if (pid && !isNaN(pid) && parseInt(pid) > 0) {
+                    execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
+                }
+            }
+        } else {
+            execSync(`fuser -k ${port}/tcp 2>/dev/null || true`, { stdio: "ignore" });
+        }
+    } catch (e) {}
+}
+
+console.log("🧹 Cleaning up old ports 8000 & 8081 if occupied...");
+freePortSync(8000);
+freePortSync(8081);
+
+console.log(`🐍 Launching CV Refiner & Table Detection Service (${ocrPythonCmd})...`);
 const ocrProcess = spawn(ocrPythonCmd, [ocrScriptPath], {
     stdio: "inherit",
-    shell: true
+    shell: false,
+    cwd: path.join(__dirname, "../ocr-service")
 });
 
 ocrProcess.on("error", (err) => {
-    console.warn("⚠️ [PaddleOCR Warning] Unable to launch Python process:", err.message);
+    console.warn("⚠️ [CV Refiner Warning] Unable to launch Python process:", err.message);
 });
 
 // 2. Python Path cho Gemini Web2API
@@ -35,15 +60,15 @@ const geminiVenvUnix = path.join(__dirname, "../gemini-web2api/venv/bin/python")
 
 let geminiPythonCmd = process.platform === "win32" ? "python" : "python3";
 if (fs.existsSync(geminiVenvWin)) {
-    geminiPythonCmd = `"${geminiVenvWin}"`;
+    geminiPythonCmd = geminiVenvWin;
 } else if (fs.existsSync(geminiVenvUnix)) {
-    geminiPythonCmd = `"${geminiVenvUnix}"`;
+    geminiPythonCmd = geminiVenvUnix;
 }
 
-console.log(`🤖 Launching Gemini Web2API Service (${geminiPythonCmd})...`);
-const geminiProcess = spawn(geminiPythonCmd, [geminiScriptPath], {
+console.log(`🤖 Launching Gemini Web2API Service (${geminiPythonCmd} -m gemini_web2api)...`);
+const geminiProcess = spawn(geminiPythonCmd, ["-m", "gemini_web2api"], {
     stdio: "inherit",
-    shell: true,
+    shell: false,
     cwd: path.join(__dirname, "../gemini-web2api")
 });
 

@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { useTheme } from "@/lib/theme/ThemeContext";
+import { formatMathForDisplay } from "@/lib/math-formatter";
 
 /**
  * Pre-processes text to preserve newlines and convert inline separators
@@ -12,7 +13,7 @@ import { useTheme } from "@/lib/theme/ThemeContext";
  */
 export function formatMarkdownText(text: string | null | undefined): string {
     if (!text) return "";
-    let str = text;
+    let str = formatMathForDisplay(text);
 
     // 1. Xử lý trường hợp chuỗi chứa JSON Rubric
     if (str.trim().startsWith("{")) {
@@ -21,7 +22,9 @@ export function formatMarkdownText(text: string | null | undefined): string {
             if (obj.answer || obj.rubric) {
                 str = obj.answer || "";
             }
-        } catch { }
+        } catch {
+            // Chuỗi không phải JSON hợp lệ, giữ nguyên str
+        }
     }
 
     // 2. Chống dính chữ vào các mục b1, b2, Ý...

@@ -59,6 +59,9 @@ const nextConfig: NextConfig = {
   ],
 
   experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
     // Tối ưu package imports - Tree shaking cho các thư viện lớn
     optimizePackageImports: [
       "lucide-react",

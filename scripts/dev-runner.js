@@ -20,40 +20,64 @@ const venvPythonUnix = path.join(__dirname, "../ocr-service/venv/bin/python");
 
 let pythonCmd = process.platform === "win32" ? "python" : "python3";
 if (fs.existsSync(venvPythonWin)) {
-    pythonCmd = `"${venvPythonWin}"`;
+    pythonCmd = venvPythonWin;
 } else if (fs.existsSync(venvPythonUnix)) {
-    pythonCmd = `"${venvPythonUnix}"`;
+    pythonCmd = venvPythonUnix;
 }
 
-// 1. Khởi chạy PaddleOCR Python Process
-console.log(`🐍 Launching PaddleOCR Local Service (${pythonCmd})...`);
+const { execSync } = require("child_process");
+
+// Tự động giải phóng cổng nếu có tiến trình cũ bị treo
+function freePortSync(port) {
+    try {
+        if (process.platform === "win32") {
+            const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8" });
+            const lines = out.trim().split("\n");
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                const pid = parts[parts.length - 1];
+                if (pid && !isNaN(pid) && parseInt(pid) > 0) {
+                    execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
+                }
+            }
+        } else {
+            execSync(`fuser -k ${port}/tcp 2>/dev/null || true`, { stdio: "ignore" });
+        }
+    } catch (e) {}
+}
+
+console.log("🧹 Cleaning up old ports 8000 & 8081 if occupied...");
+freePortSync(8000);
+freePortSync(8081);
+
+// 1. Khởi chạy Fast CV Refiner & Table Detection Process
+console.log(`🐍 Launching CV Refiner & Table Detection Service (${pythonCmd})...`);
 const ocrProcess = spawn(pythonCmd, [ocrScriptPath], {
     stdio: "inherit",
-    shell: true
+    shell: false,
+    cwd: path.join(__dirname, "../ocr-service")
 });
 
 ocrProcess.on("error", (err) => {
-    console.warn("⚠️ [PaddleOCR Warning] Unable to launch Python process:", err.message);
-    console.warn("👉 Next.js will continue to run with Tesseract.js fallback mode.");
+    console.warn("⚠️ [CV Refiner Warning] Unable to launch Python process:", err.message);
 });
 
 // Đường dẫn tới gemini-web2api
-const geminiScriptPath = path.join(__dirname, "../gemini-web2api/gemini_web2api.py");
 const geminiVenvPythonWin = path.join(__dirname, "../gemini-web2api/venv/Scripts/python.exe");
 const geminiVenvPythonUnix = path.join(__dirname, "../gemini-web2api/venv/bin/python");
 
 let geminiPythonCmd = process.platform === "win32" ? "python" : "python3";
 if (fs.existsSync(geminiVenvPythonWin)) {
-    geminiPythonCmd = `"${geminiVenvPythonWin}"`;
+    geminiPythonCmd = geminiVenvPythonWin;
 } else if (fs.existsSync(geminiVenvPythonUnix)) {
-    geminiPythonCmd = `"${geminiVenvPythonUnix}"`;
+    geminiPythonCmd = geminiVenvPythonUnix;
 }
 
 // 2. Khởi chạy Gemini Web2API Process
-console.log(`🤖 Launching Gemini Web2API Service (${geminiPythonCmd})...`);
-const geminiProcess = spawn(geminiPythonCmd, [geminiScriptPath], {
+console.log(`🤖 Launching Gemini Web2API Service (${geminiPythonCmd} -m gemini_web2api)...`);
+const geminiProcess = spawn(geminiPythonCmd, ["-m", "gemini_web2api"], {
     stdio: "inherit",
-    shell: true,
+    shell: false,
     cwd: path.join(__dirname, "../gemini-web2api")
 });
 

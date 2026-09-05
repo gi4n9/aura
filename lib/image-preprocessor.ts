@@ -17,8 +17,8 @@ export async function optimizeImageForOCR(
 ): Promise<Buffer> {
     try {
         const {
-            maxWidth = 2400,
-            maxHeight = 2400,
+            maxWidth = 1500,
+            maxHeight = 1500,
             binarize = false,
             thresholdValue = 175
         } = options;
@@ -41,7 +41,7 @@ export async function optimizeImageForOCR(
             pipeline = pipeline.threshold(thresholdValue);
         }
 
-        return await pipeline.png({ quality: 100 }).toBuffer();
+        return await pipeline.jpeg({ quality: 90, mozjpeg: true }).toBuffer();
     } catch (error) {
         console.warn("⚠️ Canvas/Sharp image optimization warning, returning original buffer:", error);
         return inputBuffer;

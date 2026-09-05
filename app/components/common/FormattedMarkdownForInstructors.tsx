@@ -4,10 +4,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { formatMathForDisplay } from "@/lib/math-formatter";
 
 export function formatMarkdownText(text: string | null | undefined): string {
     if (!text) return "";
-    let str = text;
+    let str = formatMathForDisplay(text);
 
     // 1. Xử lý trường hợp chuỗi chứa JSON Rubric
     if (str.trim().startsWith("{")) {
