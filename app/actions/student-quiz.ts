@@ -73,9 +73,11 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       let fbText = "Đã ghi nhận bài nộp tự luận";
       let subItemFeedback: Record<string, { isCorrect: boolean }> = {};
 
-      if (question.type === "MULTIPLE_CHOICE") {
+      const hasOptions = (question.type === "MULTIPLE_CHOICE") || (Array.isArray(question.options) && (question.options as any[]).length > 0);
+
+      if (hasOptions) {
         qMaxPoints = 1;
-        isCorrect = question.correctAnswer === ans.selectedOption;
+        isCorrect = question.correctAnswer?.trim().toUpperCase() === ans.selectedOption?.trim().toUpperCase();
         if (isCorrect) questionPoints = 1;
         fbText = isCorrect ? "Chính xác" : "Sai";
       } 
@@ -123,16 +125,18 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
       maxPossibleScore += qMaxPoints;
       if (questionPoints === 1.0) fullyCorrectCount++;
 
+      const isPending = (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") && !hasOptions;
+
       // Dữ liệu trả về cho Client (UI)
       feedbackData.push({
         questionId: question.id,
-        isCorrect: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") ? true : isCorrect,
+        isCorrect: isPending ? true : isCorrect,
         correctAnswer: question.correctAnswer,
         modelAnswer: question.modelAnswer,
         modelAnswerFileUrl: question.modelAnswerFileUrl,
         explanation: question.aiExplanation,
         subItemFeedback: Object.keys(subItemFeedback).length > 0 ? subItemFeedback : undefined,
-        isPendingGrading: question.type === "ESSAY" || question.type === "READING_COMPREHENSION"
+        isPendingGrading: isPending
       });
 
       // Dữ liệu để lưu vào DB (Đẩy vào mảng chờ)
@@ -141,7 +145,7 @@ export async function submitQuiz(lessonId: string, answers: StudentAnswer[]) {
         questionId: question.id,
         answerText: ans.answerText || ans.selectedOption || JSON.stringify(ans.subItemAnswers),
         fileUrl: ans.fileUrl,
-        score: (question.type === "ESSAY" || question.type === "READING_COMPREHENSION") ? null : (qMaxPoints > 0 ? questionPoints : null),
+        score: isPending ? null : (qMaxPoints > 0 ? questionPoints : null),
         feedback: fbText,
       });
     }

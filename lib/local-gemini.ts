@@ -179,11 +179,30 @@ export function cleanAndParseGeminiJSON<T = any>(rawText: string, fallback: T = 
   } catch {}
 
   // 4. Áp dụng bộ khử lỗi LaTeX và ký tự điều khiển
+  let sanitized = extracted;
   try {
-    const sanitized = sanitizeJsonWithLatex(extracted);
+    sanitized = sanitizeJsonWithLatex(extracted);
     return JSON.parse(sanitized);
-  } catch (err) {
-    console.warn("⚠️ JSON parse thất bại sau khi khử lỗi LaTeX:", err);
+  } catch {}
+
+  // 5. Sử dụng jsonrepair để tự động sửa unescaped quotes, thiếu dấu phẩy, trailing commas...
+  try {
+    const { jsonrepair } = require("jsonrepair");
+    const repaired = jsonrepair(sanitized);
+    return JSON.parse(repaired);
+  } catch {}
+
+  try {
+    const { jsonrepair } = require("jsonrepair");
+    const repaired = jsonrepair(extracted);
+    return JSON.parse(repaired);
+  } catch (err: any) {
+    console.warn("⚠️ JSON parse thất bại ngay cả sau khi khử LaTeX và dùng jsonrepair:", err.message);
+    try {
+      const fs = require("fs");
+      fs.writeFileSync("/home/giang/.gemini/antigravity-ide/brain/c5ad5e82-fd74-47d3-86f1-69074f1a7335/scratch/debug_raw_gemini.txt", rawText, "utf-8");
+      console.log("💾 Đã lưu rawText vào scratch/debug_raw_gemini.txt");
+    } catch {}
   }
 
   return fallback;

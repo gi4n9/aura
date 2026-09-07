@@ -105,6 +105,41 @@ def detect_and_eliminate_bottom_text(
     return min(h, diag_end + 6)
 
 
+def is_banner_header_or_footer(img_bgr: np.ndarray, y: int, x: int, y2: int, x2: int) -> bool:
+    """
+    Xác định xem vùng bounding box có phải là Header Banner hoặc Footer Banner của đề thi hay không.
+    Các đề thi tại Việt Nam thường có:
+    1. Header Banner hình học: Sát mép trên cùng (y <= 3.5% h), rộng ngang (cw >= 65% w), dải băng hẹp (ch <= 15% h).
+    2. Footer Banner hình học: Sát mép dưới cùng (y2 >= 96.5% h), rộng ngang (cw >= 60% w), dải băng hẹp (ch <= 10% h).
+    3. Dải màu Banner (Colored Banner) ở đầu hoặc chân trang: vùng nằm trong 14% trên cùng hoặc 12% dưới cùng có màu nền rõ rệt.
+    """
+    h, w = img_bgr.shape[:2]
+    ch = y2 - y
+    cw = x2 - x
+    if ch <= 0 or cw <= 0:
+        return True
+
+    # 1. Header Banner hình học sát mép đỉnh
+    if y <= int(h * 0.035) and cw >= int(w * 0.65) and ch <= int(h * 0.15):
+        return True
+
+    # 2. Footer Banner hình học sát mép đáy
+    if y2 >= int(h * 0.965) and cw >= int(w * 0.60) and ch <= int(h * 0.10):
+        return True
+
+    # 3. Dải màu Banner (Colored Banner) ở đầu trang hoặc cuối trang (VD: Hocmai, Tuyensinh247, logo trung tâm...)
+    if (y < int(h * 0.14) or y2 > int(h * 0.88)) and cw >= int(w * 0.40):
+        roi = img_bgr[max(0, y):min(h, y2), max(0, x):min(w, x2)]
+        if roi.size > 0:
+            hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV) if len(roi.shape) == 3 else None
+            if hsv is not None:
+                sat = hsv[:, :, 1]
+                if np.mean(sat > 50) > 0.15:
+                    return True
+
+    return False
+
+
 def find_all_tables_on_page(img_bgr: np.ndarray) -> Tuple[List[Tuple[int, int, int, int]], np.ndarray]:
     """
     Sử dụng Morphological Operations quét toàn bộ trang để tìm các bảng kẻ ô (Table Grids).
@@ -127,6 +162,9 @@ def find_all_tables_on_page(img_bgr: np.ndarray) -> Tuple[List[Tuple[int, int, i
     for c in contours:
         x, y, cw, ch = cv2.boundingRect(c)
         if cw > w * 0.20 and ch >= 20:
+            # Loại trừ header banner hoặc footer banner
+            if is_banner_header_or_footer(img_bgr, y, x, y + ch, x + cw):
+                continue
             tables.append((y, x, y + ch, x + cw))
 
     tables.sort(key=lambda t: t[0])
@@ -153,6 +191,9 @@ def find_all_diagrams_on_page(img_bgr: np.ndarray) -> List[Tuple[int, int, int, 
     for c in contours:
         x, y, cw, ch = cv2.boundingRect(c)
         if ch >= 70 and cw >= 95 and ch < h * 0.7:
+            # Loại trừ header banner hoặc footer banner
+            if is_banner_header_or_footer(img_bgr, y, x, y + ch, x + cw):
+                continue
             # Loại bỏ đoạn văn bản dàn ngang trang (paragraphs)
             if cw > w * 0.78:
                 continue
@@ -577,8 +618,10 @@ def extract_page_visual_elements(image: np.ndarray) -> List[Dict[str, Any]]:
     all_elements.sort(key=lambda x: x['ymin'])
     
     results = []
-    for idx, el in enumerate(all_elements):
+    for el in all_elements:
         ymin, xmin, ymax, xmax = el['bbox']
+        if is_banner_header_or_footer(image, ymin, xmin, ymax, xmax):
+            continue
         crop = image[ymin:ymax, xmin:xmax]
         if crop.size == 0:
             continue
@@ -586,7 +629,7 @@ def extract_page_visual_elements(image: np.ndarray) -> List[Dict[str, Any]]:
         _, buf = cv2.imencode('.png', enhanced)
         b64 = "data:image/png;base64," + base64.b64encode(buf).decode('utf-8')
         results.append({
-            'index': idx,
+            'index': len(results),
             'type': el['type'],
             'bbox_pixel': [int(ymin), int(xmin), int(ymax), int(xmax)],
             'bbox_norm': [

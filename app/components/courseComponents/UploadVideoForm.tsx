@@ -5,6 +5,7 @@ import { Loader2, UploadCloud, CheckCircle, Video, List, Clock, Zap, Timer } fro
 import { processVideoUpload, cleanupFailedUpload } from "../../actions/process-video";
 import { getChapterByCourseId } from "../../actions/chapter";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // Định nghĩa kiểu dữ liệu cho props
 interface Option {
@@ -210,9 +211,14 @@ export default function UploadVideoForm({ playlists }: { playlists: Option[] }) 
             setPhase("done");
             setEtaSeconds(0);
             setStatus("Thành công! Video đang được AI phân tích ngầm.");
+            toast.success("Tải video lên thành công! AI đang tiến hành xử lý ngầm trong bài học.");
+
+            // Chuyển hướng trực tiếp về trang chi tiết bài học (lessonId) để xem tiến trình thực thi của AI
             if (result.lessonId) {
-                router.refresh();
-                router.push(`/instructor/courses/${selectedCourseId}/chapters/${selectedChapterId}/lesson/${result.lessonId}`);
+                setTimeout(() => {
+                    router.refresh();
+                    router.push(`/instructor/courses/${selectedCourseId}/chapters/${selectedChapterId}/lesson/${result.lessonId}`);
+                }, 600);
             }
             setFile(null);
 

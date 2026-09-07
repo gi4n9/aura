@@ -36,7 +36,7 @@ export default async function CourseLayout({
 
     return (
         <div className="h-full">
-            <main className="h-full bg-[#FAFAFA]">
+            <main className="h-full bg-[#F9F8F4]">
                 {children}
             </main>
         </div>

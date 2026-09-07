@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles, CheckSquare, FormInput, BookOpen, X, Minus, Sliders, ZoomIn } from "lucide-react";
+import { AlertCircle, CheckCircle, Plus, Save, Trash2, List, AlignLeft, Bot, FileText, User, Sparkles, CheckSquare, FormInput, BookOpen, X, Minus, Sliders, ZoomIn, Tag } from "lucide-react";
 
 import { saveLessonQuestions } from "@/app/actions/question";
 import { generateQuizFromTranscript, QuizGenerationCounts } from "@/app/actions/ai-lesson-content";
@@ -16,6 +16,53 @@ import QuizDisplayModeSelector from "./QuizDisplayModeSelector";
 import FormattedMarkdownForInstructors from "../common/FormattedMarkdownForInstructors";
 import ImageZoomModal from "../common/ImageZoomModal";
 
+export function getSubjectTypeBadge(subjectHint?: string | null) {
+    if (!subjectHint) return null;
+    const map: Record<string, { label: string; subject: string; color: string }> = {
+        // Tiếng Anh
+        "E_Pronunciation_Stress": { label: "Ngữ âm & Trọng âm", subject: "Tiếng Anh", color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+        "E_Grammar_Vocabulary": { label: "Ngữ pháp & Từ vựng", subject: "Tiếng Anh", color: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/50" },
+        "E_Error_Recognition": { label: "Tìm lỗi sai", subject: "Tiếng Anh", color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50" },
+        "E_Communication": { label: "Giao tiếp", subject: "Tiếng Anh", color: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/50" },
+        "E_Sentence_Arrangement": { label: "Sắp xếp câu/đoạn", subject: "Tiếng Anh", color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50" },
+        "E_Cloze_Test": { label: "Đọc điền từ (Cloze)", subject: "Tiếng Anh", color: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800/50" },
+        "E_Reading_Comprehension": { label: "Đọc hiểu (Reading)", subject: "Tiếng Anh", color: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/50" },
+        "E_Sentence_Transformation": { label: "Viết lại câu", subject: "Tiếng Anh", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50" },
+        // Ngữ Văn
+        "L_Reading_Comprehension": { label: "Đọc hiểu ngữ liệu", subject: "Ngữ Văn", color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50" },
+        "L_Social_Argument": { label: "Nghị luận xã hội", subject: "Ngữ Văn", color: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/50" },
+        "L_Literary_Analysis": { label: "Nghị luận văn học", subject: "Ngữ Văn", color: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800/50" },
+        "L_Vietnamese_Practice": { label: "Thực hành tiếng Việt", subject: "Ngữ Văn", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        // Toán
+        "M_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Toán", color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+        "M_True_False": { label: "Đúng/Sai", subject: "Toán", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        "M_Short_Answer": { label: "Trả lời ngắn", subject: "Toán", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50" },
+        "M_Essay": { label: "Tự luận", subject: "Toán", color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50" },
+        // Vật Lý
+        "P_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Vật lý", color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+        "P_True_False": { label: "Đúng/Sai", subject: "Vật lý", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        "P_Short_Answer": { label: "Trả lời ngắn", subject: "Vật lý", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50" },
+        // Hóa Học
+        "C_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Hóa học", color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+        "C_True_False": { label: "Đúng/Sai", subject: "Hóa học", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        "C_Short_Answer": { label: "Trả lời ngắn", subject: "Hóa học", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50" },
+        // Sinh Học
+        "B_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Sinh học", color: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50" },
+        "B_True_False": { label: "Đúng/Sai", subject: "Sinh học", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        "B_Short_Answer": { label: "Trả lời ngắn", subject: "Sinh học", color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/50" },
+        // Lịch Sử
+        "H_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Lịch sử", color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50" },
+        "H_True_False": { label: "Đúng/Sai", subject: "Lịch sử", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        // Địa Lý
+        "G_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "Địa lý", color: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/50" },
+        "G_True_False": { label: "Đúng/Sai", subject: "Địa lý", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+        // KTPL / GDCD
+        "CD_Multiple_Choice": { label: "Trắc nghiệm 4 lựa chọn", subject: "KTPL / GDCD", color: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/50" },
+        "CD_True_False": { label: "Đúng/Sai", subject: "KTPL / GDCD", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50" },
+    };
+    return map[subjectHint] || { label: subjectHint, subject: "Môn học", color: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-stone-800 dark:text-stone-300 dark:border-white/10" };
+}
+
 interface QuestionState {
     id?: string;
     content: string;
@@ -26,6 +73,7 @@ interface QuestionState {
     aiExplanation: string;
     quizSource: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
     contentImageUrl?: string | null;
+    subjectHint?: string | null;
     subItems?: { id?: string; label: string; content: string; isCorrect: boolean; position?: number }[];
     passage?: { id?: string; title?: string | null; content: string } | null;
 }
@@ -48,6 +96,7 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
         aiExplanation: q.aiExplanation || "",
         quizSource: q.quizSource || "MANUAL",
         contentImageUrl: q.contentImageUrl,
+        subjectHint: q.subjectHint || null,
         subItems: Array.isArray(q.subItems) && q.subItems.length > 0 ? q.subItems.map((si: any, idx: number) => ({
             id: si.id,
             label: si.label || ["a", "b", "c", "d"][idx] || "a",
@@ -179,14 +228,15 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                 id: q.id,
                 content: q.content,
                 type: q.type,
-                options: q.type === "MULTIPLE_CHOICE" ? q.options : [],
-                correctAnswer: q.type === "MULTIPLE_CHOICE" ? q.correctAnswer : (q.type === "FILL_IN_BLANK" ? q.correctAnswer : ""),
+                options: (q.type === "MULTIPLE_CHOICE" || (Array.isArray(q.options) && q.options.length > 0)) ? q.options : [],
+                correctAnswer: (q.type === "MULTIPLE_CHOICE" || q.type === "FILL_IN_BLANK") ? q.correctAnswer : (q.correctAnswer || ""),
                 modelAnswer: (q.type === "ESSAY" || q.type === "READING_COMPREHENSION") ? q.modelAnswer : "",
                 aiExplanation: q.aiExplanation,
                 quizSource: q.quizSource,
                 contentImageUrl: q.contentImageUrl,
+                subjectHint: q.subjectHint || null,
                 subItems: q.type === "TRUE_FALSE" ? (q.subItems?.map((s, idx) => ({ ...s, position: s.position ?? idx })) || []) : [],
-                passage: q.type === "READING_COMPREHENSION" ? q.passage : null
+                passage: (q.passage && q.passage.content) ? q.passage : null
             }))
 
             const result = await saveLessonQuestions(lessonId, payload)
@@ -684,6 +734,18 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                                     <User size={12} /> Thủ công
                                 </span>
                             )}
+
+                            {/* Subject & Category Badge */}
+                            {q.subjectHint && (() => {
+                                const badge = getSubjectTypeBadge(q.subjectHint);
+                                if (!badge) return null;
+                                return (
+                                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded border ${badge.color}`}>
+                                        <Tag size={12} />
+                                        <span>[{badge.subject}] {badge.label}</span>
+                                    </span>
+                                );
+                            })()}
                         </div>
 
                         <button
@@ -695,8 +757,8 @@ export default function QuizEditor({ lessonId, initialQuestions, initialDisplayM
                         </button>
                     </div>
 
-                    {/* Passage content cho READING_COMPREHENSION */}
-                    {q.type === "READING_COMPREHENSION" && (
+                    {/* Passage content cho READING_COMPREHENSION hoặc câu hỏi kèm Passage */}
+                    {(q.type === "READING_COMPREHENSION" || (q.passage && q.passage.content)) && (
                         <div className="mb-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
                             <div className="flex items-center gap-2 mb-2 text-amber-800 font-semibold text-sm">
                                 <BookOpen size={16} /> Ngữ liệu đọc hiểu (Passage)

@@ -144,7 +144,7 @@ export default function MindMapEditor({ lessonId, initialMindMap, transcript }: 
                             disabled={isGenerating}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium shadow-md ${isGenerating ? "bg-purple-300 text-purple-800 cursor-not-allowed" : "bg-purple-600 text-white hover:bg-purple-700"}`}
                         >
-                            <Sparkles size={16} /> {isGenerating ? "Đang tạo..." : "Tạo bằng AI (Groq)"}
+                            <Sparkles size={16} /> {isGenerating ? "Đang tạo..." : "Tạo bằng AI"}
                         </button>
                     )}
                     <button

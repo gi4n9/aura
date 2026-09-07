@@ -21,6 +21,8 @@ interface LessonManagerProps {
     initialMindMap?: any;
     initialFlashcards?: any;
     initialDisplayMode?: any;
+    youtubeVideoId?: string | null;
+    isAIProcessing?: boolean;
 }
 
 export default function LessonManagerClient({
@@ -30,16 +32,18 @@ export default function LessonManagerClient({
     initialTranscript,
     initialMindMap,
     initialFlashcards,
-    initialDisplayMode
+    initialDisplayMode,
+    youtubeVideoId,
+    isAIProcessing,
 }: LessonManagerProps) {
-    const [activeTab, setActiveTab] = useState<"video" | "transcript" | "mindmap" | "flashcards" | "questions">("video");
+    const [activeTab, setActiveTab] = useState<"transcript" | "questions" | "mindmap" | "flashcards" | "video">("transcript");
 
     const tabs = [
-        { id: "video", label: "Cài đặt Video", icon: Youtube, activeColor: "bg-[#C5A059] text-white" },
         { id: "transcript", label: "Transcript", icon: FileText, activeColor: "bg-blue-600 text-white" },
+        { id: "questions", label: "Quiz AI", icon: FileQuestion, activeColor: "bg-slate-900 text-white" },
         { id: "mindmap", label: "Mind Map", icon: Network, activeColor: "bg-purple-600 text-white" },
         { id: "flashcards", label: "Flashcards", icon: Layers, activeColor: "bg-orange-500 text-white" },
-        { id: "questions", label: "Quiz AI", icon: FileQuestion, activeColor: "bg-slate-900 text-white" },
+        { id: "video", label: "Cài đặt Video", icon: Youtube, activeColor: "bg-[#C5A059] text-white" },
     ] as const;
 
     return (
@@ -69,7 +73,7 @@ export default function LessonManagerClient({
             <div className="min-h-[600px]">
                 {activeTab === "video" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <LessonVideoEditor lessonId={lessonId} />
+                        <LessonVideoEditor lessonId={lessonId} youtubeVideoId={youtubeVideoId} isAIProcessing={isAIProcessing} />
                     </div>
                 )}
 

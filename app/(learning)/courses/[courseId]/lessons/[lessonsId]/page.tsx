@@ -44,6 +44,7 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                     contentImageUrl: true,
                     modelAnswer: true,
                     modelAnswerFileUrl: true,
+                    subjectHint: true,
                     passage: {
                         select: {
                             id: true,
@@ -137,7 +138,9 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                 const question = displayQuestions.find(q => q.id === sub.questionId);
                 if (!question) return;
 
-                if (question.type === "MULTIPLE_CHOICE") {
+                const hasOptions = (question.type === "MULTIPLE_CHOICE") || (Array.isArray(question.options) && (question.options as any[]).length > 0);
+
+                if (hasOptions) {
                     userAnswers[sub.questionId] = {
                         selectedOption: sub.answerText || undefined
                     };
@@ -152,7 +155,7 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                         subItemAnswers: parsedAnswers
                     };
                 } else {
-                    // FILL_IN_BLANK, ESSAY, READING_COMPREHENSION
+                    // FILL_IN_BLANK, ESSAY, READING_COMPREHENSION (không có options)
                     userAnswers[sub.questionId] = {
                         answerText: sub.answerText || undefined,
                         fileUrl: sub.fileUrl || undefined
@@ -180,7 +183,9 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
                 let essayFeedback = null;
                 let isFinalized = false;
 
-                if (q.type === "MULTIPLE_CHOICE") {
+                const hasOptions = (q.type === "MULTIPLE_CHOICE") || (Array.isArray(q.options) && (q.options as any[]).length > 0);
+
+                if (hasOptions) {
                     isCorrect = sub.score === 1;
                 } else if (q.type === "FILL_IN_BLANK") {
                     isCorrect = sub.score === 1;
@@ -240,6 +245,7 @@ export default async function LessonIdPage({ params }: LessonPageProps) {
         contentImageUrl: q.contentImageUrl,
         timestamp: q.timestamp,
         quizSource: q.quizSource,
+        subjectHint: q.subjectHint,
         passage: q.passage ? {
             id: q.passage.id,
             title: q.passage.title,

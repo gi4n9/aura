@@ -37,6 +37,7 @@ const questionInputSchema = z.object({
   contentImageUrl: z.string().nullable().optional(),
   subItems: z.array(subItemSchema).optional(),
   passage: passageSchema.optional().nullable(),
+  subjectHint: z.string().nullable().optional(),
 });
 
 const saveLessonQuestionsSchema = z.object({
@@ -184,6 +185,7 @@ export async function saveLessonQuestions(
             contentImageUrl: finalImageUrl,
             isArchived: false,
             passageId: passageId,
+            subjectHint: q.subjectHint || null,
             subItems: q.subItems && q.subItems.length > 0 ? {
               create: q.subItems.map((si, idx) => ({
                 label: si.label,

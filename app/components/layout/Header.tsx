@@ -15,6 +15,7 @@ import { useTheme } from "@/lib/theme/ThemeContext";
 import LanguageSwitcher from "../LanguageSwitcher";
 import ThemeSwitcher from "../ThemeSwitcher";
 import { toast } from "sonner";
+import { checkUserLearningPath } from "@/app/actions/roadmap";
 
 export default function Header() {
   const router = useRouter();
@@ -31,6 +32,26 @@ export default function Header() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, profile } = useAuth();
+  const [targetRoadmapUrl, setTargetRoadmapUrl] = useState<string>("/roadmap");
+
+  useEffect(() => {
+    if (user && isDropdownOpen) {
+      checkUserLearningPath().then((res) => {
+        if (res?.url) setTargetRoadmapUrl(res.url);
+      });
+    }
+  }, [user, isDropdownOpen]);
+
+  const handleRoadmapClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setIsDropdownOpen(false);
+    try {
+      const res = await checkUserLearningPath();
+      router.push(res.url);
+    } catch {
+      router.push(targetRoadmapUrl || "/roadmap");
+    }
+  };
 
   const isDark = theme === "dark";
 
@@ -95,11 +116,6 @@ export default function Header() {
 
           {/* LOGO */}
           <Link href="/" className="flex items-center gap-2 group" onClick={() => setIsMenuOpen(false)}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-serif font-bold text-base shadow-sm group-hover:opacity-80 transition-opacity ${
-              isDark ? "bg-[#C5A059] text-[#080808]" : "bg-[#C5A059] text-white"
-            }`}>
-              α
-            </div>
             <span className={`font-serif font-bold text-xl tracking-wide ${isDark ? "text-white" : "text-stone-900"}`}>
               Aura<span className={`font-normal italic text-lg ${isDark ? "text-stone-400" : "text-stone-500"}`}>Learning</span>
             </span>
@@ -208,9 +224,13 @@ export default function Header() {
                       </div>
 
                       <div className="p-2 flex flex-col gap-1">
-                        <Link href="/roadmap" onClick={() => setIsDropdownOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                          isDark ? "text-stone-300 hover:bg-white/5 hover:text-[#C5A059]" : "text-stone-600 hover:bg-stone-50 hover:text-[#C5A059]"
-                        }`}>
+                        <Link
+                          href={targetRoadmapUrl}
+                          onClick={handleRoadmapClick}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                            isDark ? "text-stone-300 hover:bg-white/5 hover:text-[#C5A059]" : "text-stone-600 hover:bg-stone-50 hover:text-[#C5A059]"
+                          }`}
+                        >
                           <Map size={16} /> {t("nav.roadmap")}
                         </Link>
                         <Link href="/setting" onClick={() => setIsDropdownOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${

@@ -140,6 +140,8 @@ export async function getChapterLessons(chapterId: string) {
           id: true,
           title: true,
           position: true,
+          youtubeVideoId: true,
+          transcript: true,
           _count: {
               select: { questions: { where: { isArchived: false } } }
           }

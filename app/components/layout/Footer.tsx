@@ -25,9 +25,6 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="col-span-1 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-[#C5A059] rounded-full flex items-center justify-center text-[#080808] font-serif font-bold text-lg">
-                α
-              </div>
               <span className="font-serif font-bold text-xl text-white">
                 Aura<span className="font-normal text-stone-500 italic text-lg">Learning</span>
               </span>

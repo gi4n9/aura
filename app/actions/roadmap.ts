@@ -3,6 +3,45 @@
 import { db } from "@/lib/prisma";
 import { RoadmapNodeStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/utils/supabase/server";
+
+export async function checkUserLearningPath() {
+    try {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { hasLearningPath: false, url: "/roadmap" };
+
+        const profile = await db.profile.findUnique({
+            where: { id: user.id },
+            select: { learningPath: true }
+        });
+
+        const hasProfileLearningPath = Boolean(
+            profile?.learningPath &&
+            (typeof profile.learningPath === "object" ? Object.keys(profile.learningPath as object).length > 0 : true)
+        );
+
+        const hasActiveSchedule = await db.studySchedule.findFirst({
+            where: { userId: user.id, isActive: true },
+            select: { id: true }
+        });
+
+        const hasStudyPlanItem = await db.studyPlanItem.findFirst({
+            where: { userId: user.id },
+            select: { id: true }
+        });
+
+        const hasLearningPath = hasProfileLearningPath || !!hasActiveSchedule || !!hasStudyPlanItem;
+
+        return {
+            hasLearningPath,
+            url: hasLearningPath ? "/onboarding/study-plan" : "/roadmap"
+        };
+    } catch (error) {
+        console.error("Error checking user learning path:", error);
+        return { hasLearningPath: false, url: "/roadmap" };
+    }
+}
 
 export async function generateRoadmap(userId: string, interests: string[]) {
     if (!interests || interests.length === 0) {

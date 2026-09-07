@@ -12,9 +12,9 @@ interface LessonProcessingProgressProps {
 const STEPS = [
   { id: 1, name: "Ghép file & Trích xuất Audio", icon: "📤" },
   { id: 2, name: "Groq Whisper STT", icon: "⚡" },
-  { id: 3, name: "Local Gemini 3.6 Hiệu chỉnh", icon: "🤖" },
+  { id: 3, name: "Tải lên YouTube", icon: "🎬" },
   { id: 4, name: "Sinh Timeline Bài giảng", icon: "📊" },
-  { id: 5, name: "YouTube & RAG Embeddings", icon: "🎬" },
+  { id: 5, name: "Tạo RAG Embeddings", icon: "🧬" },
   { id: 6, name: "Hoàn tất!", icon: "✅" },
 ];
 
@@ -28,14 +28,24 @@ function formatTime(seconds: number): string {
 
 export default function LessonProcessingProgress({ lessonId }: LessonProcessingProgressProps) {
   const router = useRouter();
-  const [status, setStatus] = useState({
-    isProcessing: true,
+  const [status, setStatus] = useState<{
+    isProcessing: boolean;
+    isError: boolean;
+    step: number;
+    stepName: string;
+    progress: number;
+    etaSeconds: number;
+    errorMessage: string;
+    youtubeVideoId: string | null;
+  }>({
+    isProcessing: false,
     isError: false,
     step: 1,
     stepName: "Đang khởi tạo...",
-    progress: 15,
-    etaSeconds: 35,
+    progress: 0,
+    etaSeconds: 0,
     errorMessage: "",
+    youtubeVideoId: null,
   });
 
   const [elapsed, setElapsed] = useState(0);
@@ -75,6 +85,7 @@ export default function LessonProcessingProgress({ lessonId }: LessonProcessingP
             progress: 100,
             etaSeconds: 0,
             errorMessage: "",
+            youtubeVideoId: res.youtubeVideoId || null,
           });
           if (intervalId) clearInterval(intervalId);
           router.refresh();
@@ -89,6 +100,7 @@ export default function LessonProcessingProgress({ lessonId }: LessonProcessingP
           progress: res.progress || 15,
           etaSeconds: Math.max(0, res.etaSeconds || 30),
           errorMessage: "",
+          youtubeVideoId: res.youtubeVideoId || null,
         });
       } catch (err) {
         console.error("Polling error:", err);
@@ -128,8 +140,8 @@ export default function LessonProcessingProgress({ lessonId }: LessonProcessingP
     );
   }
 
-  if (!status.isProcessing && status.step === 6) {
-    return null; // Processing complete, normal page content shows
+  if (!status.isProcessing) {
+    return null; // Không trong trạng thái xử lý AI
   }
 
   return (
@@ -207,9 +219,27 @@ export default function LessonProcessingProgress({ lessonId }: LessonProcessingP
         })}
       </div>
 
+      {/* YouTube Confirmation Banner */}
+      {status.youtubeVideoId && (
+        <div className="mt-4 p-3 bg-emerald-50/90 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-800 shadow-xs">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span>Đã upload video lên YouTube thành công! (ID: <strong>{status.youtubeVideoId}</strong>)</span>
+          </div>
+          <a
+            href={`https://youtu.be/${status.youtubeVideoId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-emerald-950 font-bold shrink-0"
+          >
+            Mở trên YouTube →
+          </a>
+        </div>
+      )}
+
       {/* Footer Note */}
       <div className="mt-4 pt-3 border-t border-stone-200/40 flex items-center justify-between text-[11px] text-stone-500">
-        <span>⚡ Sử dụng <strong>Groq Whisper</strong> + <strong>Local Gemini 3.6 Flash</strong> siêu tốc</span>
+        <span>⚡ Sử dụng <strong>Groq Whisper</strong> STT siêu tốc</span>
         <button
           onClick={handleManualRefresh}
           className="text-stone-400 hover:text-stone-700 flex items-center gap-1 transition"

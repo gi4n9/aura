@@ -79,7 +79,9 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
             </div>
 
             <div className="max-w-4xl mx-auto">
-                <LessonProcessingProgress lessonId={lesson.id} />
+                {isAIProcessing && (
+                    <LessonProcessingProgress lessonId={lesson.id} />
+                )}
 
                 <LessonManagerClient
                     lessonId={lesson.id}
@@ -89,6 +91,8 @@ export default async function LessonEditPage({ params }: { params: Promise<{ les
                     initialMindMap={lesson.mindMapData}
                     initialFlashcards={formattedFlashcards}
                     initialDisplayMode={lesson.quizDisplayMode}
+                    youtubeVideoId={lesson.youtubeVideoId}
+                    isAIProcessing={isAIProcessing}
                 />
             </div>
         </div>

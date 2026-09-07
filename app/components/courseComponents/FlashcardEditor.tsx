@@ -96,7 +96,7 @@ export default function FlashcardEditor({ lessonId, initialFlashcards, transcrip
                                 disabled={isGenerating}
                                 className={`flex flex-1 justify-center items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-sm text-sm ${isGenerating ? "bg-orange-200 text-orange-600 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600 text-white"}`}
                             >
-                                <Sparkles size={16} /> {isGenerating ? "AI đang làm việc..." : "Tạo bằng AI (Groq)"}
+                                <Sparkles size={16} /> {isGenerating ? "AI đang làm việc..." : "Tạo bằng AI"}
                             </button>
                             <button
                                 onClick={handleSave}

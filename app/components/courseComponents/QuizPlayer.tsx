@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User, BookOpen, Clock, Eye, Trash, ZoomIn } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Loader2, PlayCircle, Bot, FileText, User, BookOpen, Clock, Eye, Trash, ZoomIn, Tag } from "lucide-react";
 import confetti from "canvas-confetti";
 import { submitQuiz } from "@/app/actions/student-quiz";
 import { useRouter } from "next/navigation";
@@ -10,12 +10,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import FormattedMarkdown from "../common/FormattedMarkdown";
 import ImageZoomModal from "../common/ImageZoomModal";
 import { parseFileUrls } from "@/app/utils/file-utils";
 import { useTheme } from "@/lib/theme/ThemeContext";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { formatMathForDisplay } from "@/lib/math-formatter";
+import { getSubjectTypeBadge } from "./QuizEditor";
 
 interface Question {
     id: string;
@@ -25,6 +27,7 @@ interface Question {
     contentImageUrl?: string | null;
     timestamp?: number;
     quizSource?: "AI_VIDEO" | "MANUAL" | "WORKSHEET";
+    subjectHint?: string | null;
     subItems?: { id: string; label: string; content: string; position: number; isCorrect?: boolean }[];
     passage?: { id: string; title: string | null; content: string } | null;
     modelAnswer?: string | null;
@@ -164,9 +167,11 @@ export default function QuizPlayer({
         const unanswered = questions.filter(q => {
             const ans = answers[q.id];
             if (!ans) return true;
-            if (q.type === "MULTIPLE_CHOICE" && !ans.selectedOption) return true;
-            if (q.type === "ESSAY" && !ans.answerText?.trim() && !ans.fileUrl) return true;
-            if (q.type === "FILL_IN_BLANK" && !ans.answerText?.trim()) return true;
+            const hasOptions = (q.type === "MULTIPLE_CHOICE") || (Array.isArray(q.options) && q.options.length > 0);
+            if (hasOptions && !ans.selectedOption) return true;
+            if (q.type === "ESSAY" && !hasOptions && !ans.answerText?.trim() && !ans.fileUrl) return true;
+            if (q.type === "FILL_IN_BLANK" && !hasOptions && !ans.answerText?.trim()) return true;
+            if (q.type === "READING_COMPREHENSION" && !hasOptions && !ans.answerText?.trim() && !ans.fileUrl) return true;
             if (q.type === "TRUE_FALSE") {
                 if (!ans.subItemAnswers) return true;
                 if (q.subItems && Object.keys(ans.subItemAnswers).length < q.subItems.length) return true;
@@ -235,7 +240,7 @@ export default function QuizPlayer({
         <div className="space-y-8 py-4 font-sans">
             {/* RESULT HEADER */}
             {result && (() => {
-                const hasPendingEssay = questions.some(q => q.type === "ESSAY" || q.type === "READING_COMPREHENSION") &&
+                const hasPendingEssay = questions.some(q => (q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (!q.options || q.options.length === 0)) &&
                     result.feedback.some((f: any) => f.isPendingGrading || !f.isFinalized);
 
                 if (hasPendingEssay) {
@@ -286,7 +291,13 @@ export default function QuizPlayer({
                                     {q.passage!.title || "Ngữ liệu đọc hiểu"}
                                 </h4>
                                 <div className={`prose prose-sm max-w-none leading-relaxed ${isDark ? "text-stone-300" : "text-stone-700"}`}>
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm, remarkMath]}
+                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                        components={{
+                                            u: ({ children }) => <u className="underline underline-offset-4 decoration-2 decoration-[#C5A059] font-semibold">{children}</u>
+                                        }}
+                                    >
                                         {q.passage!.content}
                                     </ReactMarkdown>
                                 </div>
@@ -295,52 +306,32 @@ export default function QuizPlayer({
 
                         <div className={`p-6 rounded-3xl border transition-all shadow-sm ${isDark ? "bg-[#0e0e0e] border-white/10 text-white" : "bg-white border-stone-200 text-stone-900"
                             }`}>
-                            <div className="flex justify-between items-start gap-4 mb-5 min-w-0">
-                                <div className="flex gap-3 items-start w-full min-w-0 flex-wrap">
-                                    <div className="flex flex-row gap-2 items-center shrink-0">
-                                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-[#C5A059] text-[#080808] text-xs font-bold uppercase tracking-wider shadow-sm select-none">
-                                            Câu {index + 1}
+                            {/* Question Header: Question number, badges & action buttons */}
+                            <div className="flex justify-between items-center gap-3 mb-4">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-[#C5A059] text-[#080808] text-xs font-bold uppercase tracking-wider shadow-sm select-none">
+                                        Câu {index + 1}
+                                    </span>
+                                    {q.subjectHint && (() => {
+                                        const badge = getSubjectTypeBadge(q.subjectHint);
+                                        if (!badge) return null;
+                                        return (
+                                            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-xs ${badge.color}`}>
+                                                <Tag size={12} />
+                                                <span>[{badge.subject}] {badge.label}</span>
+                                            </span>
+                                        );
+                                    })()}
+                                    {q.quizSource === "AI_VIDEO" && (
+                                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 rounded-full">
+                                            <Bot size={12} /> AI
                                         </span>
-                                        {q.quizSource === "AI_VIDEO" && (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-2.5 py-1 rounded-full">
-                                                <Bot size={12} /> AI
-                                            </span>
-                                        )}
-                                        {q.quizSource === "WORKSHEET" && (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
-                                                <FileText size={12} /> Phiếu BT
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Question Content */}
-                                    <div className="flex-1 min-w-0 flex flex-col gap-3">
-                                        <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${isDark ? "text-white" : "text-stone-900"
-                                            }`}>
-                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                {formatMathForDisplay(q.content)}
-                                            </ReactMarkdown>
-                                        </div>
-                                        {q.contentImageUrl && (
-                                            <div className="my-2 flex justify-center md:justify-start">
-                                                <div 
-                                                    onClick={() => setZoomImageSrc(q.contentImageUrl!)}
-                                                    title="Bấm để phóng to / thu nhỏ hình ảnh"
-                                                    className="group relative cursor-zoom-in rounded-2xl border border-stone-500/20 bg-stone-900/10 dark:bg-white/5 p-1.5 shadow-xs hover:border-[#C5A059]/60 hover:shadow-md transition-all overflow-hidden inline-block"
-                                                >
-                                                    <img 
-                                                        src={q.contentImageUrl} 
-                                                        alt="Hình vẽ / Bảng biểu minh họa" 
-                                                        className="max-h-72 max-w-full rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]" 
-                                                    />
-                                                    <div className="absolute bottom-2 right-2 bg-stone-950/80 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg backdrop-blur-md opacity-90 group-hover:opacity-100 flex items-center gap-1.5 shadow-lg border border-white/10 transition-opacity">
-                                                        <ZoomIn size={13} className="text-[#C5A059]" />
-                                                        <span>Phóng to</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
+                                    {q.quizSource === "WORKSHEET" && (
+                                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                                            <FileText size={12} /> Phiếu BT
+                                        </span>
+                                    )}
                                 </div>
 
                                 {q.timestamp !== undefined && q.timestamp !== null && onSeek && (
@@ -353,8 +344,43 @@ export default function QuizPlayer({
                                 )}
                             </div>
 
+                            {/* Question Content */}
+                            <div className="flex flex-col gap-3 mb-5">
+                                <div className={`prose prose-sm md:prose-base max-w-none font-medium leading-relaxed ${isDark ? "text-white" : "text-stone-900"
+                                    }`}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm, remarkMath]}
+                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                        components={{
+                                            u: ({ children }) => <u className="underline underline-offset-4 decoration-2 decoration-[#C5A059] font-semibold">{children}</u>
+                                        }}
+                                    >
+                                        {formatMathForDisplay(q.content)}
+                                    </ReactMarkdown>
+                                </div>
+                                {q.contentImageUrl && (
+                                    <div className="my-2 flex justify-center md:justify-start">
+                                        <div 
+                                            onClick={() => setZoomImageSrc(q.contentImageUrl!)}
+                                            title="Bấm để phóng to / thu nhỏ hình ảnh"
+                                            className="group relative cursor-zoom-in rounded-2xl border border-stone-500/20 bg-stone-900/10 dark:bg-white/5 p-1.5 shadow-xs hover:border-[#C5A059]/60 hover:shadow-md transition-all overflow-hidden inline-block"
+                                        >
+                                            <img 
+                                                src={q.contentImageUrl} 
+                                                alt="Hình vẽ / Bảng biểu minh họa" 
+                                                className="max-h-72 max-w-full rounded-xl object-contain transition-transform duration-200 group-hover:scale-[1.01]" 
+                                            />
+                                            <div className="absolute bottom-2 right-2 bg-stone-950/80 text-white text-[11px] font-medium px-2.5 py-1 rounded-lg backdrop-blur-md opacity-90 group-hover:opacity-100 flex items-center gap-1.5 shadow-lg border border-white/10 transition-opacity">
+                                                <ZoomIn size={13} className="text-[#C5A059]" />
+                                                <span>Phóng to</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* MULTIPLE CHOICE OPTIONS */}
-                            {q.type === "MULTIPLE_CHOICE" && (
+                            {((q.type === "MULTIPLE_CHOICE") || (Array.isArray(q.options) && q.options.length > 0)) && (
                                 <div className="space-y-3 mt-4">
                                     {q.options.map((opt, i) => {
                                         const prefix = String.fromCharCode(65 + i);
@@ -367,7 +393,13 @@ export default function QuizPlayer({
                                             >
                                                 <div className="flex-1 [&_p]:inline [&_p]:m-0">
                                                     <span className="font-bold mr-2 text-[#C5A059]">{prefix}.</span>
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkGfm, remarkMath]}
+                                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                                        components={{
+                                                            u: ({ children }) => <u className="underline underline-offset-4 decoration-2 decoration-[#C5A059] font-semibold">{children}</u>
+                                                        }}
+                                                    >
                                                         {formatMathForDisplay(opt)}
                                                     </ReactMarkdown>
                                                 </div>
@@ -389,7 +421,13 @@ export default function QuizPlayer({
                                                 }`}>
                                                 <div className="text-sm font-medium flex-1 [&_p]:inline [&_p]:m-0">
                                                     <span className="font-bold text-[#C5A059] mr-2">{sub.label}.</span>
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkGfm, remarkMath]}
+                                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
+                                                        components={{
+                                                            u: ({ children }) => <u className="underline underline-offset-4 decoration-2 decoration-[#C5A059] font-semibold">{children}</u>
+                                                        }}
+                                                    >
                                                         {formatMathForDisplay(sub.content)}
                                                     </ReactMarkdown>
                                                 </div>
@@ -430,8 +468,8 @@ export default function QuizPlayer({
                                     })}
                                 </div>
                             )}
-                            {/* READING COMPREHENSION */}
-                            {q.type === "READING_COMPREHENSION" && (
+                            {/* READING COMPREHENSION (Chỉ hiện textarea khi không có options trắc nghiệm) */}
+                            {q.type === "READING_COMPREHENSION" && (!q.options || q.options.length === 0) && (
                                 <div className="space-y-4 mt-4">
                                     <label className={`text-xs font-bold uppercase tracking-wider block ${isDark ? "text-stone-400" : "text-stone-600"}`}>
                                         Câu trả lời đọc hiểu của bạn:
@@ -498,8 +536,8 @@ export default function QuizPlayer({
                                 </div>
                             )}
 
-                            {/* ESSAY QUESTION UI */}
-                            {q.type === "ESSAY" && (
+                            {/* ESSAY QUESTION UI (Chỉ hiện textarea khi không có options trắc nghiệm) */}
+                            {q.type === "ESSAY" && (!q.options || q.options.length === 0) && (
                                 <div className="space-y-4 mt-4">
                                     <label className={`text-xs font-bold uppercase tracking-wider block ${isDark ? "text-stone-400" : "text-stone-600"}`}>
                                         Câu trả lời tự luận của bạn:
@@ -566,8 +604,8 @@ export default function QuizPlayer({
                                 </div>
                             )}
 
-                            {/* FILL IN BLANK QUESTION UI */}
-                            {q.type === "FILL_IN_BLANK" && (
+                            {/* FILL IN BLANK QUESTION UI (Chỉ hiện text input khi không có options trắc nghiệm) */}
+                            {q.type === "FILL_IN_BLANK" && (!q.options || q.options.length === 0) && (
                                 <div className="space-y-4 mt-4">
                                     <label className={`text-xs font-bold uppercase tracking-wider block ${isDark ? "text-stone-400" : "text-stone-600"}`}>
                                         Câu trả lời điền khuyết:
@@ -600,8 +638,8 @@ export default function QuizPlayer({
                             {/* AFTER-SUBMISSION FEEDBACK & MODEL ANSWER SECTION */}
                             {result && (
                                 <div className="space-y-4 mt-6 pt-6 border-t border-dashed border-stone-500/20">
-                                    {/* Essay & Reading Comprehension Status Notice */}
-                                    {(q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (
+                                    {/* Essay & Reading Comprehension Status Notice (Chỉ khi là tự luận thực sự không có options) */}
+                                    {(q.type === "ESSAY" || q.type === "READING_COMPREHENSION") && (!q.options || q.options.length === 0) && (
                                         <div className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-medium ${
                                             feedback?.isFinalized
                                                 ? isDark ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border-emerald-200 text-emerald-900"

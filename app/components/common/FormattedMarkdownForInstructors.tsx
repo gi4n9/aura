@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import { formatMathForDisplay } from "@/lib/math-formatter";
 
 export function formatMarkdownText(text: string | null | undefined): string {
@@ -53,12 +54,17 @@ export default function FormattedMarkdownForInstructors({ content, className = "
         <div className={`prose prose-sm max-w-none leading-relaxed font-sans text-stone-800 ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
                 components={{
                     p: ({ children }) => (
                         <p className="mb-2 last:mb-0 text-justify">
                             {children}
                         </p>
+                    ),
+                    u: ({ children }) => (
+                        <u className="underline underline-offset-4 decoration-2 decoration-stone-500 font-semibold">
+                            {children}
+                        </u>
                     ),
                     h4: ({ children }) => (
                         <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 my-3 shadow-xs">

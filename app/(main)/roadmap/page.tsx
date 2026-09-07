@@ -10,18 +10,29 @@ export default async function RoadmapPage() {
 
     if (!user) redirect("/login");
 
-    const existingStudyPlan = await db.studyPlanItem.findFirst({
-        where: { userId: user.id }
-    });
-
-    if (existingStudyPlan) {
-        redirect("/onboarding/study-plan");
-    }
-
     const profile = await db.profile.findUnique({
         where: { id: user.id },
-        select: { interests: true }
+        select: { interests: true, learningPath: true }
     });
+
+    const hasProfileLearningPath = Boolean(
+        profile?.learningPath &&
+        (typeof profile.learningPath === "object" ? Object.keys(profile.learningPath as object).length > 0 : true)
+    );
+
+    const hasActiveSchedule = await db.studySchedule.findFirst({
+        where: { userId: user.id, isActive: true },
+        select: { id: true }
+    });
+
+    const existingStudyPlan = await db.studyPlanItem.findFirst({
+        where: { userId: user.id },
+        select: { id: true }
+    });
+
+    if (hasProfileLearningPath || hasActiveSchedule || existingStudyPlan) {
+        redirect("/onboarding/study-plan");
+    }
 
     const roadmap = await db.userRoadmap.findUnique({
         where: { userId: user.id },

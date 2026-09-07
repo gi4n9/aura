@@ -451,10 +451,10 @@ async function runBackgroundVideoProcessing(
     }
 
     // =========================================================
-    // BƯỚC 2: UPLOAD YOUTUBE & STT TRANSCRIPT BẰNG WHISPER + LOCAL GEMINI 3.6
+    // BƯỚC 2: UPLOAD YOUTUBE & STT TRANSCRIPT BẰNG GROQ WHISPER
     // =========================================================
-    await updateProcessingStep(lessonId, 2, "Bóc băng âm thanh & Hiệu chỉnh (Local Gemini 3.6 Flash)", 35, 25);
-    console.log(`⚡ Đang upload lên YouTube ("${ytTitle}") và bóc băng bằng Groq Whisper + Local Gemini 3.6...`);
+    await updateProcessingStep(lessonId, 2, "Bóc băng âm thanh (Groq Whisper) & Tải lên YouTube", 35, 25);
+    console.log(`⚡ Đang upload lên YouTube ("${ytTitle}") và bóc băng bằng Groq Whisper...`);
     const youtubeUploadPromise = youtube.videos.insert({
       part: ["snippet", "status"],
       requestBody: {
@@ -475,6 +475,9 @@ async function runBackgroundVideoProcessing(
         where: { id: lessonId },
         data: { youtubeVideoId: ytRes.data.id }
       });
+
+      // Báo tiến độ bước 3: Đã tải xong YouTube
+      await updateProcessingStep(lessonId, 3, `Đã upload YouTube thành công (ID: ${ytRes.data.id})!`, 55, 15);
 
       return ytRes.data.id;
     });
@@ -622,22 +625,31 @@ async function runBackgroundVideoProcessing(
 
         // Insert từng batch (tránh quá tải)
         const batchSize = 20;
+        let insertedCount = 0;
         for (let i = 0; i < chunks.length; i += batchSize) {
-          const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => ({
-            lesson_id: lessonId,
-            content: chunk.text,
-            start_time: chunk.start,
-            end_time: chunk.end,
-            embedding: embeddings[i + idx],
-            metadata: { chunkIndex: i + idx, title: title }
-          }));
+          const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => {
+            const emb = embeddings[i + idx];
+            if (!emb || emb.length === 0) return null;
+            return {
+              lesson_id: lessonId,
+              content: chunk.text,
+              start_time: chunk.start,
+              end_time: chunk.end,
+              embedding: emb,
+              metadata: { chunkIndex: i + idx, title: title }
+            };
+          }).filter((item): item is NonNullable<typeof item> => item !== null);
 
-          const { error: insertError } = await supabaseAdmin.from('video_embeddings').insert(batch);
-          if (insertError) {
-            console.error(`⚠️ Embedding batch ${i} error:`, insertError.message);
+          if (batch.length > 0) {
+            const { error: insertError } = await supabaseAdmin.from('video_embeddings').insert(batch);
+            if (insertError) {
+              console.error(`⚠️ Embedding batch ${i} error:`, insertError.message);
+            } else {
+              insertedCount += batch.length;
+            }
           }
         }
-        console.log(`✅ Đã tạo ${chunks.length} embeddings cho RAG search.`);
+        console.log(`✅ Đã tạo & lưu ${insertedCount}/${chunks.length} embeddings cho RAG search.`);
       }
     } catch (embError: any) {
       // Không throw - embedding failure không nên block toàn bộ video process
@@ -831,13 +843,13 @@ export async function getLessonProcessingStatus(lessonId: string) {
     });
 
     if (!lesson) {
-      return { isProcessing: false, isError: true, errorMessage: "Không tìm thấy bài học" };
+      return { isProcessing: false, isError: true, errorMessage: "Không tìm thấy bài học", youtubeVideoId: null };
     }
 
     const transcriptStr = lesson.transcript || "";
 
     if (transcriptStr.startsWith("Lỗi")) {
-      return { isProcessing: false, isError: true, errorMessage: transcriptStr };
+      return { isProcessing: false, isError: true, errorMessage: transcriptStr, youtubeVideoId: lesson.youtubeVideoId };
     }
 
     if (transcriptStr.startsWith("PROCESSING:")) {
@@ -850,19 +862,21 @@ export async function getLessonProcessingStatus(lessonId: string) {
           step: status.step || 1,
           stepName: status.stepName || "Đang xử lý...",
           progress: status.progress || 15,
-          etaSeconds: status.eta || 30
+          etaSeconds: status.eta || 30,
+          youtubeVideoId: lesson.youtubeVideoId
         };
       } catch (e) { }
     }
 
-    if (transcriptStr === "Đang được AI xử lý ngầm..." || (!lesson.youtubeVideoId && !transcriptStr)) {
+    if (transcriptStr === "Đang được AI xử lý ngầm...") {
       return {
         isProcessing: true,
         isError: false,
         step: 1,
         stepName: "Ghép file & trích xuất Audio (FFmpeg)",
         progress: 15,
-        etaSeconds: 35
+        etaSeconds: 35,
+        youtubeVideoId: lesson.youtubeVideoId
       };
     }
 
@@ -873,9 +887,10 @@ export async function getLessonProcessingStatus(lessonId: string) {
       step: 6,
       stepName: "Hoàn tất!",
       progress: 100,
-      etaSeconds: 0
+      etaSeconds: 0,
+      youtubeVideoId: lesson.youtubeVideoId
     };
   } catch (err: any) {
-    return { isProcessing: false, isError: true, errorMessage: err.message };
+    return { isProcessing: false, isError: true, errorMessage: err.message, youtubeVideoId: null };
   }
 }

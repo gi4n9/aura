@@ -44,7 +44,7 @@ async function saveQuestionsWithRelations(lessonId: string, parsedQuestions: Par
                 lessonId,
                 content: q.content,
                 type: q.type as QuestionType,
-                options: q.type === "MULTIPLE_CHOICE" ? q.options || [] : undefined,
+                options: (Array.isArray(q.options) && q.options.length > 0) ? q.options : (q.type === "MULTIPLE_CHOICE" ? q.options || [] : undefined),
                 correctAnswer: q.correctAnswer || null,
                 quizSource: QuizSource.WORKSHEET,
                 timestamp: null,

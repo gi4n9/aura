@@ -5,8 +5,9 @@ import { PlusCircle, Loader2, Video, GripVertical, FileQuestion, ChevronRight, C
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createChapter, updateChapter, deleteChapter } from "@/app/actions/chapter";
-import { createLesson } from "@/app/actions/lesson";
+import { createLesson, deleteLesson, deleteAllLessons } from "@/app/actions/lesson";
 import { getChapterLessons } from "@/app/actions/chapter";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { ChapterActions } from "./ChapterActions";
 
@@ -20,6 +21,8 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
     const [selectedChapterId, setSelectedChapterId] = useState<string>(initialChapters.length > 0 ? initialChapters[0].id : "");
     const [lessons, setLessons] = useState<any[]>([]);
     const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+    const [currentLessonPage, setCurrentLessonPage] = useState(1);
+    const LESSONS_PER_PAGE = 6;
 
     // Creating states
     const [isCreatingChapter, setIsCreatingChapter] = useState(false);
@@ -34,6 +37,52 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [isMounted, setIsMounted] = useState(false);
+
+    // Deleting lesson states
+    const [lessonToDelete, setLessonToDelete] = useState<{ id: string; title: string } | null>(null);
+    const [isDeletingLesson, setIsDeletingLesson] = useState(false);
+    const [isDeleteAllLessonsOpen, setIsDeleteAllLessonsOpen] = useState(false);
+    const [isDeletingAllLessons, setIsDeletingAllLessons] = useState(false);
+
+    const handleDeleteSingleLesson = async () => {
+        if (!lessonToDelete) return;
+        setIsDeletingLesson(true);
+        try {
+            const res = await deleteLesson(lessonToDelete.id);
+            if (res.success) {
+                toast.success(`Đã xóa bài học "${lessonToDelete.title}"`);
+                setLessons(prev => prev.filter(l => l.id !== lessonToDelete.id));
+                setLessonToDelete(null);
+                router.refresh();
+            } else {
+                toast.error(res.error || "Lỗi khi xóa bài học");
+            }
+        } catch {
+            toast.error("Lỗi khi xóa bài học");
+        } finally {
+            setIsDeletingLesson(false);
+        }
+    };
+
+    const handleDeleteAllLessons = async () => {
+        if (!selectedChapterId) return;
+        setIsDeletingAllLessons(true);
+        try {
+            const res = await deleteAllLessons(selectedChapterId);
+            if (res.success) {
+                toast.success(`Đã xóa tất cả ${res.count || lessons.length} bài học`);
+                setLessons([]);
+                setIsDeleteAllLessonsOpen(false);
+                router.refresh();
+            } else {
+                toast.error(res.error || "Lỗi khi xóa tất cả bài học");
+            }
+        } catch {
+            toast.error("Lỗi kết nối");
+        } finally {
+            setIsDeletingAllLessons(false);
+        }
+    };
 
     const router = useRouter();
 
@@ -61,6 +110,38 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
 
         fetchLessons();
     }, [selectedChapterId]);
+
+    // Check if any lesson is currently processing
+    const hasProcessingLesson = lessons.some(
+        (l) =>
+            l.transcript === "Đang được AI xử lý ngầm..." ||
+            (typeof l.transcript === "string" && l.transcript.startsWith("PROCESSING:"))
+    );
+
+    // Polling while any lesson in the chapter is being processed by AI
+    useEffect(() => {
+        if (!selectedChapterId || !hasProcessingLesson) return;
+
+        const interval = setInterval(async () => {
+            const res = await getChapterLessons(selectedChapterId);
+            if (res.success && res.data) {
+                setLessons(res.data);
+            }
+        }, 4000);
+
+        return () => clearInterval(interval);
+    }, [selectedChapterId, hasProcessingLesson]);
+
+    // Reset về trang 1 khi đổi chương
+    useEffect(() => {
+        setCurrentLessonPage(1);
+    }, [selectedChapterId]);
+
+    const totalLessonPages = Math.ceil(lessons.length / LESSONS_PER_PAGE) || 1;
+    const paginatedLessons = lessons.slice(
+        (currentLessonPage - 1) * LESSONS_PER_PAGE,
+        currentLessonPage * LESSONS_PER_PAGE
+    );
 
 
     const handleCreateChapter = async () => {
@@ -426,12 +507,23 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                         </h3>
 
                         {!isCreatingLesson ? (
-                            <button
-                                onClick={() => setIsCreatingLesson(true)}
-                                className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-lg hover:bg-stone-800 flex items-center gap-2 shadow-sm transition-all hover:shadow-md"
-                            >
-                                <PlusCircle size={16} /> Thêm bài học
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {lessons.length > 0 && (
+                                    <button
+                                        onClick={() => setIsDeleteAllLessonsOpen(true)}
+                                        className="px-3 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+                                        title="Xóa tất cả các bài học trong chương này"
+                                    >
+                                        <Trash2 size={15} /> Xóa tất cả
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setIsCreatingLesson(true)}
+                                    className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-lg hover:bg-stone-800 flex items-center gap-2 shadow-sm transition-all hover:shadow-md cursor-pointer"
+                                >
+                                    <PlusCircle size={16} /> Thêm bài học
+                                </button>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 w-full max-w-md justify-end animate-in fade-in">
                                 <span className="text-sm font-bold text-stone-500 whitespace-nowrap">Bài mới:</span>
@@ -458,6 +550,17 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                         )}
                     </div>
 
+                    {hasProcessingLesson && (
+                        <div className="p-3.5 mb-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-amber-900 text-sm animate-pulse shadow-xs">
+                            <div className="flex items-center gap-2.5">
+                                <Loader2 className="animate-spin text-[#C5A059] shrink-0" size={18} />
+                                <span className="font-medium">
+                                    Đang có bài học được hệ thống tải lên YouTube & phân tích AI ngầm. Trạng thái sẽ tự động cập nhật...
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-3">
                         {isLoadingLessons ? (
                             <div className="flex justify-center py-10">
@@ -469,7 +572,10 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                                 <p className="text-xs text-stone-400">Nhấn "Thêm bài học" để bắt đầu tải lên video và câu hỏi.</p>
                             </div>
                         ) : (
-                            lessons.map((lesson) => (
+                            paginatedLessons.map((lesson) => {
+                                const isProcessing = lesson.transcript === "Đang được AI xử lý ngầm..." || (typeof lesson.transcript === "string" && lesson.transcript.startsWith("PROCESSING:"));
+
+                                return (
                                 <Link
                                     key={lesson.id}
                                     href={`/instructor/courses/${courseId}/chapters/${selectedChapterId}/lesson/${lesson.id}`}
@@ -480,29 +586,195 @@ export const CourseContentManager = ({ initialChapters, courseId }: CourseConten
                                             <GripVertical size={20} />
                                         </div>
 
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${lesson._count?.questions > 0 ? "bg-[#C5A059]/10 text-[#C5A059]" : "bg-stone-100 text-stone-400"
-                                            }`}>
-                                            <Video size={20} />
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                                            isProcessing 
+                                                ? "bg-amber-100 text-amber-600" 
+                                                : lesson._count?.questions > 0 
+                                                    ? "bg-[#C5A059]/10 text-[#C5A059]" 
+                                                    : "bg-stone-100 text-stone-400"
+                                        }`}>
+                                            {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Video size={20} />}
                                         </div>
 
                                         <div className="flex-1">
                                             <h4 className="font-semibold text-stone-800 group-hover:text-[#C5A059] transition-colors">
                                                 {lesson.title}
                                             </h4>
-                                            <div className="flex items-center gap-4 mt-1">
+                                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                                {isProcessing ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                                                        <Loader2 size={11} className="animate-spin text-amber-600" />
+                                                        {lesson.youtubeVideoId ? "Đã upload YouTube - Đang phân tích AI..." : "Đang tải lên YouTube & AI xử lý..."}
+                                                    </span>
+                                                ) : (
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                        lesson.youtubeVideoId 
+                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                                                            : "bg-stone-100 text-stone-500 border border-stone-200"
+                                                    }`}>
+                                                        {lesson.youtubeVideoId ? "● Đã có video YouTube" : "○ Chưa có video"}
+                                                    </span>
+                                                )}
                                                 <span className="text-xs text-stone-500 flex items-center gap-1">
                                                     <FileQuestion size={12} /> {lesson._count?.questions || 0} câu hỏi
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className="text-stone-300 group-hover:text-[#C5A059] transition-transform group-hover:translate-x-1">
-                                            <ChevronRight size={20} />
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setLessonToDelete({ id: lesson.id, title: lesson.title });
+                                                }}
+                                                className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                                title="Xóa bài học này"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                            <div className="text-stone-300 group-hover:text-[#C5A059] transition-transform group-hover:translate-x-1">
+                                                <ChevronRight size={20} />
+                                            </div>
                                         </div>
                                     </div>
                                 </Link>
-                            ))
+                                );
+                            })
                         )}
+                    </div>
+
+                    {/* Thanh Phân Trang Bài Học */}
+                    {lessons.length > LESSONS_PER_PAGE && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-stone-200 mt-4 text-sm">
+                            <p className="text-xs text-stone-500 font-medium">
+                                Hiển thị bài <strong className="text-stone-800 font-bold">{(currentLessonPage - 1) * LESSONS_PER_PAGE + 1}</strong> - <strong className="text-stone-800 font-bold">{Math.min(currentLessonPage * LESSONS_PER_PAGE, lessons.length)}</strong> trong tổng số <strong className="text-stone-800 font-bold">{lessons.length}</strong> bài học
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => setCurrentLessonPage(p => Math.max(1, p - 1))}
+                                    disabled={currentLessonPage === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs font-semibold cursor-pointer shadow-xs"
+                                >
+                                    Trước
+                                </button>
+                                {Array.from({ length: totalLessonPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentLessonPage(page)}
+                                        className={`w-8 h-8 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                            currentLessonPage === page
+                                                ? "bg-[#C5A059] text-white shadow-xs"
+                                                : "border border-stone-200 bg-white hover:bg-stone-50 text-stone-700"
+                                        }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setCurrentLessonPage(p => Math.min(totalLessonPages, p + 1))}
+                                    disabled={currentLessonPage === totalLessonPages}
+                                    className="px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs font-semibold cursor-pointer shadow-xs"
+                                >
+                                    Sau
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* MODAL: Xác nhận xóa 1 bài học */}
+            {lessonToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center gap-3 text-red-600 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                <Trash2 size={20} />
+                            </div>
+                            <h3 className="font-serif font-bold text-lg text-stone-900">
+                                Xác nhận xóa bài học?
+                            </h3>
+                        </div>
+
+                        <p className="text-stone-600 text-sm mb-4 leading-relaxed">
+                            Bạn có chắc chắn muốn xóa bài học{" "}
+                            <span className="font-bold text-stone-900">
+                                &quot;{lessonToDelete.title}&quot;
+                            </span>
+                            ? Toàn bộ video, câu hỏi trắc nghiệm và tiến độ học tập liên quan sẽ bị xóa vĩnh viễn.
+                        </p>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setLessonToDelete(null)}
+                                disabled={isDeletingLesson}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleDeleteSingleLesson}
+                                disabled={isDeletingLesson}
+                                className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                            >
+                                {isDeletingLesson ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" /> Đang xóa...
+                                    </>
+                                ) : (
+                                    "Xác nhận xóa"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: Xác nhận xóa TẤT CẢ bài học */}
+            {isDeleteAllLessonsOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-stone-200 animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center gap-3 text-red-600 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <h3 className="font-serif font-bold text-lg text-stone-900">
+                                Xóa TẤT CẢ {lessons.length} bài học trong chương?
+                            </h3>
+                        </div>
+
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-semibold mb-4 flex items-center gap-2">
+                            <AlertTriangle size={16} className="shrink-0" />
+                            Cảnh báo: Hành động này không thể khôi phục!
+                        </div>
+
+                        <p className="text-stone-600 text-sm mb-5 leading-relaxed">
+                            Toàn bộ <span className="font-bold text-stone-900">{lessons.length} bài học</span> trong chương này cùng mọi câu hỏi, video và tiến trình liên quan sẽ bị xóa hoàn toàn.
+                        </p>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setIsDeleteAllLessonsOpen(false)}
+                                disabled={isDeletingAllLessons}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleDeleteAllLessons}
+                                disabled={isDeletingAllLessons}
+                                className="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                            >
+                                {isDeletingAllLessons ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" /> Đang xóa tất cả...
+                                    </>
+                                ) : (
+                                    `Xóa tất cả (${lessons.length})`
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

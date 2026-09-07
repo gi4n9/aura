@@ -337,7 +337,7 @@ async function callSTTWithRetry(
     console.warn(`⚠️ gemini-1.5-flash thất bại ở chunk ${chunkIndex}: ${err.message}. Chuyển sang Whisper fallback...`);
   }
 
-  // 3. Fallback sang Whisper (Groq) + Llama correction
+  // 3. Fallback sang Whisper (Groq)
   try {
     const rawWhisper = await retryWithBackoff(async () => {
       const response = await groq.audio.transcriptions.create({
@@ -349,9 +349,8 @@ async function callSTTWithRetry(
       return response.text;
     });
 
-    console.log(`💡 Đã lấy raw Whisper transcript cho chunk ${chunkIndex}. Đang chạy Llama correction...`);
-    const correctedText = await correctWhisperChunk(rawWhisper, courseTitle, chapterTitle, lessonTitle);
-    return { text: correctedText, modelUsed: "whisper+llama", isFallback: true };
+    console.log(`💡 Đã lấy raw Whisper transcript cho chunk ${chunkIndex}.`);
+    return { text: rawWhisper, modelUsed: "whisper", isFallback: true };
   } catch (err: any) {
     console.error(`❌ Tất cả các model STT đều thất bại cho chunk ${chunkIndex}: ${err.message}`);
     throw err;
@@ -472,7 +471,7 @@ Trả về duy nhất toàn bộ đoạn văn bản đã được hiệu chỉnh
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s per block
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s per block (tránh abort khi server local xử lý khối lớn)
 
     const res = await fetch(`${localBaseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
@@ -662,9 +661,6 @@ export async function transcribeWithGeminiDetailed(
 
   if (!rawText) {
     rawText = await transcribeWithGemini(audioFilePath, courseTitle, chapterTitle, lessonTitle);
-  } else {
-    // Hiệu chỉnh qua Local Gemini 3.6 Flash / Groq Llama
-    rawText = await correctWithLocalGemini36(rawText, courseTitle, chapterTitle, lessonTitle);
   }
 
   const semanticChunks = buildSemanticChunksFromSegments(rawSegments);
@@ -687,7 +683,7 @@ export async function transcribeWithGemini(
 ): Promise<string> {
   console.log(`🎬 Bắt đầu STT Pipeline Siêu Tốc cho bài học: "${lessonTitle}"`);
 
-  // 0. Thử đường truyền Siêu Tốc: Groq Whisper Direct + Local Gemini 3.6 Flash (2-5 giây)
+  // 0. Thử đường truyền Siêu Tốc: Groq Whisper Direct (2-5 giây)
   try {
     const audioStats = fs.statSync(audioFilePath);
     // Nếu audio <= 25MB (Whisper API limit), chạy trực tiếp
@@ -704,10 +700,8 @@ export async function transcribeWithGemini(
       console.log(`⚡ Groq Whisper hoàn tất trong ${((Date.now() - startTime) / 1000).toFixed(1)}s! Ký tự: ${rawText.length}`);
 
       if (rawText.trim().length > 0) {
-        console.log(`🤖 Đang hiệu chỉnh qua Local Gemini 3.6 Flash / Groq Llama...`);
-        const polishedText = await correctWithLocalGemini36(rawText, courseTitle, chapterTitle, lessonTitle);
-        console.log(`✨ Bóc băng Siêu Tốc hoàn tất thành công! Tong thoi gian: ${((Date.now() - startTime) / 1000).toFixed(1)}s.`);
-        return polishedText;
+        console.log(`✨ Bóc băng Siêu Tốc qua Groq Whisper hoàn tất thành công! Tổng thời gian: ${((Date.now() - startTime) / 1000).toFixed(1)}s.`);
+        return rawText;
       }
     }
   } catch (fastErr: any) {
@@ -849,15 +843,11 @@ Hãy tiếp tục ghi âm đoạn tiếp theo liền mạch với đoạn trên.
     console.log("📊 BẢNG THỐNG KÊ XỬ LÝ CHUNKS STT:");
     console.table(chunkStats);
 
-    // 9. Ghép nối và chạy Cleanup Pass hiệu đính
+    // 9. Ghép nối transcript
     const mergedRaw = resolvedTranscripts.filter(Boolean).join(" ");
-    console.log(`🔗 Tổng độ dài transcript thô ghép lại: ${mergedRaw.length} ký tự.`);
+    console.log(`🔗 Tổng độ dài transcript ghép lại: ${mergedRaw.length} ký tự.`);
 
-    console.log("🧹 Đang chạy Gemini Cleanup Pass để tinh chỉnh...");
-    const cleanedTranscript = await cleanMergedTranscriptSafely(mergedRaw, courseTitle, chapterTitle, lessonTitle);
-    console.log(`✨ Đã hoàn thành Cleanup Pass. Độ dài transcript sạch: ${cleanedTranscript.length} ký tự.`);
-
-    return cleanedTranscript;
+    return mergedRaw;
   } finally {
     // 10. Dọn dẹp các files chunk tạm trên đĩa
     try {

@@ -427,13 +427,98 @@ function sanitizeQuestionContent(content: string): string {
 }
 
 /**
- * Loại bỏ các tiền tố đáp án (VD: "A. ", "B/ ", "C: ", "D - ")
+ * Loại bỏ các tiền tố đáp án (VD: "A. ", "B/ ", "C: ") nhưng bảo toàn 100% chuỗi thứ tự/sắp xếp
  */
 function sanitizeOptionText(opt: string): string {
     if (!opt) return "";
     let clean = cleanMarkdownAndLatex(opt);
-    clean = clean.replace(/^[A-Da-d][.\/:\-–\)]\s*/, "");
+    // TUYỆT ĐỐI KHÔNG cắt nếu là chuỗi thứ tự/sắp xếp như a-b-c, b-c-a, e-b-a-c-d, 1-2-3...
+    if (/^[a-zA-Z0-9]\s*[-–—]\s*[a-zA-Z0-9]/.test(clean.trim())) {
+        return clean.trim();
+    }
+    // Chỉ cắt tiền tố nhãn đáp án chuẩn: "A. ", "B) ", "C: "
+    clean = clean.replace(/^[A-Da-d]\s*[.):]\s*/, "");
+    clean = clean.replace(/^[A-D]\s*[-–]\s+/, "");
     return clean.trim();
+}
+
+/**
+ * Chuẩn hóa phân loại câu hỏi theo tên môn và dạng bài cụ thể
+ * Tiếng Anh: E_..., Ngữ Văn: L_..., Toán: M_..., Vật lý: P_...
+ */
+export function determineQuestionClassification(
+    item: any,
+    globalSubjectHint?: string
+): string {
+    const rawHint = (item.subjectHint || "").trim();
+    if (rawHint && /^[A-Z]{1,3}_[A-Za-z0-9_]+$/.test(rawHint)) {
+        return rawHint;
+    }
+
+    const content = (item.content || "").toLowerCase();
+    const sub = (globalSubjectHint || rawHint || "").toLowerCase();
+
+    // 1. MÔN TIẾNG ANH (Tiền tố: E_)
+    if (sub.includes("anh") || sub.includes("eng") || sub.startsWith("e_") || 
+        /read the following passage|mark the letter|best arrangement|inhabitants of coastal|flyer|leaflet|green hands|warm their hearts/i.test(content)) {
+        if (/arrangement of utterances|arrangement of sentences|best arrangement|cohesive and coherent/i.test(content)) {
+            return "E_Sentence_Arrangement";
+        }
+        if (/blank|cloze|fits each of the numbered blanks|flyer|leaflet|green hands|warm their hearts/i.test(content)) {
+            return "E_Cloze_Test";
+        }
+        if (/according to paragraph|in paragraph|closest in meaning|opposite in meaning|best title|inferred from|passage|paraphrases the underlined|not implied in paragraph/i.test(content) || item.passageGroupId) {
+            return "E_Reading_Comprehension";
+        }
+        if (/pronunciation|stress|underlined part|vowel|consonant/i.test(content)) {
+            return "E_Pronunciation_Stress";
+        }
+        if (/error|correction|needs correction|mistake/i.test(content)) {
+            return "E_Error_Recognition";
+        }
+        if (/dialogue|conversation|exchange|response/i.test(content)) {
+            return "E_Communication";
+        }
+        if (/closest in meaning to the following sentence|combine the two sentences|rewritten/i.test(content)) {
+            return "E_Sentence_Transformation";
+        }
+        return "E_Grammar_Vocabulary";
+    }
+
+    // 2. MÔN NGỮ VĂN (Tiền tố: L_)
+    if (sub.includes("van") || sub.startsWith("l_") || /đoạn trích|ngữ liệu|tác phẩm|nhà thơ|nhà văn|nhân vật|văn bản/i.test(content)) {
+        if (/nghị luận xã hội|suy nghĩ của anh\/chị|đoạn văn khoảng 200 chữ|bài học rút ra/i.test(content)) {
+            return "L_Social_Argument";
+        }
+        if (/phân tích|cảm nhận|giá trị nghệ thuật|giá trị hiện thực|chủ đề tác phẩm/i.test(content)) {
+            return "L_Literary_Analysis";
+        }
+        if (/biện pháp tu từ|thành phần biệt lập|nghĩa của từ|liên kết câu/i.test(content)) {
+            return "L_Vietnamese_Practice";
+        }
+        return "L_Reading_Comprehension";
+    }
+
+    // 3. MÔN TOÁN HỌC (Tiền tố: M_)
+    if (sub.includes("toan") || sub.startsWith("m_") || item.type === "TRUE_FALSE" || /hàm số|đồ thị|tích phân|hình chóp|nghiệm|xác suất/i.test(content)) {
+        if (item.type === "TRUE_FALSE" || (item.trueFalseStatements && item.trueFalseStatements.length > 0)) {
+            return "M_True_False";
+        }
+        if (item.type === "FILL_IN_BLANK" || item.type === "ESSAY") {
+            return "M_Short_Answer";
+        }
+        return "M_Multiple_Choice";
+    }
+
+    // 4. CÁC MÔN KHOA HỌC KHÁC
+    if (sub.includes("ly") || sub.startsWith("p_")) return "P_Multiple_Choice";
+    if (sub.includes("hoa") || sub.startsWith("c_")) return "C_Multiple_Choice";
+    if (sub.includes("sinh") || sub.startsWith("b_")) return "B_Multiple_Choice";
+    if (sub.includes("su") || sub.startsWith("h_")) return "H_Multiple_Choice";
+    if (sub.includes("dia") || sub.startsWith("g_")) return "G_Multiple_Choice";
+    if (sub.includes("gdcd") || sub.startsWith("cd_")) return "CD_Multiple_Choice";
+
+    return rawHint || globalSubjectHint || "M_Multiple_Choice";
 }
 
 /**
@@ -445,12 +530,19 @@ async function mapAiItemToParsedQuestion(
     globalSubjectHint?: string,
     fileBuffer?: Buffer
 ): Promise<ParsedQuestion> {
-    const type = normalizeQuestionType(item.type);
     const content = sanitizeQuestionContent(item.content || "");
 
+    // Luôn trích xuất options nếu có
     let options: string[] | undefined = undefined;
-    if (type === "MULTIPLE_CHOICE" && Array.isArray(item.options) && item.options.length > 0) {
+    if (Array.isArray(item.options) && item.options.length > 0) {
         options = item.options.map((opt: any) => sanitizeOptionText(String(opt || "")));
+    }
+
+    let type = normalizeQuestionType(item.type);
+    // Nếu câu hỏi có 4 lựa chọn options (kể cả câu đọc điền từ Cloze hay Đọc hiểu):
+    // Bản chất tương tác làm bài là chọn đáp án đúng -> Chuẩn hóa type = "MULTIPLE_CHOICE"
+    if (options && options.length > 0 && (type === "READING_COMPREHENSION" || type === "FILL_IN_BLANK")) {
+        type = "MULTIPLE_CHOICE";
     }
 
     let trueFalseStatements: TrueFalseStatement[] | undefined = undefined;
@@ -464,6 +556,7 @@ async function mapAiItemToParsedQuestion(
     }
 
     let contentImageUrl: string | undefined = item.contentImageUrl || undefined;
+    const finalSubjectHint = determineQuestionClassification(item, globalSubjectHint);
 
     return {
         index: item.index || fallbackIndex,
@@ -475,7 +568,7 @@ async function mapAiItemToParsedQuestion(
         passageTitle: item.passageTitle ? cleanMarkdownAndLatex(item.passageTitle) : undefined,
         passageContent: item.passageContent ? cleanMarkdownAndLatex(item.passageContent) : undefined,
         passageGroupId: item.passageGroupId || undefined,
-        subjectHint: item.subjectHint || globalSubjectHint || undefined,
+        subjectHint: finalSubjectHint,
         hasImage: item.hasImage === true || !!contentImageUrl,
         contentImageUrl,
         imageBbox: item.imageBbox || undefined,
@@ -501,52 +594,119 @@ Mọi công thức toán học, ký hiệu, số mũ, chỉ số dưới, vector
 1. **Chỉ số dưới (Subscript)**: Viết dạng $u_1$, $u_2$, $u_n$, $u_4 = u_1 \cdot q^3$, $A_1, A_2, \dots, A_{12}$, $A(1; 5; 1)$, $B(3; 3; 1)$, $P(A)$, $P(B)$, $P(AB)$, $Oxyz$.
 2. **Chỉ số trên / Số mũ (Superscript)**: Viết dạng $x^2$, $x^3$, $4x^3$, $f'(x)$, $g'(x)$, $0.001x^3 + 30x + 10$, $S = \\{1; 9\\}$.
 3. **Vector**: BẮT BUỘC dùng \\overrightarrow{...} (tuyệt đối KHÔNG dùng \\vec) để mũi tên kéo dài bao trọn tất cả các điểm, ví dụ: $\\overrightarrow{AB}$, $\\overrightarrow{CD}$, $\\overrightarrow{C'D'}$, $\\overrightarrow{D'C'}$, $\\overrightarrow{A'A}$, $\\overrightarrow{A'D'}$, $\\overrightarrow{MN}$. Luôn kẹp trong $...$.
-4. **Phân số**: Viết dạng $\\frac{ax+b}{cx+d}$, $\\frac{1}{3}x^3 - 5x^2 + 9x + 8$, $\\frac{37}{3}$, $\\frac{H}{50}$, $\\frac{x^2}{1.5^2} + \\frac{y^2}{1^2} = 1$.
-5. **Tích phân & Nguyên hàm**: Viết dạng $\\int f(x)dx = \\sin x + C$, $\\int_a^b f(t)dt$, $\\int [3 + f(x)]dx$.
-6. **Logarit & Căn bậc hai**: Viết dạng $\\log_3(x-1) = 1$, $\\sqrt{x}$.
-7. **Hệ phương trình & Tập hợp**: $\\begin{cases} x+y-3 < 0 \\\\ x-y+1 > 0 \\end{cases}$, $\\mathbb{R}$, $\\{0; 1; 2; 3; \\dots; 20\\}$.
-8. **Hình vẽ minh họa / Bảng biến thiên / Bảng số liệu / Đồ thị (hasImage)**:
-- Đặt \`hasImage: true\` nếu câu hỏi có kèm theo hình vẽ minh họa, hình học không gian, đồ thị hàm số, bảng biến thiên, hoặc bảng số liệu trong đề bài; ngược lại đặt \`hasImage: false\`.
-- TUYỆT ĐỐI KHÔNG cần tự đoán tọa độ xmin, ymin (Hệ thống OpenCV đã tự động nhận diện và cắt nét cực đại chuẩn Ultra HD).
-- BẮT BUỘC chỉ định chính xác \`pageIndex\` (0, 1, 2... tương ứng với số thứ tự trang từ 0 đến N-1 chứa câu hỏi đó).
+4. **Phân số**: Viết dạng $\\frac{ax+b}{cx+d}$, $\\frac{1}{3}x^3 - 5x^2 + 9x + 8$, $\\frac{37}{3}$, $\\frac{H}{50}$, $=== PHÂN LOẠI MÔN HỌC & DẠNG BÀI CHI TIẾT (subjectHint) ===
+Mỗi câu hỏi BẮT BUỘC phải chỉ định mã \`subjectHint\` theo tiền tố môn học và dạng bài cụ thể:
 
+1. MÔN TIẾNG ANH (Tiền tố E_):
+- \`E_Pronunciation_Stress\`: Ngữ âm (Phát âm nguyên âm/phụ âm, trọng âm từ 2-3 âm tiết).
+- \`E_Grammar_Vocabulary\`: Ngữ pháp & Từ vựng (thì, bị động, mệnh đề quan hệ, điều kiện, giả định, phrasal verbs, idioms...).
+- \`E_Error_Recognition\`: Tìm lỗi sai cần sửa về ngữ pháp hoặc từ vựng.
+- \`E_Communication\`: Chức năng giao tiếp (chọn câu đáp lại đoạn hội thoại ngắn hàng ngày).
+- \`E_Sentence_Arrangement\`: Sắp xếp trật tự câu / phát ngôn (a, b, c, d, e) để tạo thành đoạn văn hoặc hội thoại mạch lạc (như Câu 1 - 5).
+- \`E_Cloze_Test\`: Đọc điền từ vào chỗ trống trong đoạn văn, tờ rơi flyer, leaflet theo dạng trắc nghiệm chọn đáp án đúng A, B, C, D (như blanks 6 - 10, blanks 29 - 34, blanks 35 - 40).
+- \`E_Reading_Comprehension\`: Đọc hiểu văn bản dài, trả lời câu hỏi ý chính, từ vựng, suy luận theo dạng trắc nghiệm chọn đáp án đúng A, B, C, D (như Câu 11 - 20, Câu 21 - 28).
+- \`E_Sentence_Transformation\`: Câu đồng nghĩa và Kết hợp câu.
 
-=== PHÂN LOẠI CÂU HỎI (type) ===
+2. MÔN NGỮ VĂN (Tiền tố L_):
+- \`L_Reading_Comprehension\`: Đọc hiểu văn bản / thơ / truyện.
+- \`L_Social_Argument\`: Nghị luận xã hội (viết đoạn văn 200 chữ hoặc bài văn).
+- \`L_Literary_Analysis\`: Nghị luận văn học (phân tích, cảm nhận tác phẩm).
+- \`L_Vietnamese_Practice\`: Thực hành tiếng Việt (biện pháp tu từ, từ ngữ...).
 
-1. **MULTIPLE_CHOICE**: Trắc nghiệm có 4 đáp án A, B, C, D (Đặc trưng của Đề Toán Phần I).
-   → Trích xuất 4 đáp án vào mảng \`options\` (không bao gồm tiền tố "A.", "B."). Công thức toán trong options cũng viết bằng LaTeX $...$.
+3. MÔN TOÁN HỌC (Tiền tố M_):
+- \`M_Multiple_Choice\`: Trắc nghiệm 4 lựa chọn A, B, C, D (Phần I).
+- \`M_True_False\`: Trắc nghiệm Đúng/Sai cụm 4 mệnh đề a, b, c, d (Phần II).
+- \`M_Short_Answer\`: Trắc nghiệm trả lời ngắn / điền số (Phần III).
+- \`M_Essay\`: Tự luận giải toán.
 
-2. **TRUE_FALSE**: Câu hỏi Đúng/Sai dạng cụm 4 mệnh đề a, b, c, d (Đặc trưng của Đề Toán Phần II).
-   → \`content\` = phần dẫn chung (VD: "Trong không gian xét hệ tọa độ Oxyz...").
-   → Trích xuất 4 mệnh đề vào \`trueFalseStatements\` (mỗi item có \`label\` và \`statement\`). Mệnh đề chứa công thức toán viết bằng LaTeX $...$.
-   → KHÔNG trích xuất đáp án (Đúng/Sai) — sẽ được tải lên riêng.
+4. CÁC MÔN KHOA HỌC KHÁC:
+- Vật lý (\`P_\`): \`P_Multiple_Choice\`, \`P_True_False\`, \`P_Short_Answer\`
+- Hóa học (\`C_\`): \`C_Multiple_Choice\`, \`C_True_False\`, \`C_Short_Answer\`
+- Sinh học (\`B_\`): \`B_Multiple_Choice\`, \`B_True_False\`, \`B_Short_Answer\`
+- Lịch sử (\`H_\`): \`H_Multiple_Choice\`, \`H_True_False\`, \`H_Short_Answer\`
+- Địa lý (\`G_\`): \`G_Multiple_Choice\`, \`G_True_False\`, \`G_Short_Answer\`
+- KTPL/GDCD (\`CD_\`): \`CD_Multiple_Choice\`, \`CD_True_False\`, \`CD_Short_Answer\`
 
-3. **ESSAY**: Tự luận / Câu trả lời ngắn tính toán giải trình (Đặc trưng của Đề Toán Phần III - PHẦN 3 LA MÃ và bài tập tự luận).
-   → \`content\` = toàn bộ câu hỏi và yêu cầu bài toán.
-   → KHÔNG có \`options\`. Học viên sẽ tự luận giải và nhập kết quả.
+=== QUY TẮC BẮT BUỘC VỀ TRẮC NGHIỆM ĐIỀN TỪ & ĐỌC HIỂU (CLOZE & READING) ===
+1. TẤT CẢ các câu hỏi có phương án A, B, C, D (kể cả sắp xếp câu, đọc điền từ Cloze hay đọc hiểu Reading):
+   - Đặt \`type: "MULTIPLE_CHOICE"\` (vì bản chất học sinh chọn 1 trong 4 đáp án đúng A, B, C, D).
+   - BẮT BUỘC trích xuất 4 phương án vào mảng \`options\`: ["...", "...", "...", "..."] (loại bỏ tiền tố "A.", "B.", "C.", "D."). TUYỆT ĐỐI KHÔNG để trống options!
+2. Đối với bài đọc chung (Passage, Flyer, Leaflet):
+   - Gán \`passageGroupId\` giống nhau cho tất cả câu hỏi thuộc cùng ngữ liệu (VD: "passage_1", "passage_2"...).
+   - Chỉ gán \`passageContent\` và \`passageTitle\` cho câu hỏi ĐẦU TIÊN trong nhóm.
 
-4. **FILL_IN_BLANK**: Điền khuyết từ / cụm từ (Chủ yếu cho Ngoại ngữ).
+=== QUY TẮC BẮT BUỘC VỀ YÊU CẦU ĐỀ BÀI (DIRECTIVES / INSTRUCTIONS) ===
+Mỗi câu hỏi PHẢI ĐI KÈM YÊU CẦU ĐỀ BÀI để học sinh biết rõ nhiệm vụ cần thực hiện:
+1. Đối với nhóm câu hỏi có lời chỉ dẫn chung (Ví dụ: từ Câu 1 đến 5 có chỉ dẫn "Mark the letter A, B, C or D on your answer sheet to indicate the best arrangement of utterances or sentences to make a cohesive and coherent exchange or text in each of the following questions from 1 to 5."):
+   - BẮT BUỘC chèn lời chỉ dẫn này vào đầu trường \`content\` của TỪNG câu hỏi (dưới dạng in nghiêng), ví dụ:
+     \`content\`: "*Mark the letter A, B, C or D on your answer sheet to indicate the best arrangement of utterances or sentences to make a cohesive and coherent exchange or text:*\\n\\na. Diner: Excuse me, I\'ve been waiting so long for my order.\\nb. Diner: Thanks for your help.\\nc. Waiter: I\'m sorry! I\'ll check with the kitchen and get back to you immediately."
+2. Đối với câu hỏi đọc điền từ (Cloze test):
+   - Trường \`content\` phải ghi rõ: "Choose the best option for blank (6):" (hoặc số thứ tự ô khuyết tương ứng).
+3. Đối với câu hỏi đọc hiểu:
+   - Trường \`content\` phải ghi đầy đủ toàn bộ câu hỏi trên đề thi.
 
-5. **READING_COMPREHENSION**: Câu hỏi đọc hiểu dựa trên 1 đoạn văn bản chung (passage/ngữ liệu).
-   → Gán \`passageGroupId\` giống nhau cho tất cả câu hỏi thuộc cùng 1 passage.
-   → Chỉ gán \`passageContent\` và \`passageTitle\` cho câu hỏi ĐẦU TIÊN trong nhóm.
+=== QUY TẮC BẮT BUỘC VỀ THỨ TỰ PHƯƠNG ÁN A, B, C, D (OPTION ORDER INTEGRITY) ===
+1. Giữ nguyên 100% THỨ TỰ CÁC PHƯƠNG ÁN A, B, C, D theo đúng nguyên bản đề thi.
+2. TUYỆT ĐỐI KHÔNG tự ý sắp xếp lại phương án (Ví dụ: Câu 14 trên đề in A. [IV] B. [III] C. [II] D. [I] thì options BẮT BUỘC là ["[IV]", "[III]", "[II]", "[I]"]. Tuyệt đối KHÔNG được đảo C và D thành [I], [II]!).
+3. Đối với câu hỏi sắp xếp thứ tự (Arrangement):
+   - Phương án là chuỗi thứ tự các chữ cái (VD: "a - b - c", "b - c - a", "c - b - a", "a - c - b"). BẮT BUỘC ghi đầy đủ tất cả các thành phần trong chuỗi, TUYỆT ĐỐI KHÔNG được cắt bỏ chữ cái đầu tiên (Ví dụ: nếu có 3 lượt lời thì chuỗi phải đủ 3 chữ cái, không được rút gọn thành 2 chữ cái!).
 
-=== NHẬN DẠNG THEO MÔN HỌC ===
-
-Hãy xác định \`subjectHint\` cho toàn bộ đề (ở mức top-level): "toan", "ngu_van", "anh_van", "ly", "hoa", "sinh", "su", "dia", "gdcd", "tin_hoc".
+=== QUY TẮC BẮT BUỘC VỀ TÍNH NGUYÊN VĂN (VERBATIM 100%) & THẺ GẠCH CHÂN <u> ===
+1. BẢO TOÀN NGUYÊN VĂN 100% TỪNG TỪ, TỪNG DẤU CÂU của tất cả các bài đọc (passages), tờ rơi (flyers), tờ gấp (leaflets) và câu hỏi:
+   - TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý TÓM TẮT, THAY ĐỔI TỪ NGỮ, DIỄN ĐẠT LẠI HOẶC BỎ BỚT BẤT KỲ CÂU NÀO!
+   - (Ví dụ: Ở bài đọc về sinh viên dùng laptop trong lớp học, đoạn 4 BẮT BUỘC phải trích xuất đúng nguyên văn:
+     '<u>Things go from bad to worse when we take into account the fact that the very tools that distract students are also genuinely essential for some forms of academic work.</u> Annotating digital texts, accessing research databases and recording lectures all benefit from screen-based learning. The crucial question for tertiary institutions, then, is not to get rid of devices altogether but to teach students when and how to set them aside. Until that skill is cultivated, the lecture hall may continue to function less as a place of collective inquiry and more as a quiet place of solitary screens.\\n\\n(Adapted from https://vanderbilthustler.com)'
+     TUYỆT ĐỐI KHÔNG ĐƯỢC thay thế câu này bằng '[Sentence truncated in text]' hay câu của phương án trắc nghiệm khác!)
+2. THỂ HIỆN RÕ RÀNG NỘI DUNG GẠCH CHÂN DÙNG THẺ <u>...</u>:
+   - Mọi từ, cụm từ hoặc câu được gạch chân trên đề thi (trong bài đọc, trong câu hỏi, trong đáp án) BẮT BUỘC phải được bao bọc bởi thẻ <u>...</u>.
+   - Ví dụ trong bài đọc:
+     + <u>relinquished</u>, <u>they</u>
+     + <u>tracked</u>, <u>astounded</u>, <u>those</u>
+     + Cả câu đầu đoạn 4: <u>Things go from bad to worse when we take into account the fact that the very tools that distract students are also genuinely essential for some forms of academic work.</u>
+   - Ví dụ trong câu hỏi:
+     + "The word <u>relinquished</u> in paragraph 1 is closest in meaning to"
+     + "The word <u>tracked</u> in paragraph 2 is closest in meaning to"
+     + "The word <u>astounded</u> in paragraph 2 is OPPOSITE in meaning to"
+     + "The word <u>those</u> in paragraph 3 refers to"
+     + "Which of the following best paraphrases the <u>underlined sentence</u> in paragraph 4?"
 
 === CẤU TRÚC JSON ĐẦU RA BẮT BUỘC ===
 Bắt buộc trả về DUY NHẤT một khối JSON hợp lệ theo đúng mẫu:
 {
-  "examCode": "Mã đề thi (VD: 0103, 101, hoặc null nếu không có)",
-  "subjectHint": "toan",
+  "examCode": "Mã đề thi (VD: 1116, 0103, hoặc null)",
+  "subjectHint": "anh_van",
   "questions": [
     {
       "index": 1,
       "pageIndex": 0,
       "type": "MULTIPLE_CHOICE",
-      "content": "Nội dung câu hỏi",
-      "options": ["A", "B", "C", "D"],
+      "subjectHint": "E_Sentence_Arrangement",
+      "content": "*Mark the letter A, B, C or D on your answer sheet to indicate the best arrangement of utterances or sentences to make a cohesive and coherent exchange or text:*\\n\\na. Inhabitants of coastal regions housing large-scale facilities have reported that the low hum of the constant rotation impairs their sleep quality.\\nb. Nevertheless, the argument for transitioning is not entirely convincing when the implications for residents in the immediate vicinity are taken into account.\\nc. With the infrastructure in place, operational expenditures of wind mills are substantially lower than those of coal or gas facilities.\\nd. Wind power has been promoted as a notably clean and economically viable substitute for fossil fuels.\\ne. Progress on a country\'s renewable targets necessitates balancing each proposed initiative against the burdens imposed upon local populations.",
+      "options": ["e - b - a - c - d", "c - e - d - b - a", "d - c - b - a - e", "a - d - c - e - b"],
+      "hasImage": false
+    },
+    {
+      "index": 6,
+      "pageIndex": 0,
+      "type": "MULTIPLE_CHOICE",
+      "subjectHint": "E_Cloze_Test",
+      "passageGroupId": "passage_1",
+      "passageTitle": "Money has many ironies...",
+      "passageContent": "Money has many ironies, and here is an important one: wealth is what you do not see. On spotting a Ferrari driving around, (6)______. In reality, however, many drivers of expensive cars turn out to be only mediocre successes...",
+      "content": "Choose the best option for blank (6):",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "hasImage": false
+    },
+    {
+      "index": 11,
+      "pageIndex": 1,
+      "type": "MULTIPLE_CHOICE",
+      "subjectHint": "E_Reading_Comprehension",
+      "passageGroupId": "passage_2",
+      "passageTitle": "Environmental services...",
+      "passageContent": "Environmental services, even when they arise without any human labour, are by no means cost-free. Every cost should be understood in terms of opportunity cost. For environmental services, the opportunity cost amounts to the net gain <u>relinquished</u> because the resources are no longer available for their second-best application...",
+      "content": "The word <u>relinquished</u> in paragraph 1 is closest in meaning to",
+      "options": ["made up", "given up", "filled up", "ended up"],
       "hasImage": false
     }
   ]
@@ -557,12 +717,9 @@ Bắt buộc trả về DUY NHẤT một khối JSON hợp lệ theo đúng mẫ
 2. KHÔNG nhận diện hay trích xuất đáp án đúng (correctAnswer) — sẽ được tải lên riêng.
 3. Phải trả về TẤT CẢ các câu hỏi, không bỏ sót. Đọc kỹ từ đầu đến cuối tài liệu.
 4. Bảo toàn nguyên vẹn nội dung, biểu thức và ký hiệu toán học.
+5. Đảm bảo JSON hợp lệ: Dấu ngoặc kép đôi bên trong lời thoại hoặc chuỗi phải được escape thành \" hoặc thay bằng nháy đơn '.
 `;
 }
-
-/**
- * Trích xuất text từ file PDF
- */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     try {
         const data = await pdfParse(buffer);
@@ -701,7 +858,18 @@ export async function extractVisualsFromImage(buffer: Buffer): Promise<Extracted
         if (res.ok) {
             const data = await res.json();
             if (data.success && Array.isArray(data.visuals)) {
-                return data.visuals;
+                // Lọc bỏ triệt để các dải banner đầu trang và chân trang
+                return (data.visuals as ExtractedPageVisual[]).filter(v => {
+                    const [ymin, xmin, ymax, xmax] = v.bbox_norm || [0, 0, 0, 0];
+                    const w = xmax - xmin;
+                    // Bỏ qua header banner ở đỉnh trang (top 15% và rộng > 50%)
+                    if (ymin <= 40 && ymax <= 200 && w >= 500) return false;
+                    if (ymin <= 25 && ymax <= 150) return false;
+                    // Bỏ qua footer banner ở đáy trang (bottom 8% và rộng > 40%)
+                    if (ymax >= 960 && w >= 400) return false;
+                    if (ymin >= 920 && ymax >= 980) return false;
+                    return true;
+                });
             }
         }
     } catch (e) {
@@ -872,9 +1040,42 @@ async function compressImageForGeminiVision(buffer: Buffer): Promise<Buffer> {
  * Gọi trực tiếp Gemini Web2API (Port 8081) qua endpoint generateContent (Hỗ trợ Multimodal Vision + Text)
  */
 async function callWeb2APIGenerateContent(payload: any, timeoutMs = 120000): Promise<string> {
+    // 1. Thử gọi Official Google Generative AI API trước (hỗ trợ Vision tin cậy tuyệt đối, không bị lỗi session cookie của web proxy)
+    const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (googleApiKey) {
+        try {
+            console.log("🌐 [Vision] Calling Official Google Gemini 2.5 Flash API...");
+            const officialUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`;
+            const officialController = new AbortController();
+            const officialTimer = setTimeout(() => officialController.abort(), 60000);
+
+            const res = await fetch(officialUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: officialController.signal,
+            });
+            clearTimeout(officialTimer);
+
+            if (res.ok) {
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text && text.trim().length > 0) {
+                    console.log("✅ [Vision] Official Google Gemini API succeeded!");
+                    return text;
+                }
+            } else {
+                console.warn(`Official Gemini API HTTP ${res.status}, falling back to Local Web2API...`);
+            }
+        } catch (e: any) {
+            console.warn(`Official Gemini API error (${e.message}), falling back to Local Web2API...`);
+        }
+    }
+
+    // 2. Fallback sang Local Gemini Web2API (Port 8081)
     const baseUrl = (process.env.OPENAI_BASE_URL || "http://127.0.0.1:8081/v1").replace(/\/v1\/?$/, "");
     const apiKey = process.env.OPENAI_API_KEY || "sk-gemini";
-    const model = process.env.OPENAI_MODEL || "gemini-3.6-flash";
+    const model = process.env.OPENAI_MODEL || "gemini-3.5-flash";
     const url = `${baseUrl}/v1beta/models/${model}:generateContent`;
 
     const controller = new AbortController();
@@ -969,8 +1170,9 @@ export async function parseQuestionsFromFile(buffer: Buffer, mimeType: string): 
         let visualIdx = 0;
         return await Promise.all(
             questionsArray.map(async (item: any, i: number) => {
-                const needsVisual = item.hasImage === true || 
-                    /hình vẽ|hình bên|hình dưới|xem hình|như hình|bảng biến thiên|bảng số liệu|bảng sau|bảng ghép nhóm|bảng tần số|bảng phân bố|đồ thị|mặt cắt|mũi khoan|hạt cườm|bậc thang|nông trại|15 ô/i.test(item.content || "");
+                const isEnglishTextTask = /arrangement of utterances|arrangement of sentences|best arrangement|cohesive and coherent|dialogue|exchange|read the following passage|read the passage|flyer|leaflet/i.test(item.content || "");
+                const needsVisual = (item.hasImage === true || 
+                    /hình vẽ|hình bên|hình dưới|xem hình|như hình|bảng biến thiên|bảng số liệu|bảng sau|bảng ghép nhóm|bảng tần số|bảng phân bố|đồ thị|mặt cắt|mũi khoan|hạt cườm|bậc thang|nông trại|15 ô/i.test(item.content || "")) && !isEnglishTextTask;
 
                 if (needsVisual && pageVisuals.length > visualIdx) {
                     item.contentImageUrl = pageVisuals[visualIdx].crop_base64;
@@ -1116,8 +1318,9 @@ export async function parseQuestionsFromFilesBatch(files: { buffer: Buffer, mime
                 // Ghép nối 1-1 hình ảnh từ OpenCV vào câu hỏi
                 const visualsOnPage = pageVisualsList[pageIdx] || [];
                 const pointer = visualPointers[pageIdx] || 0;
-                const needsVisual = item.hasImage === true || 
-                    /hình vẽ|hình bên|hình dưới|xem hình|như hình|bảng biến thiên|bảng số liệu|bảng sau|bảng ghép nhóm|bảng tần số|bảng phân bố|đồ thị|mặt cắt|mũi khoan|hạt cườm|bậc thang|nông trại|15 ô/i.test(item.content || "");
+                const isEnglishTextTask = /arrangement of utterances|arrangement of sentences|best arrangement|cohesive and coherent|dialogue|exchange|read the following passage|read the passage|flyer|leaflet/i.test(item.content || "");
+                const needsVisual = (item.hasImage === true || 
+                    /hình vẽ|hình bên|hình dưới|xem hình|như hình|bảng biến thiên|bảng số liệu|bảng sau|bảng ghép nhóm|bảng tần số|bảng phân bố|đồ thị|mặt cắt|mũi khoan|hạt cườm|bậc thang|nông trại|15 ô/i.test(item.content || "")) && !isEnglishTextTask;
 
                 if (needsVisual && visualsOnPage.length > pointer) {
                     item.contentImageUrl = visualsOnPage[pointer].crop_base64;
@@ -1527,22 +1730,9 @@ export function mergeAnswersWithOverlap(existing: string, newVal: string): strin
 }
 
 function formatQuestionsForPrompt(existingQuestions: { id: string; index: number; content: string; type: string }[]): string {
-    let readingCount = 0;
-    let essayCount = 0;
-    
     return existingQuestions.map((q) => {
-        let partInfo = "";
-        if (q.type === "READING_COMPREHENSION" || q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE" || q.type === "FILL_IN_BLANK") {
-            readingCount++;
-            partInfo = `Phần I (Đọc hiểu) - Câu ${readingCount}`;
-        } else if (q.type === "ESSAY") {
-            essayCount++;
-            partInfo = `Phần II (Viết/Làm văn) - Câu ${essayCount}`;
-        } else {
-            partInfo = `Câu ${q.index}`;
-        }
-        
-        return `- ID: ${q.id} [${partInfo}] (Loại: ${q.type}): "${q.content.slice(0, 150)}..."`;
+        const cleanContent = q.content.replace(/\s+/g, " ").trim().slice(0, 100);
+        return `- ID: ${q.id} (Câu ${q.index}, Loại: ${q.type}): "${cleanContent}..."`;
     }).join("\n");
 }
 
@@ -1713,12 +1903,14 @@ ${formattedQuestionsInfo}
             }
         }
 
-        // Lưu vào DB Cache
-        await setCachedOcr(combinedHash, "image", JSON.stringify(finalResult), {
-            textLength: responseText.length,
-            wordCount: answersArray.length,
-            vietnameseRatio: 1.0
-        });
+        // Chỉ lưu vào DB Cache nếu khớp được ít nhất 1 câu hỏi (tránh lưu cache rỗng khi lỗi mạng)
+        if (Object.keys(finalResult).length > 0) {
+            await setCachedOcr(combinedHash, "image", JSON.stringify(finalResult), {
+                textLength: responseText.length,
+                wordCount: answersArray.length,
+                vietnameseRatio: 1.0
+            });
+        }
 
         console.log(`✅ [Direct Gemini Vision AnswerKey] Khớp thành công ${Object.keys(finalResult).length} câu hỏi.`);
         return finalResult;

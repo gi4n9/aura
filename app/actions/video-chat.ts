@@ -54,22 +54,31 @@ export async function processLessonEmbeddings(lessonId: string) {
 
         // Insert theo batch
         const batchSize = 20;
+        let insertedCount = 0;
         for (let i = 0; i < chunks.length; i += batchSize) {
-            const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => ({
-                lesson_id: lessonId,
-                content: chunk.text,
-                start_time: chunk.start,
-                end_time: chunk.end,
-                embedding: embeddings[i + idx],
-            }));
+            const batch = chunks.slice(i, i + batchSize).map((chunk, idx) => {
+                const emb = embeddings[i + idx];
+                if (!emb || emb.length === 0) return null;
+                return {
+                    lesson_id: lessonId,
+                    content: chunk.text,
+                    start_time: chunk.start,
+                    end_time: chunk.end,
+                    embedding: emb,
+                };
+            }).filter((item): item is NonNullable<typeof item> => item !== null);
 
-            const { error } = await supabase.from('video_embeddings').insert(batch);
-            if (error) {
-                console.error(`Embedding batch ${i} error:`, error.message);
+            if (batch.length > 0) {
+                const { error } = await supabase.from('video_embeddings').insert(batch);
+                if (error) {
+                    console.error(`Embedding batch ${i} error:`, error.message);
+                } else {
+                    insertedCount += batch.length;
+                }
             }
         }
 
-        return { success: true, count: chunks.length };
+        return { success: true, count: insertedCount };
 
     } catch (error: any) {
         console.error("Process Embedding Error:", error);
